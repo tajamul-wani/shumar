@@ -1,0 +1,37 @@
+# Secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+*.pem
+*.key
+
+# Internal planning (never public)
+blueprint/
+
+# Claude and chat files
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.claude.json
+*.jsonl
+
+# Dependencies and builds
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.log
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# Tooling state
+supabase/.temp/
+.wrangler/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
