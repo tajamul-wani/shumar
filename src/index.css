@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+/*
+  Koshur Nocturne tokens. Components use only these names, never raw colors.
+  Light mode values and the typeface are added once approved (SHU-4).
+*/
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root,
+[data-theme='dark'] {
+  --koshur-base: #0c0b0a;
+  --koshur-surface: #171513;
+  --koshur-border: #2c2823;
+  --koshur-silk: #f5f3ef;
+  --koshur-muted: #9c9488;
+  --deficit-ring: #e08a3c;
+  --macro-protein: #3e9b68;
+  --macro-carb: #d4a259;
+  --macro-fat: #c4683c;
+  --alert-surplus: #dc3e3e;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-koshur-base: var(--koshur-base);
+  --color-koshur-surface: var(--koshur-surface);
+  --color-koshur-border: var(--koshur-border);
+  --color-koshur-silk: var(--koshur-silk);
+  --color-koshur-muted: var(--koshur-muted);
+  --color-deficit-ring: var(--deficit-ring);
+  --color-macro-protein: var(--macro-protein);
+  --color-macro-carb: var(--macro-carb);
+  --color-macro-fat: var(--macro-fat);
+  --color-alert-surplus: var(--alert-surplus);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+}
+
+body {
+  margin: 0;
+  background: var(--koshur-base);
+  color: var(--koshur-silk);
+  font-family: system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
