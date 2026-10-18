@@ -45,6 +45,20 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  db-security:
+    name: Database security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Start the local database
+        run: npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta,postgrest,kong
+      - run: npm run test:db
+
   e2e:
     name: End-to-end tests
     runs-on: ubuntu-latest
@@ -97,5 +111,3 @@ jobs:
           tar -xzf "$file" gitleaks
       - name: Scan the full history for leaked secrets
         run: ./gitleaks git --redact --verbose .
-
-  # The database security job (local Supabase + pgTAP) is added with the schema in SHU-6.
