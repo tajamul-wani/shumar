@@ -12,6 +12,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
       await watchCsp(page)
       await page.goto('/')
+      await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
     })
 
     test('loads with the app name and title', async ({ page }) => {

@@ -44,6 +44,19 @@ export function readTestUsers(): { a: TestUser; b: TestUser } {
   return JSON.parse(readFileSync(USERS_FILE, 'utf8'))
 }
 
+/** Where supabase-js keeps the session in the browser for this project. */
+export function sessionStorageKey(): string {
+  return `sb-${new URL(supabaseUrl()).hostname.split('.')[0]}-auth-token`
+}
+
+/** Starts the page already signed in, the same way the app restores a session after a reload. */
+export async function signInAs(page: Page, session: Session): Promise<void> {
+  await page.addInitScript(
+    ([key, value]) => localStorage.setItem(key, value),
+    [sessionStorageKey(), JSON.stringify(session)],
+  )
+}
+
 /** Records every Content Security Policy violation on the page. */
 export async function watchCsp(page: Page): Promise<void> {
   await page.addInitScript(() => {
