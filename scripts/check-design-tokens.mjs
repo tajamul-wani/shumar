@@ -1,5 +1,7 @@
 // Fails if app code uses a color, font, type size or font weight that isn't a design token.
 // Tokens are defined only in src/index.css. Test files are skipped (they may hold fixture values).
+// Also fails if the status bar colors, which have to be written out before the CSS loads,
+// drift from the koshur-base tokens.
 // Usage: node scripts/check-design-tokens.mjs
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -45,6 +47,32 @@ export function findViolations(text, file = 'input') {
   return found
 }
 
+function baseColor(css, theme) {
+  const match = css.match(
+    new RegExp(`\\[data-theme='${theme}'\\]\\s*\\{[^}]*--koshur-base:\\s*(#[0-9a-fA-F]{6})`),
+  )
+  return match?.[1].toLowerCase()
+}
+
+/** Compares the hand-written status bar colors with the koshur-base tokens. */
+export function findThemeColorDrift({ css, themeInit, html }) {
+  const dark = baseColor(css, 'dark')
+  const light = baseColor(css, 'light')
+  if (!dark || !light) return ['src/index.css: koshur-base is missing for the dark or light theme']
+  const found = []
+  const init = themeInit.match(/theme === 'light' \? '(#[0-9a-fA-F]{6})' : '(#[0-9a-fA-F]{6})'/)
+  if (init?.[1].toLowerCase() !== light || init?.[2].toLowerCase() !== dark) {
+    found.push(
+      `public/theme-init.js: status bar colors must be koshur-base, ${light} (light) and ${dark} (dark)`,
+    )
+  }
+  const meta = html.match(/<meta name="theme-color" content="(#[0-9a-fA-F]{6})"/)
+  if (meta?.[1].toLowerCase() !== dark) {
+    found.push(`index.html: the theme-color meta must be the dark koshur-base, ${dark}`)
+  }
+  return found
+}
+
 function sourceFiles(dir) {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name)
@@ -57,6 +85,13 @@ function sourceFiles(dir) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const violations = sourceFiles(join(ROOT, 'src')).flatMap((file) =>
     findViolations(readFileSync(file, 'utf8'), relative(ROOT, file)),
+  )
+  violations.push(
+    ...findThemeColorDrift({
+      css: readFileSync(TOKEN_FILE, 'utf8'),
+      themeInit: readFileSync(join(ROOT, 'public', 'theme-init.js'), 'utf8'),
+      html: readFileSync(join(ROOT, 'index.html'), 'utf8'),
+    }),
   )
   if (violations.length > 0) {
     console.error(`Design token check failed (${violations.length}):\n\n${violations.join('\n')}`)

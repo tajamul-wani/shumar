@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { cspViolations, watchCsp } from './support.ts'
 
 async function hasHorizontalScroll(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
@@ -9,7 +10,9 @@ for (const theme of ['dark', 'light'] as const) {
   test.describe(`App shell, ${theme} theme`, () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
+      await watchCsp(page)
       await page.goto('/')
+      await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
     })
 
     test('loads with the app name and title', async ({ page }) => {
@@ -39,6 +42,14 @@ for (const theme of ['dark', 'light'] as const) {
       expect(await hasHorizontalScroll(page)).toBe(false)
       await page.setViewportSize({ width: 320, height: 640 })
       expect(await hasHorizontalScroll(page)).toBe(false)
+    })
+
+    test('is served with the security policy and breaks none of it', async ({ page }) => {
+      const response = await page.request.get('/')
+      expect(response.headers()['content-security-policy']).toContain("default-src 'self'")
+      expect(response.headers()['x-frame-options']).toBe('DENY')
+      await page.evaluate(() => document.fonts.ready)
+      expect(await cspViolations(page)).toEqual([])
     })
 
     test('has no serious or critical accessibility violations', async ({ page }) => {

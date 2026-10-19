@@ -75,6 +75,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium webkit
+      - name: Start local Supabase (database, auth and API only)
+        run: npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta
       - run: npm run test:e2e
         env:
           CI: true

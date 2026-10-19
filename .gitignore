@@ -19,6 +19,7 @@ CLAUDE.local.md
 # Dependencies and builds
 node_modules/
 dist/
+dist-e2e/
 dist-ssr/
 *.local
 *.log
@@ -35,3 +36,6 @@ supabase/.temp/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# End-to-end test sessions
+e2e/.auth/
