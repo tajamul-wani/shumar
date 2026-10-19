@@ -1,8 +1,10 @@
 @import 'tailwindcss';
 
 /*
-  Koshur Nocturne tokens. Components use only these names, never raw colors.
-  Light mode values and the typeface are added once approved (SHU-4).
+  Koshur Nocturne design tokens, approved 19 October 2026.
+  Components use only these names: never raw colors, fonts, sizes or weights.
+  Tailwind's default palette, type scale, fonts and weights are switched off below,
+  so only these tokens exist. `npm run lint` also blocks anything off-token.
 */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
@@ -21,6 +23,32 @@
   color-scheme: dark;
 }
 
+[data-theme='light'] {
+  --koshur-base: #f7f4ee;
+  --koshur-surface: #fffdf9;
+  --koshur-border: #e3dbcf;
+  --koshur-silk: #1c1916;
+  --koshur-muted: #6b6358;
+  --deficit-ring: #a85a16;
+  --macro-protein: #2f7d52;
+  --macro-carb: #9a6b1f;
+  --macro-fat: #a9532b;
+  --alert-surplus: #c42f2f;
+  color-scheme: light;
+}
+
+/* The display size grows from 32 px on phones to 40 px from tablet width up. */
+:root {
+  --display-size: 2rem;
+  --display-line: 2.5rem;
+}
+@media (min-width: 48rem) {
+  :root {
+    --display-size: 2.5rem;
+    --display-line: 3rem;
+  }
+}
+
 @theme inline {
   --color-*: initial;
   --color-koshur-base: var(--koshur-base);
@@ -35,13 +63,38 @@
   --color-alert-surplus: var(--alert-surplus);
   --color-transparent: transparent;
   --color-current: currentColor;
+
+  --font-*: initial;
+  --font-sans: 'Manrope', system-ui, sans-serif;
+  --font-wordmark: 'Noto Nastaliq Urdu', serif;
+
+  --text-*: initial;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-heading: 1.5rem;
+  --text-heading--line-height: 2rem;
+  --text-display: var(--display-size);
+  --text-display--line-height: var(--display-line);
+
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 }
 
 body {
   margin: 0;
   background: var(--koshur-base);
   color: var(--koshur-silk);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
