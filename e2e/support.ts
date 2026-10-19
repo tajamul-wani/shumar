@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { createClient, type Session } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -41,4 +42,19 @@ export async function createTestUser(label: string): Promise<TestUser> {
 
 export function readTestUsers(): { a: TestUser; b: TestUser } {
   return JSON.parse(readFileSync(USERS_FILE, 'utf8'))
+}
+
+/** Records every Content Security Policy violation on the page. */
+export async function watchCsp(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const seen: string[] = []
+    Object.assign(window, { cspViolations: seen })
+    document.addEventListener('securitypolicyviolation', (event) => {
+      seen.push(`${event.violatedDirective} blocked ${event.blockedURI}`)
+    })
+  })
+}
+
+export function cspViolations(page: Page): Promise<string[]> {
+  return page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)
 }
