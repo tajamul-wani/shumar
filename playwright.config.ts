@@ -24,7 +24,8 @@ if (!process.env.E2E_SUPABASE_URL || !process.env.E2E_SUPABASE_KEY) {
   process.env.E2E_SUPABASE_KEY = status.PUBLISHABLE_KEY
 }
 
-const browserTests = { testIgnore: /api\.spec\.ts/ }
+// The layout sweep resizes one page through every width, so it only needs one browser.
+const browserTests = { testIgnore: /(api|layout)\.spec\.ts/ }
 
 export default defineConfig({
   testDir: './e2e',
@@ -43,7 +44,7 @@ export default defineConfig({
     { name: 'tablet', ...browserTests, use: { ...devices['iPad (gen 7)'] } },
     {
       name: 'desktop',
-      ...browserTests,
+      testIgnore: /api\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     // Data isolation is checked once, straight against the API.

@@ -58,7 +58,7 @@ supabase/
   migrations/              Database schema changes, applied in order
   tests/database/          Row-level security and privilege tests (pgTAP)
 e2e/                       End-to-end tests, run against the local Supabase stack
-.github/workflows/         CI pipeline
+.github/workflows/         CI pipeline and CodeQL code scanning
 ```
 
 ## Getting started
@@ -137,7 +137,9 @@ The app runs at http://localhost:5173.
 - End-to-end tests run on a phone (Android and iPhone), a tablet and a 1440 px desktop, in both dark and light themes.
 - They always build the app against the local Supabase stack, never a hosted project, into `dist-e2e/` so your own build in `dist/` is left alone. Each run signs up fresh test users there, so no Google account is needed.
 - The first time, install the browsers with `npx playwright install --with-deps chromium webkit`.
-- CI runs five jobs on every pull request: Lint and types, Unit tests, Database security tests, End-to-end tests and Security scan (dependency audit and a secret scan of the full history). All five must pass before a pull request can merge.
+- CI runs five jobs on every pull request: Lint and types, Unit tests, Database security tests, End-to-end tests and Security scan (dependency audit, a check that every package was published by its owner, and a secret scan of the full history). All five must pass before a pull request can merge.
+- CodeQL, GitHub's code scanning, also checks every pull request and runs weekly on `main`.
+- Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
 
 ## Architecture
 

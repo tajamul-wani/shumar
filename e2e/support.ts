@@ -8,6 +8,14 @@ import { readFileSync } from 'node:fs'
 
 export const USERS_FILE = 'e2e/.auth/users.json'
 
+/** Every signed-in screen, by address and main heading. */
+export const SCREENS = [
+  { path: '/', heading: 'Today' },
+  { path: '/trends', heading: 'Trends' },
+  { path: '/you', heading: 'You' },
+  { path: '/log', heading: 'Add food' },
+] as const
+
 export interface TestUser {
   email: string
   session: Session
