@@ -17,6 +17,7 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 | :--------------- | :--------------------------------------------------------- |
 | App              | React 19, TypeScript, Vite                                 |
 | Styling          | Tailwind CSS v4                                            |
+| Routing          | wouter                                                     |
 | Icons            | Lucide React                                               |
 | Fonts            | Manrope, Noto Nastaliq Urdu (self-hosted with Fontsource)  |
 | Database         | Supabase (PostgreSQL) with row-level security              |
@@ -31,13 +32,19 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 
 ```
 src/
-  App.tsx                  Sign-in screen and signed-in screen
-  main.tsx                 Starts the theme, creates the Supabase client and mounts the app
+  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log)
+  main.tsx                 Creates the Supabase client and mounts the app inside its providers
   index.css                Tailwind setup and design tokens
   auth/                    Session state shared with every screen (AuthProvider, useAuth)
+  theme/                   The theme choice shared with every screen (ThemeProvider, useTheme)
+  shell/                   The frame around every screen: side navigation, tab bar and add button
+  screens/                 One file per screen: SignIn, Today, Trends, You and Add food
+  components/              Shared building blocks, such as Button
   lib/
     supabase.ts            Supabase client setup, which refuses secret keys
     auth.ts                Google sign-in and sign-out
+    account.ts             The name, initial and sign-in method shown on the You screen
+    dates.ts               Date formats, such as the Today heading
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
     theme.ts               Dark and light theme handling
 public/
@@ -138,6 +145,8 @@ The app runs at http://localhost:5173.
 
 Shumār is a single-page React app built with Vite. All styling comes from Tailwind classes backed by the tokens in `src/index.css`.
 
+Each screen has its own address, handled by wouter, so the back button, reloads and shared links all work. Unknown addresses go to Today. `src/shell/AppShell.tsx` draws the frame: a tab bar with Today, Trends and You plus a floating add button on phones and tablets, and side navigation from 1024 px up. After a change of screen, focus moves to the new screen's heading for keyboard and screen reader users.
+
 Google sign-in runs through Supabase Auth with the PKCE flow. The app sends the visitor to Google, Supabase handles the reply, and the session comes back to the app. `src/auth/AuthProvider.tsx` keeps the current session available to every screen and follows Supabase as it refreshes or ends it.
 
 Signing out clears the session and everything cached under the `shumar-cache:` prefix from the device. Only the theme choice stays.
@@ -168,7 +177,7 @@ The math lives in `src/lib/nutrition.ts`, separate from the UI, so it can be tes
 
 ### Theme
 
-`public/theme-init.js` sets the theme before the page draws, from the saved choice or the device setting, so it never flashes the wrong theme. `src/lib/theme.ts` then keeps it in sync and matches the browser's status bar color. Only the choice (system, light or dark) is stored, in `localStorage`.
+`public/theme-init.js` sets the theme before the page draws, from the saved choice or the device setting, so it never flashes the wrong theme. `src/theme/ThemeProvider.tsx` then keeps it in step with the choice and, for System, with the device, and matches the browser's status bar color. The choice is made on the You screen, or with the theme button in the desktop side navigation. Only the choice (system, light or dark) is stored, in `localStorage`.
 
 ## Design system
 
