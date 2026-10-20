@@ -8,16 +8,16 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { createSupabase, readSupabaseConfig } from './lib/supabase.ts'
-import { startTheme } from './lib/theme.ts'
-
-startTheme()
+import { ThemeProvider } from './theme/ThemeProvider.tsx'
 
 const supabase = createSupabase(readSupabaseConfig(import.meta.env))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider client={supabase}>
-      <App />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider client={supabase}>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

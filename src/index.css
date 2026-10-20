@@ -98,3 +98,11 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
+
+/* The phone tab bar and the add button sit above the home indicator on phones that have one. */
+@utility pb-tab-bar {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+@utility bottom-above-tab-bar {
+  bottom: calc(5rem + max(1.25rem, env(safe-area-inset-bottom)));
+}

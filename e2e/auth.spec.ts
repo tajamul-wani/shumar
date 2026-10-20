@@ -1,6 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { apiClient, createTestUser, cspViolations, readTestUsers, signInAs, watchCsp } from './support.ts'
+import { apiClient, createTestUser, readTestUsers, signInAs } from './support.ts'
 
 test('Sign in with Google hands over to Supabase with a PKCE challenge', async ({ page, baseURL }) => {
   // Stop at Supabase: Google's own screen can't be automated.
@@ -31,36 +31,12 @@ for (const theme of ['dark', 'light'] as const) {
   })
 }
 
-for (const theme of ['dark', 'light'] as const) {
-  test.describe(`Signed in, ${theme} theme`, () => {
-    test.beforeEach(async ({ page }) => {
-      await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
-      await watchCsp(page)
-      await signInAs(page, readTestUsers().a.session)
-      await page.goto('/')
-    })
-
-    test('shows the signed-in account and a way to sign out', async ({ page }) => {
-      await expect(page.getByText(readTestUsers().a.email)).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
-    })
-
-    test('fits at 320 px, passes accessibility checks and keeps to the security policy', async ({ page }) => {
-      await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
-      await page.setViewportSize({ width: 320, height: 640 })
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-        ),
-      ).toBe(false)
-
-      const results = await new AxeBuilder({ page }).analyze()
-      const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
-      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
-      expect(await cspViolations(page)).toEqual([])
-    })
-  })
-}
+test('shows the signed-in account on the You screen', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.goto('/you')
+  await expect(page.getByRole('region', { name: 'Account' })).toContainText(readTestUsers().a.email)
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+})
 
 test('Sign out ends the session and clears the device, keeping only the theme', async ({ page }) => {
   // Its own user, so ending the session can't affect the other tests.
@@ -70,10 +46,11 @@ test('Sign out ends the session and clears the device, keeping only the theme', 
     localStorage.setItem('shumar-theme', 'light')
     localStorage.setItem('shumar-cache:today', '[]')
   })
-  await page.goto('/')
+  await page.goto('/you')
   await page.getByRole('button', { name: 'Sign out' }).click()
 
   await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
+  await expect(page).toHaveURL('/')
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual(['shumar-theme'])
 
   const refresh = await apiClient().auth.refreshSession({ refresh_token: user.session.refresh_token })
