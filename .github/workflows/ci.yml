@@ -112,6 +112,8 @@ jobs:
       - run: npm ci
       - name: Check dependencies for known vulnerabilities
         run: npm audit --audit-level=high
+      - name: Check every package was published by its owner
+        run: npm audit signatures
       - name: Install gitleaks (checksum verified)
         run: |
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
