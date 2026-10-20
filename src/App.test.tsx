@@ -1,16 +1,28 @@
 import type { Session } from '@supabase/supabase-js'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { useAuth } from './auth/context.ts'
+import { THEME_STORAGE_KEY } from './lib/theme.ts'
+import { useTheme } from './theme/context.ts'
+import { ThemeProvider } from './theme/ThemeProvider.tsx'
 
 type Listener = (event: string, session: Session | null) => void
 
-function fakeSession(email?: string): Session {
-  return { user: { id: 'user-a', email } } as unknown as Session
+function fakeSession(fields: { email?: string; name?: string; provider?: string } = {}): Session {
+  return {
+    user: {
+      id: 'user-a',
+      email: fields.email,
+      user_metadata: fields.name ? { full_name: fields.name } : {},
+      app_metadata: fields.provider ? { provider: fields.provider } : {},
+    },
+  } as unknown as Session
 }
+
+const tajamul = () => fakeSession({ email: 'a@example.com', name: 'Tajamul Wani', provider: 'google' })
 
 function fakeClient(initial: Session | null, options: { oauthError?: Error } = {}) {
   let listener: Listener = () => undefined
@@ -44,19 +56,36 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error } = {
   }
 }
 
-function renderApp(fake: ReturnType<typeof fakeClient>) {
+function renderApp(fake: ReturnType<typeof fakeClient>, path = '/') {
+  window.history.replaceState(null, '', path)
   return render(
-    <AuthProvider client={fake.client}>
-      <App />
-    </AuthProvider>,
+    <ThemeProvider>
+      <AuthProvider client={fake.client}>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>,
   )
+}
+
+async function signedIn(path = '/') {
+  const fake = fakeClient(tajamul())
+  renderApp(fake, path)
+  await fake.load()
+  return fake
+}
+
+/** jsdom applies no CSS, so both navigations are present: index 0 is the side navigation, 1 the tab bar. */
+function sideNav() {
+  return screen.getAllByRole('navigation', { name: 'Main' })[0]
 }
 
 afterEach(() => {
   window.history.replaceState(null, '', '/')
+  localStorage.clear()
+  delete document.documentElement.dataset.theme
 })
 
-describe('App', () => {
+describe('signed out', () => {
   it('shows a loading state until the session is known', async () => {
     const fake = fakeClient(null)
     renderApp(fake)
@@ -70,6 +99,7 @@ describe('App', () => {
     renderApp(fake)
     await fake.load()
     expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
+    expect(document.title).toBe('Shumār')
 
     await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }))
     expect(fake.auth.signInWithOAuth).toHaveBeenCalledWith({
@@ -89,70 +119,160 @@ describe('App', () => {
   })
 
   it('explains when Google sends the visitor back with an error', async () => {
-    window.history.replaceState(null, '', '/?error=access_denied')
     const fake = fakeClient(null)
-    renderApp(fake)
+    renderApp(fake, '/?error=access_denied')
     await fake.load()
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent("We couldn't sign you in with Google")
     // Alerts carry an icon as well as text, hidden from screen readers so the text is read once.
     expect(alert.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
   })
+})
 
-  it('shows who is signed in and signs them out', async () => {
-    const fake = fakeClient(fakeSession('a@example.com'))
-    renderApp(fake)
-    await fake.load()
-    expect(screen.getByText('a@example.com')).toBeInTheDocument()
+describe('the app shell', () => {
+  it('opens on Today with the date and both navigations', async () => {
+    await signedIn()
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument()
+    expect(document.title).toBe('Today · Shumār')
+    for (const nav of screen.getAllByRole('navigation', { name: 'Main' })) {
+      expect(
+        within(nav)
+          .getAllByRole('link')
+          .map((link) => link.textContent),
+      ).toEqual(['Today', 'Trends', 'You'])
+      expect(within(nav).getByRole('link', { name: 'Today' })).toHaveAttribute('aria-current', 'page')
+    }
+  })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+  it('moves between screens, marks the current one and focuses its heading', async () => {
+    await signedIn()
+    await userEvent.click(within(sideNav()).getByRole('link', { name: 'Trends' }))
+    expect(window.location.pathname).toBe('/trends')
+    const heading = screen.getByRole('heading', { level: 1, name: 'Trends' })
+    expect(heading).toHaveFocus()
+    expect(document.title).toBe('Trends · Shumār')
+    expect(within(sideNav()).getByRole('link', { name: 'Trends' })).toHaveAttribute('aria-current', 'page')
+    expect(within(sideNav()).getByRole('link', { name: 'Today' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('opens the screen in the address on load', async () => {
+    await signedIn('/you')
+    expect(screen.getByRole('heading', { level: 1, name: 'You' })).toBeInTheDocument()
+  })
+
+  it('sends an unknown address to Today', async () => {
+    await signedIn('/no-such-screen')
+    expect(window.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument()
+  })
+
+  it('opens Add food from the add button, which then hides', async () => {
+    await signedIn()
+    await userEvent.click(screen.getByRole('link', { name: 'Log food' }))
+    expect(window.location.pathname).toBe('/log')
+    expect(screen.getByRole('heading', { level: 1, name: 'Add food' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
+  })
+
+  it('steps the theme through System, Light and Dark from the side navigation', async () => {
+    await signedIn()
+    const button = () => within(screen.getByRole('complementary')).getByRole('button')
+    expect(button()).toHaveAccessibleName('Theme: System. Switch to Light')
+
+    await userEvent.click(button())
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
+    expect(button()).toHaveTextContent('Theme: Light')
+
+    await userEvent.click(button())
+    expect(document.documentElement.dataset.theme).toBe('dark')
+
+    await userEvent.click(button())
+    expect(button()).toHaveAccessibleName('Theme: System. Switch to Light')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
+  })
+})
+
+describe('the You screen', () => {
+  it('shows the account from Google', async () => {
+    await signedIn('/you')
+    const account = screen.getByRole('region', { name: 'Account' })
+    expect(account).toHaveTextContent('Tajamul Wani')
+    expect(account).toHaveTextContent('Signed in with Google')
+    expect(account).toHaveTextContent('T')
+  })
+
+  it('switches the theme and explains each choice', async () => {
+    await signedIn('/you')
+    const group = screen.getByRole('group', { name: 'Theme' })
+    expect(within(group).getByRole('button', { name: 'System' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('region', { name: 'Appearance' })).toHaveTextContent(
+      'Follows your phonecomputer.',
+    )
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Light' }))
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(within(group).getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('region', { name: 'Appearance' })).toHaveTextContent('Always light, whatever')
+
+    await userEvent.click(within(group).getByRole('button', { name: 'Dark' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(screen.getByRole('region', { name: 'Appearance' })).toHaveTextContent(
+      'Always dark, easier on the eyes',
+    )
+  })
+
+  it('signs out and returns to the sign-in screen at the start address', async () => {
+    const fake = await signedIn('/you')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0])
     expect(fake.auth.signOut).toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
   })
 
   it('stays usable when sign-out fails', async () => {
-    const fake = fakeClient(fakeSession('a@example.com'))
+    const fake = fakeClient(tajamul())
     fake.auth.signOut.mockRejectedValueOnce(new Error('offline'))
-    renderApp(fake)
+    renderApp(fake, '/you')
     await fake.load()
-    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[1])
     expect(fake.auth.signOut).toHaveBeenCalled()
   })
+})
 
-  it('falls back to a generic label when the account has no email', async () => {
-    const fake = fakeClient(fakeSession())
-    renderApp(fake)
-    await fake.load()
-    expect(screen.getByText('your Google account')).toBeInTheDocument()
-  })
-
+describe('session changes', () => {
   it('follows sign-in changes from Supabase and stops listening on unmount', async () => {
     const fake = fakeClient(null)
     const { unmount } = renderApp(fake)
     await fake.load()
-    fake.emit(fakeSession('b@example.com'))
-    expect(screen.getByText('b@example.com')).toBeInTheDocument()
+    fake.emit(fakeSession({ email: 'b@example.com' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument()
 
     unmount()
     expect(fake.unsubscribe).toHaveBeenCalled()
   })
 
   it('ignores a session that arrives after unmount', async () => {
-    const fake = fakeClient(fakeSession('a@example.com'))
+    const fake = fakeClient(tajamul())
     const { unmount } = renderApp(fake)
     unmount()
     await expect(fake.load()).resolves.toBeUndefined()
   })
 })
 
-describe('useAuth', () => {
-  it('refuses to work outside the provider', () => {
-    function Probe() {
+describe('hooks outside their providers', () => {
+  it('refuse to work', () => {
+    function AuthProbe() {
       useAuth()
       return null
     }
+    function ThemeProbe() {
+      useTheme()
+      return null
+    }
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    expect(() => render(<Probe />)).toThrow('useAuth must be used inside AuthProvider')
+    expect(() => render(<AuthProbe />)).toThrow('useAuth must be used inside AuthProvider')
+    expect(() => render(<ThemeProbe />)).toThrow('useTheme must be used inside ThemeProvider')
     vi.restoreAllMocks()
   })
 })
