@@ -1,16 +1,9 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { cspViolations, readTestUsers, signInAs, watchCsp } from './support.ts'
+import { SCREENS, cspViolations, readTestUsers, signInAs, watchCsp } from './support.ts'
 
 // The side navigation takes over from the tab bar at this width (Tailwind's lg breakpoint).
 const SIDE_NAV_FROM = 1024
-
-const SCREENS = [
-  { path: '/', heading: 'Today' },
-  { path: '/trends', heading: 'Trends' },
-  { path: '/you', heading: 'You' },
-  { path: '/log', heading: 'Add food' },
-] as const
 
 function hasSideNav(page: Page): boolean {
   return (page.viewportSize()?.width ?? 0) >= SIDE_NAV_FROM
