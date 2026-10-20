@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  PREFERENCES,
+  PREFERENCE_LABELS,
   THEME_STORAGE_KEY,
   applyTheme,
+  nextPreference,
   parsePreference,
   readPreference,
   resolveTheme,
   savePreference,
-  startTheme,
   systemPrefersLight,
   watchSystemTheme,
 } from './theme.ts'
@@ -61,6 +63,19 @@ describe('parsePreference', () => {
 
   it.each([null, undefined, '', 'blue', 'system'])('treats %s as following the device', (value) => {
     expect(parsePreference(value)).toBe('system')
+  })
+})
+
+describe('the three choices', () => {
+  it('are listed in the order the You screen shows them, each with a label', () => {
+    expect(PREFERENCES).toEqual(['system', 'light', 'dark'])
+    expect(PREFERENCES.map((p) => PREFERENCE_LABELS[p])).toEqual(['System', 'Light', 'Dark'])
+  })
+
+  it('cycle from system to light to dark and back to system', () => {
+    expect(nextPreference('system')).toBe('light')
+    expect(nextPreference('light')).toBe('dark')
+    expect(nextPreference('dark')).toBe('system')
   })
 })
 
@@ -129,21 +144,11 @@ describe('following the device', () => {
     expect(listenerCount()).toBe(0)
   })
 
-  it('startTheme follows the device while the preference is system', () => {
-    const { win, fire } = fakeWindow(false)
-    startTheme(memoryStorage(), win)
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    fire(true)
-    expect(document.documentElement.dataset.theme).toBe('light')
-  })
-
-  it('startTheme ignores device changes once the user has chosen', () => {
-    const { win, fire, listenerCount } = fakeWindow(true)
-    const stop = startTheme(memoryStorage({ [THEME_STORAGE_KEY]: 'dark' }), win)
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    fire(true)
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(listenerCount()).toBe(0)
+  it('treats a browser without matchMedia as dark and never notifies', () => {
+    expect(systemPrefersLight({})).toBe(false)
+    const onChange = vi.fn<(prefersLight: boolean) => void>()
+    const stop = watchSystemTheme(onChange, {})
+    expect(onChange).not.toHaveBeenCalled()
     expect(() => stop()).not.toThrow()
   })
 })

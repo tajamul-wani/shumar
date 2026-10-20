@@ -10,6 +10,19 @@ export type Theme = 'light' | 'dark'
 export const THEME_STORAGE_KEY = 'shumar-theme'
 const LIGHT_QUERY = '(prefers-color-scheme: light)'
 
+/** The choices in the order the You screen shows them, which is also the order the theme button cycles through. */
+export const PREFERENCES: readonly ThemePreference[] = ['system', 'light', 'dark']
+
+export const PREFERENCE_LABELS: Record<ThemePreference, string> = {
+  system: 'System',
+  light: 'Light',
+  dark: 'Dark',
+}
+
+export function nextPreference(preference: ThemePreference): ThemePreference {
+  return PREFERENCES[(PREFERENCES.indexOf(preference) + 1) % PREFERENCES.length]
+}
+
 type ReadableStorage = Pick<Storage, 'getItem'>
 type WritableStorage = Pick<Storage, 'setItem' | 'removeItem'>
 
@@ -46,8 +59,9 @@ export function savePreference(
   }
 }
 
-export function systemPrefersLight(win: Pick<Window, 'matchMedia'> = window): boolean {
-  return win.matchMedia(LIGHT_QUERY).matches
+/** Browsers without matchMedia count as dark, the app's default. */
+export function systemPrefersLight(win: Partial<Pick<Window, 'matchMedia'>> = window): boolean {
+  return win.matchMedia?.(LIGHT_QUERY).matches ?? false
 }
 
 /** Sets the theme on the page and matches the browser's status bar to the base color token. */
@@ -62,18 +76,11 @@ export function applyTheme(theme: Theme, doc: Document = document): void {
 /** Calls `onChange` when the device switches between light and dark. Returns an unsubscribe function. */
 export function watchSystemTheme(
   onChange: (prefersLight: boolean) => void,
-  win: Pick<Window, 'matchMedia'> = window,
+  win: Partial<Pick<Window, 'matchMedia'>> = window,
 ): () => void {
+  if (!win.matchMedia) return () => {}
   const query = win.matchMedia(LIGHT_QUERY)
   const listener = (event: MediaQueryListEvent) => onChange(event.matches)
   query.addEventListener('change', listener)
   return () => query.removeEventListener('change', listener)
-}
-
-/** Applies the saved preference now and keeps following the device while the preference is "system". */
-export function startTheme(storage?: ReadableStorage, win: Pick<Window, 'matchMedia'> = window): () => void {
-  const preference = readPreference(storage)
-  applyTheme(resolveTheme(preference, systemPrefersLight(win)))
-  if (preference !== 'system') return () => {}
-  return watchSystemTheme((prefersLight) => applyTheme(resolveTheme('system', prefersLight)), win)
 }
