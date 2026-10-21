@@ -1,15 +1,13 @@
 # Shumār (شُمار)
 
-A calorie and macro tracker built for Kashmiri and everyday food, delivered as an installable web app.
-
-**Contents:** [Overview](#overview) · [Tech stack](#tech-stack) · [Project structure](#project-structure) · [Getting started](#getting-started) · [Scripts](#scripts) · [Testing](#testing) · [Architecture](#architecture) · [Design system](#design-system) · [Contributing](#contributing) · [License](#license)
+A calorie and macro tracker for Kashmiri and everyday food. It runs in the browser and installs on a phone like an app.
 
 ## Overview
 
-- People sign in with their Google account, and each person's food logs are private to them.
-- Food is logged by grams or by household units such as piece, cup and katori.
-- Calories, protein, carbs, fat and sodium are calculated from values stored per 100 g.
-- The layout is mobile first, with dark and light themes (Koshur Nocturne) that follow the device by default.
+- Sign in with Google. Each person's food logs are private to them.
+- Find a food by searching or from your recent foods, then add it to a meal in grams or in household units such as piece, cup and katori.
+- Calories, protein, carbs, fat and sodium are worked out from values stored per 100 g, and every value comes from a named source.
+- Works on phones, tablets and computers, in dark and light themes that follow the device by default.
 
 ## Tech stack
 
@@ -21,8 +19,8 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 | Icons            | Lucide React                                                |
 | Fonts            | Manrope, Noto Nastaliq Urdu (self-hosted with Fontsource)   |
 | Database         | Supabase (PostgreSQL) with row-level security               |
-| Food data        | USDA FoodData Central (public domain), imported with Python |
 | Sign-in          | Supabase Auth with Google, through `@supabase/supabase-js`  |
+| Food data        | USDA FoodData Central (public domain), imported with Python |
 | Unit tests       | Vitest, React Testing Library                               |
 | Database tests   | pgTAP                                                       |
 | End-to-end tests | Playwright, axe-core                                        |
@@ -31,24 +29,33 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 
 ## Project structure
 
-```
+<details>
+<summary>Show the folders and main files</summary>
+
+```text
 src/
-  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log)
-  main.tsx                 Creates the Supabase client and mounts the app inside its providers
+  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log, /sources)
+  main.tsx                 Creates the Supabase client and starts the app
   index.css                Tailwind setup and design tokens
-  auth/                    Session state shared with every screen (AuthProvider, useAuth)
-  theme/                   The theme choice shared with every screen (ThemeProvider, useTheme)
+  auth/                    The signed-in session, shared with every screen
+  theme/                   The theme choice, shared with every screen
   shell/                   The frame around every screen: side navigation, tab bar and add button
   screens/                 One file per screen: SignIn, Today, Trends, You, Add food and Sources
-  components/              Shared building blocks, such as Button
+  components/              Shared building blocks: Button, Chip and Alert
+  log/                     Parts of the log sheet: search as you type, food rows and the chosen food
   lib/
     supabase.ts            Supabase client setup, which refuses secret keys
     auth.ts                Google sign-in and sign-out
     account.ts             The name, initial and sign-in method shown on the You screen
-    dates.ts               Date formats, such as the Today heading
-    foodSearch.ts          Food search: checks every result and remembers recent searches
-    sources.ts             Names of the USDA releases shown on the Sources screen
+    dates.ts               Date formats and the local calendar day
+    foodSearch.ts          Food search: checks every result and keeps the day's searches
+    foodDisplay.ts         How foods and amounts read in the log sheet
+    meals.ts               The five meals and which one the log sheet opens on
+    logs.ts                Checks an amount and saves a food log with its nutrients
+    recentFoods.ts         The foods added most recently, kept on the device
+    deviceStorage.ts       Device storage, or nothing when the browser blocks it
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
+    sources.ts             Names of the USDA releases shown on the Sources screen
     theme.ts               Dark and light theme handling
 public/
   theme-init.js            Applies the theme before the page first draws
@@ -59,20 +66,22 @@ scripts/
   bundle-secrets.ts        Finds anything that looks like a secret in the build output
 supabase/
   config.toml              Local Supabase settings
-  migrations/              Database schema changes, applied in order
-  tests/database/          Row-level security and privilege tests (pgTAP)
+  migrations/              Database changes, applied in order
+  tests/database/          Database security tests (pgTAP)
 e2e/                       End-to-end tests, run against the local Supabase stack
-.github/workflows/         CI pipeline and CodeQL code scanning
+.github/workflows/         CI and CodeQL code scanning
 ```
+
+</details>
 
 ## Getting started
 
-### Prerequisites
+You need:
 
-- Node.js 22.12 or newer. The major version is pinned in `.nvmrc`, so `nvm use` picks it up.
+- Node.js 22.12 or newer. `.nvmrc` sets the version, so `nvm use` picks it up.
 - npm
 - Docker, for the local Supabase stack
-- Python 3, for the USDA importer's tests (standard library only, no packages)
+- Python 3, for the USDA importer's tests (standard library only)
 
 ### 1. Install
 
@@ -87,12 +96,12 @@ npm install
 
 Copy `.env.example` to `.env.local` and fill in the values. Ask a maintainer for access. Never commit `.env.local`.
 
-| Variable                        | Used for                                                    |
-| :------------------------------ | :---------------------------------------------------------- |
-| `VITE_SUPABASE_URL`             | The Supabase project address, needed to run and build       |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here |
-| `LINEAR_API_KEY`                | Project task tracking (maintainers only)                    |
-| `LINEAR_TEAM_KEY`               | Project task tracking (maintainers only)                    |
+| Variable                        | Used for                                                     |
+| :------------------------------ | :----------------------------------------------------------- |
+| `VITE_SUPABASE_URL`             | The Supabase project address                                 |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here. |
+| `LINEAR_API_KEY`                | Task tracking (maintainers only)                             |
+| `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                             |
 
 ### 3. Start the local Supabase stack
 
@@ -115,97 +124,155 @@ npm run dev
 
 The app runs at http://localhost:5173.
 
-## Scripts
+### Scripts
 
-| Command             | What it does                                                       |
-| :------------------ | :----------------------------------------------------------------- |
-| `npm run dev`       | Start the development server                                       |
-| `npm run build`     | Type check and build for production, with the security headers     |
-| `npm run preview`   | Serve the production build locally, with the same security headers |
-| `npm run lint`      | Check design tokens, run oxlint and check formatting               |
-| `npm run format`    | Format all files with Prettier                                     |
-| `npm run typecheck` | Run the TypeScript compiler                                        |
-| `npm run test`      | Run unit tests with coverage, then the USDA importer's tests       |
-| `npm run test:db`   | Run the database security tests                                    |
-| `npm run test:e2e`  | Run the end-to-end tests                                           |
-| `npm run check`     | Lint, type check, unit tests and build in one go                   |
+| Command             | What it does                                                |
+| :------------------ | :---------------------------------------------------------- |
+| `npm run dev`       | Start the development server                                |
+| `npm run build`     | Type check and build for production, with security headers  |
+| `npm run preview`   | Serve the production build locally, with the same headers   |
+| `npm run lint`      | Check design tokens, run oxlint and check formatting        |
+| `npm run format`    | Format all files with Prettier                              |
+| `npm run typecheck` | Run the TypeScript compiler                                 |
+| `npm run test`      | Run the unit tests with coverage, then the importer's tests |
+| `npm run test:db`   | Run the database security tests                             |
+| `npm run test:e2e`  | Run the end-to-end tests                                    |
+| `npm run check`     | Lint, type check, unit tests and build, one after the other |
 
 ## Testing
 
-| Layer             | Command                             | What it covers                                                                                                                        | Needs local Supabase |
-| :---------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------------- |
-| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                                                   | No                   |
-| Unit              | `npm run test`                      | Nutrition math, food search, theme handling, sign-in helpers, the key check, the security headers and the USDA importer               | No                   |
-| Database security | `npm run test:db`                   | Each user can reach only their own logs, each role has exactly the table privileges it needs, food search, and the imported USDA data | Yes                  |
-| End to end        | `npm run test:e2e`                  | Sign-in, sign-out, layout, accessibility and the security policy, plus data isolation through the API                                 | Yes                  |
+| Tests             | Command                             | What they cover                                                                                     | Needs local Supabase |
+| :---------------- | :---------------------------------- | :-------------------------------------------------------------------------------------------------- | :------------------- |
+| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                 | No                   |
+| Unit              | `npm run test`                      | Nutrition math, food search, logging, the screens and the USDA importer                             | No                   |
+| Database security | `npm run test:db`                   | Each user reaches only their own logs, table privileges, food search and the USDA data              | Yes                  |
+| End to end        | `npm run test:e2e`                  | Sign-in and sign-out, logging a meal, layout, accessibility, the security policy and data isolation | Yes                  |
 
-- End-to-end tests run on a phone (Android and iPhone), a tablet and a 1440 px desktop, in both dark and light themes.
-- They always build the app against the local Supabase stack, never a hosted project, into `dist-e2e/` so your own build in `dist/` is left alone. Each run signs up fresh test users there, so no Google account is needed.
+- End-to-end tests run on an Android phone, an iPhone, a tablet and a 1440 px desktop, in both themes.
+- They build the app against the local Supabase stack, never a hosted project, into `dist-e2e/`, so your own build in `dist/` is left alone. Each run signs up fresh test users, so no Google account is needed.
 - The first time, install the browsers with `npx playwright install --with-deps chromium webkit`.
-- Six checks run on every pull request: Lint and types, Unit tests, Database security tests, End-to-end tests, Security scan (dependency audit, a check that every package was published by its owner, and a secret scan of the full history) and CodeQL, GitHub's code scanning. All six must pass before a pull request can merge, and a high or critical CodeQL finding also blocks it. CodeQL runs weekly on `main` as well.
-- Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
+
+<details>
+<summary>Checks on every pull request</summary>
+
+Six checks must pass before a pull request can merge into `main`:
+
+1. Lint and types
+2. Unit tests
+3. Database security tests
+4. End-to-end tests
+5. Security scan: a dependency audit, a check that every package was published by its owner, and a secret scan of the full history
+6. CodeQL, GitHub's code scanning. A high or critical finding also blocks the merge, and it runs weekly on `main` as well.
+
+Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
+
+</details>
 
 ## Architecture
 
-### App and sign-in
+Shumār is a single-page React app. The data lives in Supabase, and row-level security keeps each person's logs private. Open a topic below for the details.
 
-Shumār is a single-page React app built with Vite. All styling comes from Tailwind classes backed by the tokens in `src/index.css`.
+<details>
+<summary><strong>Screens and navigation</strong></summary>
 
-Each screen has its own address, handled by wouter, so the back button, reloads and shared links all work. Unknown addresses go to Today. `src/shell/AppShell.tsx` draws the frame: a tab bar with Today, Trends and You plus a floating add button on phones and tablets, and side navigation from 1024 px up. After a change of screen, focus moves to the new screen's heading for keyboard and screen reader users.
+- Each screen has its own address, handled by wouter, so the back button, reloads and shared links all work. Unknown addresses go to Today.
+- `src/shell/AppShell.tsx` draws the frame around every screen. Phones and tablets get a tab bar (Today, Trends, You) and a round add button. From 1024 px up, a side navigation takes over.
+- After moving to another screen, focus goes to its heading, for keyboard and screen reader users.
 
-Google sign-in runs through Supabase Auth with the PKCE flow. The app sends the visitor to Google, Supabase handles the reply, and the session comes back to the app. `src/auth/AuthProvider.tsx` keeps the current session available to every screen and follows Supabase as it refreshes or ends it.
+</details>
 
-Signing out clears the session and everything cached under the `shumar-cache:` prefix from the device. Only the theme choice stays.
+<details>
+<summary><strong>Sign-in</strong></summary>
 
-### Keys and security
+- Google sign-in runs through Supabase Auth with the PKCE flow. The app sends the visitor to Google, Supabase handles the reply, and the session comes back to the app.
+- `src/auth/AuthProvider.tsx` shares the session with every screen and follows Supabase as it refreshes or ends it.
+- Signing out removes the session and everything stored under the `shumar-cache:` prefix, such as recent foods and the day's searches. Only the theme choice stays.
 
-- The app only ever holds the project address and the publishable key, which are public by design. Row-level security is what protects each user's data.
+</details>
+
+<details>
+<summary><strong>Keys and security</strong></summary>
+
+- The app only holds the project address and the publishable key, which are public by design. Row-level security is what protects each user's data.
 - `src/lib/supabase.ts` refuses to start with a secret key, and the build fails if anything that looks like a secret ends up in its output.
 - `npm run build` writes `dist/_headers` from `scripts/security-headers.ts`. The Content Security Policy allows code, styles and fonts from this site only, and network calls only to this site and its Supabase project.
 
-### Database
+</details>
 
-PostgreSQL on Supabase, defined by the migrations in `supabase/migrations/`. Row-level security is on for every table, and each table grants the app roles only the privileges they need.
+<details>
+<summary><strong>Database tables</strong></summary>
 
-| Table             | Holds                                                                                       | Who can access it                             |
-| :---------------- | :------------------------------------------------------------------------------------------ | :-------------------------------------------- |
-| `kashmiri_foods`  | The food catalog, with values per 100 g and a source for every food                         | Anyone can read; nobody can write via the API |
-| `food_units`      | The weight in grams of one piece, cup or katori of a catalog food                           | Anyone can read; nobody can write via the API |
-| `user_logs`       | One row per logged food: meal, time, amount and the nutrients calculated when it was logged | Only the user who logged it                   |
-| `usda_releases`   | Which USDA files are loaded, with the SHA-256 of each download                              | Signed-in people can read                     |
-| `usda_foods`      | About 7,100 USDA foods, values per 100 g, with a flag when the Atwater check is off         | Signed-in people can read                     |
-| `usda_portions`   | USDA household portions, such as "1 cup, chopped", in grams                                 | Signed-in people can read                     |
-| `search_synonyms` | Local food words mapped to USDA wording, such as curd to yogurt                             | Signed-in people can read                     |
+The migrations in `supabase/migrations/` define the database. Row-level security is on for every table, and each table gives the app only the privileges it needs.
 
-### Food data and search
+| Table             | Holds                                                                        | Who can access it                             |
+| :---------------- | :--------------------------------------------------------------------------- | :-------------------------------------------- |
+| `kashmiri_foods`  | Our own food catalog, with values per 100 g and a source for every food      | Anyone can read; nobody can write via the API |
+| `food_units`      | The weight in grams of one piece, cup or katori of a catalog food            | Anyone can read; nobody can write via the API |
+| `user_logs`       | One row per food logged: meal, day, amount and the nutrients at that moment  | Only the person who logged it                 |
+| `usda_releases`   | Which USDA files are loaded, with the SHA-256 of each download               | Signed-in people can read                     |
+| `usda_foods`      | About 7,100 USDA foods, values per 100 g, flagged when the calories look off | Signed-in people can read                     |
+| `usda_portions`   | USDA household portions, such as "1 cup, chopped", in grams                  | Signed-in people can read                     |
+| `search_synonyms` | Local food words mapped to USDA wording, such as curd to yogurt              | Signed-in people can read                     |
+
+</details>
+
+<details>
+<summary><strong>Food data and search</strong></summary>
 
 Food values come from named sources only: our own measured Kashmiri recipes in `kashmiri_foods`, and USDA FoodData Central for ingredients and everyday foods. The USDA data is public domain and lives in our own database, so search never calls an outside API.
 
-- `scripts/usda/import_usda.py` downloads the USDA Foundation Foods and SR Legacy files, stops if a file's SHA-256 doesn't match the pinned one, and writes a data migration. It leaves out foods with a missing value instead of filling them in, flags foods whose calories don't match their protein, carbs and fat, and skips US-only categories such as fast food and baby food. The same input always gives the same migration.
-- `search_foods(query)`, a database function, searches our own catalog first, then USDA foods by whole words and words still being typed, then by similar spelling for typos. Local words like curd, dal or haakh find the matching USDA food. It returns at most 20 results with values per 100 g and household portions, and only signed-in people can call it.
-- `src/lib/foodSearch.ts` checks every result before the app uses it, always offers grams as a unit, and remembers the last 50 searches in memory, so a repeated search costs no request.
+- **Search:** `search_foods(query)`, a database function, looks in our own catalog first, then in USDA foods by whole words and words still being typed, then by similar spelling for typos. Local words like curd, dal or haakh find the matching USDA food. It returns at most 20 results and only signed-in people can call it.
+- **In the app:** `src/lib/foodSearch.ts` checks every result before the app uses it and always offers grams as a unit. It keeps up to 100 searches for the rest of the day, in memory and on the device, so a search made earlier that day costs no request, even after a reload. Kept searches belong to the person who made them, are checked again when read, and start afresh each day.
+- **Importer:** `scripts/usda/import_usda.py` downloads the USDA Foundation Foods and SR Legacy files, stops if a file's SHA-256 doesn't match the pinned one, and writes a data migration. It leaves out foods with a missing value instead of filling them in, flags foods whose calories don't match their protein, carbs and fat, and skips US-only categories such as fast food and baby food.
 
-To import a new USDA release, update the file name and SHA-256 in `DATASETS`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, and update the expected counts in `supabase/tests/database/usda_data.test.sql`.
+To import a new USDA release:
 
-### Nutrition math
+1. Update the file name and SHA-256 in `DATASETS`.
+2. Run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`.
+3. Update the expected counts in `supabase/tests/database/usda_data.test.sql`.
 
-The math lives in `src/lib/nutrition.ts`, separate from the UI, so it can be tested on its own.
+</details>
 
-- Every food value is stored per 100 g. A serving is worked out as quantity × grams per unit (piece, cup, katori or grams), then scaled from the per-100 g values.
+<details>
+<summary><strong>Logging a meal</strong></summary>
+
+The add button opens the log sheet at `/log` (`src/screens/LogFoodScreen.tsx`).
+
+- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. **Change meal** picks any of the five, including snack.
+- `src/log/useFoodSearch.ts` searches once typing pauses for 300 ms and cancels a search that is no longer wanted.
+- A chosen food offers its household units first, then grams, with a stepper for the amount. The values update as the amount changes. Foods flagged by the calorie check, and Kashmiri dishes not yet confirmed by a second weighing, are marked as estimates.
+- `src/lib/logs.ts` checks the amount (more than 0, at most 10,000 and at most 20 kg) and saves one `user_logs` row with the nutrients at that moment. The log date is the person's local calendar day, and the row's owner comes from the session, never from the app.
+- The last 10 foods added stay on the device, so the sheet lists them before any search and adds one again in one tap.
+
+</details>
+
+<details>
+<summary><strong>Nutrition math</strong></summary>
+
+The math lives in `src/lib/nutrition.ts`, apart from the screens, so it can be tested on its own.
+
+- Every food value is stored per 100 g. A serving is quantity × grams per unit (piece, cup, katori or grams), then scaled from the per-100 g values.
 - Values keep full precision in calculations and are rounded only for display.
-- Incoming food values can be sanity-checked by comparing the stated calories with the energy implied by protein, carbs and fat. Sodium is always handled in milligrams.
+- Food values are checked by comparing the stated calories with the energy from protein, carbs and fat. Sodium is always in milligrams.
 
-### Theme
+</details>
 
-`public/theme-init.js` sets the theme before the page draws, from the saved choice or the device setting, so it never flashes the wrong theme. `src/theme/ThemeProvider.tsx` then keeps it in step with the choice and, for System, with the device, and matches the browser's status bar color. The choice is made on the You screen, or with the theme button in the desktop side navigation. Only the choice (system, light or dark) is stored, in `localStorage`.
+<details>
+<summary><strong>Theme</strong></summary>
+
+- `public/theme-init.js` sets the theme before the page draws, from the saved choice or the device setting, so it never flashes the wrong theme.
+- `src/theme/ThemeProvider.tsx` keeps it in step with the choice (and with the device, for System) and matches the browser's status bar color.
+- The choice is made on the You screen, or with the theme button in the desktop side navigation. Only the choice (system, light or dark) is stored on the device.
+
+</details>
 
 ## Design system
 
-All colors, fonts, type sizes and font weights are defined once as tokens in `src/index.css` and used through Tailwind classes such as `bg-koshur-base`, `text-body` and `font-semibold`. Tailwind's default palette, type scale, fonts and weights are turned off, so only these tokens exist. `npm run lint` fails if a component uses anything else, or if the status bar colors drift from the tokens.
+All colors, fonts, type sizes and font weights are defined once as tokens in `src/index.css` and used through Tailwind classes such as `bg-koshur-base`, `text-body` and `font-semibold`. Tailwind's default palette, sizes, fonts and weights are turned off, so only these tokens exist. `npm run lint` fails if a component uses anything else.
 
 Every color token has a dark and a light value, switched by the `data-theme` attribute on the page.
 
-| Token                                            | Role                          |
+| Color token                                      | Role                          |
 | :----------------------------------------------- | :---------------------------- |
 | `koshur-base`, `koshur-surface`, `koshur-border` | Background, cards, dividers   |
 | `koshur-silk`, `koshur-muted`                    | Primary and secondary text    |
@@ -227,9 +294,9 @@ Weights are `font-normal` (400), `font-medium` (500) and `font-semibold` (600). 
 ## Contributing
 
 1. Branch from `main` with a prefix that matches the work: `feat/`, `fix/`, `chore/`, `docs/`, `test/`, `refactor/`, `perf/`, `style/`, `build/`, `ci/`, `data/`, `security/` or `hotfix/`.
-2. Keep each commit to one logical change that builds and passes tests on its own. Write messages in the Conventional Commits style, for example `feat: add food search with household units`.
+2. Keep each commit to one change that builds and passes its tests on its own. Write messages in the Conventional Commits style, for example `feat: add food search with household units`.
 3. Before opening a pull request into `main`, run `npm run check`, `npm run test:db` and `npm run test:e2e`.
-4. All six checks must pass before a pull request is merged.
+4. All six pull request checks must pass before it can merge.
 
 ## License
 

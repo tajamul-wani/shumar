@@ -1,6 +1,13 @@
-import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { SCREENS, cspViolations, readTestUsers, signInAs, watchCsp } from './support.ts'
+import {
+  SCREENS,
+  accessibilityViolations,
+  cspViolations,
+  readTestUsers,
+  scrollsSideways,
+  signInAs,
+  watchCsp,
+} from './support.ts'
 
 // The side navigation takes over from the tab bar at this width (Tailwind's lg breakpoint).
 const SIDE_NAV_FROM = 1024
@@ -35,23 +42,18 @@ for (const theme of ['dark', 'light'] as const) {
       }
     })
 
-    for (const { path, heading } of SCREENS) {
-      test(`${heading} fits at 320 px, passes accessibility checks and keeps to the security policy`, async ({
+    for (const { path, title, heading } of SCREENS) {
+      test(`${title} fits at 320 px, passes accessibility checks and keeps to the security policy`, async ({
         page,
       }) => {
         await page.goto(path)
         await expect(page.getByRole('heading', { level: 1, name: heading })).toBeAttached()
 
-        const results = await new AxeBuilder({ page }).analyze()
-        const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        const blocking = await accessibilityViolations(page)
         expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
 
         await page.setViewportSize({ width: 320, height: 640 })
-        expect(
-          await page.evaluate(
-            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-          ),
-        ).toBe(false)
+        expect(await scrollsSideways(page)).toBe(false)
         expect(await cspViolations(page)).toEqual([])
       })
     }

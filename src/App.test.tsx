@@ -194,7 +194,8 @@ describe('the app shell', () => {
     await signedIn()
     await userEvent.click(screen.getByRole('link', { name: 'Log food' }))
     expect(window.location.pathname).toBe('/log')
-    expect(screen.getByRole('heading', { level: 1, name: 'Add food' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /^Add to / })).toBeInTheDocument()
+    expect(document.title).toBe('Add food · Shumār')
     expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
   })
 

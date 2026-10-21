@@ -1,5 +1,14 @@
-import { describe, expect, it, vi } from 'vitest'
-import { FoodSearchError, createFoodSearch, normalizeQuery, parseResults } from './foodSearch.ts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { clearUserData } from './auth.ts'
+import {
+  FoodSearchError,
+  SEARCH_CACHE_KEY,
+  createFoodSearch,
+  getFoodSearch,
+  normalizeQuery,
+  parseFood,
+  parseResults,
+} from './foodSearch.ts'
 
 // Made-up rows for testing the parser, not nutrition data.
 function row(overrides: Record<string, unknown> = {}) {
@@ -34,6 +43,26 @@ function fakeClient(respond: (args: Record<string, unknown>) => RpcResult | Prom
   })
   return { client: { rpc } as unknown as Parameters<typeof createFoodSearch>[0], rpc, abortSignal }
 }
+
+/** Device storage held in memory, so each test starts empty. */
+function memoryStorage(initial: Record<string, string> = {}) {
+  const items = new Map(Object.entries(initial))
+  return {
+    items,
+    getItem: (key: string) => items.get(key) ?? null,
+    setItem: vi.fn<(key: string, value: string) => void>((key, value) => {
+      items.set(key, value)
+    }),
+  }
+}
+
+const morning = () => new Date(2026, 9, 21, 8, 0)
+const evening = () => new Date(2026, 9, 21, 21, 0)
+const nextMorning = () => new Date(2026, 9, 22, 8, 0)
+
+afterEach(() => {
+  localStorage.clear()
+})
 
 describe('normalizeQuery', () => {
   it('lowercases, collapses spaces and trims', () => {
@@ -128,7 +157,7 @@ describe('createFoodSearch', () => {
 
   it('forgets the oldest search once the memory is full', async () => {
     const { client, rpc } = fakeClient(() => ({ data: [row()], error: null }))
-    const search = createFoodSearch(client, 2)
+    const search = createFoodSearch(client, { cacheSize: 2 })
     await search.search('rice')
     await search.search('milk')
     await search.search('rice')
@@ -163,5 +192,133 @@ describe('createFoodSearch', () => {
     fail = false
     expect(await search.search('rice')).toHaveLength(1)
     expect(rpc).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("keeping the day's searches", () => {
+  async function searchOnce(storage: ReturnType<typeof memoryStorage>, options = {}) {
+    const fake = fakeClient(() => ({ data: [row()], error: null }))
+    const results = await createFoodSearch(fake.client, {
+      storage,
+      userId: 'a',
+      now: morning,
+      ...options,
+    }).search('rice')
+    return { ...fake, results }
+  }
+
+  it('answers a search made earlier today from the device, even after a reload', async () => {
+    const storage = memoryStorage()
+    const first = await searchOnce(storage)
+    expect(first.rpc).toHaveBeenCalledTimes(1)
+
+    const later = await searchOnce(storage, { now: evening })
+    expect(later.rpc).not.toHaveBeenCalled()
+    expect(later.results).toEqual(first.results)
+  })
+
+  it('starts afresh on a new day', async () => {
+    const storage = memoryStorage()
+    await searchOnce(storage)
+    expect((await searchOnce(storage, { now: nextMorning })).rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts afresh at midnight while the app stays open', async () => {
+    let now = morning
+    const { client, rpc } = fakeClient(() => ({ data: [row()], error: null }))
+    const search = createFoodSearch(client, { storage: memoryStorage(), now: () => now() })
+    await search.search('rice')
+    now = nextMorning
+    await search.search('rice')
+    expect(rpc).toHaveBeenCalledTimes(2)
+  })
+
+  it("never uses another person's searches", async () => {
+    const storage = memoryStorage()
+    await searchOnce(storage)
+    expect((await searchOnce(storage, { userId: 'b' })).rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps at most the set number of searches', async () => {
+    const storage = memoryStorage()
+    const { client } = fakeClient(() => ({ data: [row()], error: null }))
+    const search = createFoodSearch(client, { storage, cacheSize: 2, now: morning })
+    for (const query of ['rice', 'milk', 'eggs']) await search.search(query)
+    const kept = JSON.parse(storage.items.get(SEARCH_CACHE_KEY) ?? '{}')
+    expect(kept.searches.map(([query]: [string]) => query)).toEqual(['milk', 'eggs'])
+  })
+
+  it.each([
+    ['text that is not JSON', '{'],
+    ['an older shape', JSON.stringify({ version: 0, user: 'a', day: '2026-10-21', searches: [] })],
+    [
+      'searches that are not a list',
+      JSON.stringify({ version: 1, user: 'a', day: '2026-10-21', searches: 5 }),
+    ],
+  ])('ignores %s', async (_, stored) => {
+    const storage = memoryStorage({ [SEARCH_CACHE_KEY]: stored })
+    expect((await searchOnce(storage)).results).toHaveLength(1)
+  })
+
+  it('drops a kept search whole when any of its foods was changed', async () => {
+    const storage = memoryStorage()
+    const { results } = await searchOnce(storage)
+    const kept = JSON.parse(storage.items.get(SEARCH_CACHE_KEY) ?? '{}')
+    kept.searches = [
+      ['rice', [results[0], { ...results[0], per100g: { ...results[0].per100g, kcal: 5000 } }]],
+      ['x', results],
+      'nonsense',
+    ]
+    storage.items.set(SEARCH_CACHE_KEY, JSON.stringify(kept))
+    expect((await searchOnce(storage)).rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps working in memory when the device storage is full', async () => {
+    const storage = memoryStorage()
+    storage.setItem.mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError')
+    })
+    const { client, rpc } = fakeClient(() => ({ data: [row()], error: null }))
+    const search = createFoodSearch(client, { storage, now: morning })
+    expect(await search.search('rice')).toHaveLength(1)
+    await search.search('rice')
+    expect(rpc).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the browser storage by default, which signing out clears', async () => {
+    const { client } = fakeClient(() => ({ data: [row()], error: null }))
+    await createFoodSearch(client).search('rice')
+    expect(localStorage.getItem(SEARCH_CACHE_KEY)).toContain('Test food, cooked')
+    clearUserData()
+    expect(localStorage.getItem(SEARCH_CACHE_KEY)).toBeNull()
+  })
+})
+
+describe('parseFood', () => {
+  it('accepts a food in the app shape and returns a clean copy', () => {
+    const [food] = parseResults([row()])
+    expect(parseFood(JSON.parse(JSON.stringify(food)))).toEqual(food)
+  })
+
+  it('refuses a food with impossible values or nothing at all', () => {
+    const [food] = parseResults([row()])
+    expect(parseFood({ ...food, per100g: { ...food.per100g, fat: 150 } })).toBeNull()
+    expect(parseFood(null)).toBeNull()
+  })
+})
+
+describe('getFoodSearch', () => {
+  it('gives the same search, with its memory, for the same client', () => {
+    const { client } = fakeClient(() => ({ data: [], error: null }))
+    expect(getFoodSearch(client)).toBe(getFoodSearch(client))
+    expect(getFoodSearch(fakeClient(() => ({ data: [], error: null })).client)).not.toBe(
+      getFoodSearch(client),
+    )
+  })
+
+  it('gives each person their own search', () => {
+    const { client } = fakeClient(() => ({ data: [], error: null }))
+    expect(getFoodSearch(client, 'a')).toBe(getFoodSearch(client, 'a'))
+    expect(getFoodSearch(client, 'b')).not.toBe(getFoodSearch(client, 'a'))
   })
 })
