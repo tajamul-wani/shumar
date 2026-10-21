@@ -1,15 +1,9 @@
-import type { Session, SupabaseClient } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AuthContext, type AuthState } from './context.ts'
+import { AuthContext, type AppClient, type AuthState } from './context.ts'
 
 /** Tracks the signed-in session and keeps it current as Supabase refreshes or ends it. */
-export function AuthProvider({
-  client,
-  children,
-}: {
-  client: Pick<SupabaseClient, 'auth'>
-  children: ReactNode
-}) {
+export function AuthProvider({ client, children }: { client: AppClient; children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 

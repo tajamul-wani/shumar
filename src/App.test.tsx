@@ -24,7 +24,7 @@ function fakeSession(fields: { email?: string; name?: string; provider?: string 
 
 const tajamul = () => fakeSession({ email: 'a@example.com', name: 'Tajamul Wani', provider: 'google' })
 
-function fakeClient(initial: Session | null, options: { oauthError?: Error } = {}) {
+function fakeClient(initial: Session | null, options: { oauthError?: Error; releasesFail?: boolean } = {}) {
   let listener: Listener = () => undefined
   let resolveSession: (session: Session | null) => void = () => undefined
   const unsubscribe = vi.fn<() => void>()
@@ -48,7 +48,31 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error } = {
     }),
   }
   return {
-    client: { auth } as unknown as Parameters<typeof AuthProvider>[0]['client'],
+    client: {
+      auth,
+      from: () => ({
+        select: () => ({
+          order: () =>
+            Promise.resolve(
+              options.releasesFail
+                ? { data: null, error: { message: 'offline' } }
+                : {
+                    data: [
+                      {
+                        dataset: 'foundation_food',
+                        file_name: 'FoodData_Central_foundation_food_csv_2026-04-30.zip',
+                      },
+                      {
+                        dataset: 'sr_legacy_food',
+                        file_name: 'FoodData_Central_sr_legacy_food_csv_2018-04.zip',
+                      },
+                    ],
+                    error: null,
+                  },
+            ),
+        }),
+      }),
+    } as unknown as Parameters<typeof AuthProvider>[0]['client'],
     auth,
     unsubscribe,
     load: () => act(async () => resolveSession(initial)),
@@ -190,6 +214,31 @@ describe('the app shell', () => {
     await userEvent.click(button())
     expect(button()).toHaveAccessibleName('Theme: System. Switch to Light')
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBeNull()
+  })
+})
+
+describe('the food sources page', () => {
+  it('opens from the You screen and lists the USDA releases in use', async () => {
+    await signedIn('/you')
+    expect(screen.getByRole('region', { name: 'About' })).toHaveTextContent(
+      'USDA FoodData Central, in the public domain',
+    )
+    await userEvent.click(screen.getByRole('link', { name: 'Where food values come from' }))
+    expect(window.location.pathname).toBe('/sources')
+    expect(screen.getByRole('heading', { level: 1, name: 'Where food values come from' })).toHaveFocus()
+    expect(document.title).toBe('Food sources · Shumār')
+    expect(await screen.findByText('Foundation Foods, April 2026')).toBeInTheDocument()
+    expect(screen.getByText('SR Legacy, April 2018')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Visit USDA FoodData Central (opens in a new tab)' }),
+    ).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('says so when the release list cannot load', async () => {
+    const fake = fakeClient(tajamul(), { releasesFail: true })
+    renderApp(fake, '/sources')
+    await fake.load()
+    expect(await screen.findByText(/couldn't load the list of USDA releases/)).toBeInTheDocument()
   })
 })
 

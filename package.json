@@ -13,7 +13,7 @@
     "lint": "node scripts/check-design-tokens.mjs && oxlint --deny-warnings && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "tsc -b",
-    "test": "vitest run --coverage",
+    "test": "vitest run --coverage && python3 -B -m unittest discover -s scripts/usda",
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "playwright test",

@@ -98,3 +98,16 @@ test.describe('Moving around', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   })
 })
+
+test('the food sources page opens from the You screen and lists the USDA releases in use', async ({
+  page,
+}) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.goto('/you')
+  await page.getByRole('link', { name: 'Where food values come from' }).click()
+  await expect(page).toHaveURL('/sources')
+  await expect(page.getByRole('listitem')).toHaveText([
+    'Foundation Foods, April 2026',
+    'SR Legacy, April 2018',
+  ])
+})

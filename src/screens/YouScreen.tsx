@@ -1,4 +1,5 @@
-import { useLocation } from 'wouter'
+import { ChevronRight } from 'lucide-react'
+import { Link, useLocation } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Button } from '../components/Button.tsx'
 import { summarizeAccount, type AccountUser } from '../lib/account.ts'
@@ -68,6 +69,26 @@ function Appearance() {
   )
 }
 
+function About() {
+  return (
+    <section aria-labelledby="about-heading" className={`${CARD} min-w-0 overflow-hidden`}>
+      <h2 id="about-heading" className="m-0 px-5 pt-4 pb-2 text-body font-semibold">
+        About
+      </h2>
+      <Link
+        href="/sources"
+        className="flex min-h-13 items-center justify-between border-t border-koshur-border px-5 text-body text-koshur-silk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
+      >
+        Where food values come from
+        <ChevronRight aria-hidden="true" size={20} strokeWidth={2} className="text-koshur-muted lg:hidden" />
+      </Link>
+      <p className="m-0 border-t border-koshur-border px-5 pt-3 pb-4 text-caption text-koshur-muted">
+        Ingredient values from USDA FoodData Central, in the public domain. Shumār 0.1
+      </p>
+    </section>
+  )
+}
+
 export function YouScreen({ user }: { user: AccountUser }) {
   useDocumentTitle('You')
   const { client } = useAuth()
@@ -104,7 +125,10 @@ export function YouScreen({ user }: { user: AccountUser }) {
             </Button>
           </div>
         </section>
-        <Appearance />
+        <div className="flex min-w-0 flex-col gap-4">
+          <Appearance />
+          <About />
+        </div>
       </div>
       <Button variant="secondary" className="w-full lg:hidden" onClick={handleSignOut}>
         Sign out

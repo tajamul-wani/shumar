@@ -29,6 +29,8 @@ playwright-report/
 test-results/
 
 # Tooling state
+.cache/
+__pycache__/
 supabase/.temp/
 .wrangler/
 

@@ -14,6 +14,7 @@ export const SCREENS = [
   { path: '/trends', heading: 'Trends' },
   { path: '/you', heading: 'You' },
   { path: '/log', heading: 'Add food' },
+  { path: '/sources', heading: 'Where food values come from' },
 ] as const
 
 export interface TestUser {
