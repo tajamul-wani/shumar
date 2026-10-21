@@ -60,41 +60,66 @@ function parseUnits(value: unknown): FoodUnit[] {
   return units
 }
 
+/**
+ * Checks a food in the app's own shape, such as one read back from the device, and returns a
+ * clean copy, or null if anything doesn't make sense. Every food the app uses passes through here.
+ */
+export function parseFood(value: unknown): FoodResult | null {
+  const food = value as Partial<Record<keyof FoodResult, unknown>> | null
+  const per100g = (food?.per100g ?? {}) as Record<string, unknown>
+  const source = food?.source === 'kashmiri' || food?.source === 'usda' ? food.source : null
+  const sourceId = text(food?.sourceId, 64)
+  const name = text(food?.name, 200)
+  const kcal = number(per100g.kcal, 0, 1000)
+  const protein = number(per100g.protein, 0, 100)
+  const carbs = number(per100g.carbs, 0, 100)
+  const fat = number(per100g.fat, 0, 100)
+  const sodiumMg = number(per100g.sodiumMg, 0, 40000)
+  if (
+    !source ||
+    !sourceId ||
+    !name ||
+    kcal === null ||
+    protein === null ||
+    carbs === null ||
+    fat === null ||
+    sodiumMg === null
+  ) {
+    return null
+  }
+  return {
+    source,
+    sourceId,
+    name,
+    per100g: { kcal, protein, carbs, fat, sodiumMg },
+    units: parseUnits(food?.units),
+    flagged: food?.flagged === true,
+    verified: food?.verified === true,
+  }
+}
+
 /** Turns rows from search_foods into results, leaving out any row that doesn't make sense. */
 export function parseResults(rows: unknown): FoodResult[] {
   if (!Array.isArray(rows)) return []
   const results: FoodResult[] = []
   for (const raw of rows) {
-    const row = raw as Record<string, unknown>
-    const source = row?.source === 'kashmiri' || row?.source === 'usda' ? row.source : null
-    const sourceId = text(row?.source_id, 64)
-    const name = text(row?.name, 200)
-    const kcal = number(row?.kcal_per_100g, 0, 1000)
-    const protein = number(row?.protein_per_100g, 0, 100)
-    const carbs = number(row?.carbs_per_100g, 0, 100)
-    const fat = number(row?.fat_per_100g, 0, 100)
-    const sodiumMg = number(row?.sodium_mg_per_100g, 0, 40000)
-    if (
-      !source ||
-      !sourceId ||
-      !name ||
-      kcal === null ||
-      protein === null ||
-      carbs === null ||
-      fat === null ||
-      sodiumMg === null
-    ) {
-      continue
-    }
-    results.push({
-      source,
-      sourceId,
-      name,
-      per100g: { kcal, protein, carbs, fat, sodiumMg },
-      units: parseUnits(row.units),
-      flagged: row.flagged === true,
-      verified: row.verified === true,
+    const row = (raw ?? {}) as Record<string, unknown>
+    const food = parseFood({
+      source: row.source,
+      sourceId: row.source_id,
+      name: row.name,
+      per100g: {
+        kcal: row.kcal_per_100g,
+        protein: row.protein_per_100g,
+        carbs: row.carbs_per_100g,
+        fat: row.fat_per_100g,
+        sodiumMg: row.sodium_mg_per_100g,
+      },
+      units: row.units,
+      flagged: row.flagged,
+      verified: row.verified,
     })
+    if (food) results.push(food)
   }
   return results
 }
@@ -144,4 +169,16 @@ export function createFoodSearch(client: Pick<SupabaseClient, 'rpc'>, cacheSize 
       return request
     },
   }
+}
+
+const shared = new WeakMap<object, FoodSearch>()
+
+/** One search per client, so its memory of recent searches lasts while the app is open. */
+export function getFoodSearch(client: Pick<SupabaseClient, 'rpc'>): FoodSearch {
+  let search = shared.get(client)
+  if (!search) {
+    search = createFoodSearch(client)
+    shared.set(client, search)
+  }
+  return search
 }

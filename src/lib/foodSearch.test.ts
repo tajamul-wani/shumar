@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { FoodSearchError, createFoodSearch, normalizeQuery, parseResults } from './foodSearch.ts'
+import {
+  FoodSearchError,
+  createFoodSearch,
+  getFoodSearch,
+  normalizeQuery,
+  parseFood,
+  parseResults,
+} from './foodSearch.ts'
 
 // Made-up rows for testing the parser, not nutrition data.
 function row(overrides: Record<string, unknown> = {}) {
@@ -163,5 +170,28 @@ describe('createFoodSearch', () => {
     fail = false
     expect(await search.search('rice')).toHaveLength(1)
     expect(rpc).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('parseFood', () => {
+  it('accepts a food in the app shape and returns a clean copy', () => {
+    const [food] = parseResults([row()])
+    expect(parseFood(JSON.parse(JSON.stringify(food)))).toEqual(food)
+  })
+
+  it('refuses a food with impossible values or nothing at all', () => {
+    const [food] = parseResults([row()])
+    expect(parseFood({ ...food, per100g: { ...food.per100g, fat: 150 } })).toBeNull()
+    expect(parseFood(null)).toBeNull()
+  })
+})
+
+describe('getFoodSearch', () => {
+  it('gives the same search, with its memory, for the same client', () => {
+    const { client } = fakeClient(() => ({ data: [], error: null }))
+    expect(getFoodSearch(client)).toBe(getFoodSearch(client))
+    expect(getFoodSearch(fakeClient(() => ({ data: [], error: null })).client)).not.toBe(
+      getFoodSearch(client),
+    )
   })
 })
