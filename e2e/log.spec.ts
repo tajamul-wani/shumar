@@ -92,6 +92,25 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   }
 })
 
+test('a search made earlier today is answered on the device after a reload', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  let requests = 0
+  page.on('request', (request) => {
+    if (request.url().includes('/rpc/search_foods')) requests += 1
+  })
+  await page.goto('/log')
+  const results = page.getByRole('list', { name: 'Search results' })
+
+  await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+  await expect(results).toContainText(EGG)
+  expect(requests).toBe(1)
+
+  await page.reload()
+  await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+  await expect(results).toContainText(EGG)
+  expect(requests).toBe(1)
+})
+
 for (const theme of ['dark', 'light'] as const) {
   test(`every step of the log sheet passes accessibility checks and fits 320 px, ${theme} theme`, async ({
     page,

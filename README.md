@@ -47,7 +47,8 @@ src/
     auth.ts                Google sign-in and sign-out
     account.ts             The name, initial and sign-in method shown on the You screen
     dates.ts               Date formats, such as the Today heading, and the local calendar day
-    foodSearch.ts          Food search: checks every result and remembers recent searches
+    foodSearch.ts          Food search: checks every result and keeps the day's searches
+    deviceStorage.ts       Device storage, or nothing when the browser blocks it
     foodDisplay.ts         How foods and amounts read in the log sheet, and reading typed amounts
     meals.ts               The five meals and which one the log sheet opens on
     logs.ts                Checks an amount and saves a food log with its nutrients
@@ -188,7 +189,7 @@ Food values come from named sources only: our own measured Kashmiri recipes in `
 
 - `scripts/usda/import_usda.py` downloads the USDA Foundation Foods and SR Legacy files, stops if a file's SHA-256 doesn't match the pinned one, and writes a data migration. It leaves out foods with a missing value instead of filling them in, flags foods whose calories don't match their protein, carbs and fat, and skips US-only categories such as fast food and baby food. The same input always gives the same migration.
 - `search_foods(query)`, a database function, searches our own catalog first, then USDA foods by whole words and words still being typed, then by similar spelling for typos. Local words like curd, dal or haakh find the matching USDA food. It returns at most 20 results with values per 100 g and household portions, and only signed-in people can call it.
-- `src/lib/foodSearch.ts` checks every result before the app uses it, always offers grams as a unit, and remembers the last 50 searches in memory, so a repeated search costs no request.
+- `src/lib/foodSearch.ts` checks every result before the app uses it and always offers grams as a unit. It keeps up to 100 searches for the rest of the day, in memory and on the device under the `shumar-cache:` prefix, so a search made earlier that day costs no request, even after a reload. A new day starts with none kept. Kept searches belong to the person who made them, are checked again whenever they are read, and are cleared on sign-out.
 
 To import a new USDA release, update the file name and SHA-256 in `DATASETS`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, and update the expected counts in `supabase/tests/database/usda_data.test.sql`.
 

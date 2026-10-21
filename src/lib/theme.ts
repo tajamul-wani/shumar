@@ -4,6 +4,8 @@
  * applies the same rules before the page first draws, so it never flashes the wrong theme.
  */
 
+import { deviceStorage } from './deviceStorage.ts'
+
 export type ThemePreference = 'system' | 'light' | 'dark'
 export type Theme = 'light' | 'dark'
 
@@ -37,9 +39,7 @@ export function resolveTheme(preference: ThemePreference, deviceIsLight: boolean
 }
 
 /** Storage can be blocked (private windows, strict settings); fall back to "system". */
-export function readPreference(
-  storage: ReadableStorage | undefined = globalThis.localStorage,
-): ThemePreference {
+export function readPreference(storage: ReadableStorage | undefined = deviceStorage()): ThemePreference {
   try {
     return parsePreference(storage?.getItem(THEME_STORAGE_KEY))
   } catch {
@@ -49,7 +49,7 @@ export function readPreference(
 
 export function savePreference(
   preference: ThemePreference,
-  storage: WritableStorage | undefined = globalThis.localStorage,
+  storage: WritableStorage | undefined = deviceStorage(),
 ): void {
   try {
     if (preference === 'system') storage?.removeItem(THEME_STORAGE_KEY)

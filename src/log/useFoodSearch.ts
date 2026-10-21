@@ -19,8 +19,9 @@ interface Answer {
  * request, and cancelling a search that is no longer wanted.
  */
 export function useFoodSearch(raw: string, delay = 300): FoodSearchState {
-  const { client } = useAuth()
-  const search = useMemo(() => getFoodSearch(client), [client])
+  const { client, session } = useAuth()
+  const userId = session?.user.id ?? ''
+  const search = useMemo(() => getFoodSearch(client, userId), [client, userId])
   const query = normalizeQuery(raw)
   const [answer, setAnswer] = useState<Answer | null>(null)
 

@@ -1,4 +1,5 @@
 import { USER_CACHE_PREFIX } from './auth.ts'
+import { deviceStorage } from './deviceStorage.ts'
 import { parseFood, type FoodResult } from './foodSearch.ts'
 
 /**
@@ -19,7 +20,7 @@ type ReadStorage = Pick<Storage, 'getItem'>
 type WriteStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 /** Device storage can be edited or corrupted, so every entry is checked again when read. */
-export function readRecentFoods(storage: ReadStorage | undefined = globalThis.localStorage): RecentFood[] {
+export function readRecentFoods(storage: ReadStorage | undefined = deviceStorage()): RecentFood[] {
   let raw: unknown
   try {
     raw = JSON.parse(storage?.getItem(RECENT_FOODS_KEY) ?? '[]')
@@ -40,7 +41,7 @@ export function readRecentFoods(storage: ReadStorage | undefined = globalThis.lo
 /** Puts a food first in the recent list, without duplicates, and returns the new list. */
 export function rememberFood(
   entry: RecentFood,
-  storage: WriteStorage | undefined = globalThis.localStorage,
+  storage: WriteStorage | undefined = deviceStorage(),
 ): RecentFood[] {
   const sameFood = (other: RecentFood) =>
     other.food.source === entry.food.source && other.food.sourceId === entry.food.sourceId
