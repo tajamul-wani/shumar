@@ -1,8 +1,11 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js'
 import { createContext, useContext } from 'react'
 
+/** The parts of the Supabase client the app uses: sign-in, table reads and database functions. */
+export type AppClient = Pick<SupabaseClient, 'auth' | 'from' | 'rpc'>
+
 export interface AuthState {
-  client: Pick<SupabaseClient, 'auth'>
+  client: AppClient
   session: Session | null
   loading: boolean
 }

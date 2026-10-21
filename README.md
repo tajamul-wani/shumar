@@ -13,20 +13,21 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 
 ## Tech stack
 
-| Area             | Tools                                                      |
-| :--------------- | :--------------------------------------------------------- |
-| App              | React 19, TypeScript, Vite                                 |
-| Styling          | Tailwind CSS v4                                            |
-| Routing          | wouter                                                     |
-| Icons            | Lucide React                                               |
-| Fonts            | Manrope, Noto Nastaliq Urdu (self-hosted with Fontsource)  |
-| Database         | Supabase (PostgreSQL) with row-level security              |
-| Sign-in          | Supabase Auth with Google, through `@supabase/supabase-js` |
-| Unit tests       | Vitest, React Testing Library                              |
-| Database tests   | pgTAP                                                      |
-| End-to-end tests | Playwright, axe-core                                       |
-| Lint and format  | oxlint, Prettier                                           |
-| CI               | GitHub Actions                                             |
+| Area             | Tools                                                       |
+| :--------------- | :---------------------------------------------------------- |
+| App              | React 19, TypeScript, Vite                                  |
+| Styling          | Tailwind CSS v4                                             |
+| Routing          | wouter                                                      |
+| Icons            | Lucide React                                                |
+| Fonts            | Manrope, Noto Nastaliq Urdu (self-hosted with Fontsource)   |
+| Database         | Supabase (PostgreSQL) with row-level security               |
+| Food data        | USDA FoodData Central (public domain), imported with Python |
+| Sign-in          | Supabase Auth with Google, through `@supabase/supabase-js`  |
+| Unit tests       | Vitest, React Testing Library                               |
+| Database tests   | pgTAP                                                       |
+| End-to-end tests | Playwright, axe-core                                        |
+| Lint and format  | oxlint, Prettier                                            |
+| CI               | GitHub Actions                                              |
 
 ## Project structure
 
@@ -38,18 +39,21 @@ src/
   auth/                    Session state shared with every screen (AuthProvider, useAuth)
   theme/                   The theme choice shared with every screen (ThemeProvider, useTheme)
   shell/                   The frame around every screen: side navigation, tab bar and add button
-  screens/                 One file per screen: SignIn, Today, Trends, You and Add food
+  screens/                 One file per screen: SignIn, Today, Trends, You, Add food and Sources
   components/              Shared building blocks, such as Button
   lib/
     supabase.ts            Supabase client setup, which refuses secret keys
     auth.ts                Google sign-in and sign-out
     account.ts             The name, initial and sign-in method shown on the You screen
     dates.ts               Date formats, such as the Today heading
+    foodSearch.ts          Food search: checks every result and remembers recent searches
+    sources.ts             Names of the USDA releases shown on the Sources screen
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
     theme.ts               Dark and light theme handling
 public/
   theme-init.js            Applies the theme before the page first draws
 scripts/
+  usda/import_usda.py      Turns the USDA downloads into a data migration, with its tests
   check-design-tokens.mjs  Blocks off-token colors, fonts and sizes
   security-headers.ts      HTTP security headers, including the Content Security Policy
   bundle-secrets.ts        Finds anything that looks like a secret in the build output
@@ -68,6 +72,7 @@ e2e/                       End-to-end tests, run against the local Supabase stac
 - Node.js 22.12 or newer. The major version is pinned in `.nvmrc`, so `nvm use` picks it up.
 - npm
 - Docker, for the local Supabase stack
+- Python 3, for the USDA importer's tests (standard library only, no packages)
 
 ### 1. Install
 
@@ -120,25 +125,24 @@ The app runs at http://localhost:5173.
 | `npm run lint`      | Check design tokens, run oxlint and check formatting               |
 | `npm run format`    | Format all files with Prettier                                     |
 | `npm run typecheck` | Run the TypeScript compiler                                        |
-| `npm run test`      | Run unit tests with coverage                                       |
+| `npm run test`      | Run unit tests with coverage, then the USDA importer's tests       |
 | `npm run test:db`   | Run the database security tests                                    |
 | `npm run test:e2e`  | Run the end-to-end tests                                           |
 | `npm run check`     | Lint, type check, unit tests and build in one go                   |
 
 ## Testing
 
-| Layer             | Command                             | What it covers                                                                                        | Needs local Supabase |
-| :---------------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------- |
-| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                   | No                   |
-| Unit              | `npm run test`                      | Nutrition math, theme handling, sign-in helpers, the key check and the security headers               | No                   |
-| Database security | `npm run test:db`                   | Each user can reach only their own logs, and each role has exactly the table privileges it needs      | Yes                  |
-| End to end        | `npm run test:e2e`                  | Sign-in, sign-out, layout, accessibility and the security policy, plus data isolation through the API | Yes                  |
+| Layer             | Command                             | What it covers                                                                                                                        | Needs local Supabase |
+| :---------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------------- |
+| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                                                   | No                   |
+| Unit              | `npm run test`                      | Nutrition math, food search, theme handling, sign-in helpers, the key check, the security headers and the USDA importer               | No                   |
+| Database security | `npm run test:db`                   | Each user can reach only their own logs, each role has exactly the table privileges it needs, food search, and the imported USDA data | Yes                  |
+| End to end        | `npm run test:e2e`                  | Sign-in, sign-out, layout, accessibility and the security policy, plus data isolation through the API                                 | Yes                  |
 
 - End-to-end tests run on a phone (Android and iPhone), a tablet and a 1440 px desktop, in both dark and light themes.
 - They always build the app against the local Supabase stack, never a hosted project, into `dist-e2e/` so your own build in `dist/` is left alone. Each run signs up fresh test users there, so no Google account is needed.
 - The first time, install the browsers with `npx playwright install --with-deps chromium webkit`.
-- CI runs five jobs on every pull request: Lint and types, Unit tests, Database security tests, End-to-end tests and Security scan (dependency audit, a check that every package was published by its owner, and a secret scan of the full history). All five must pass before a pull request can merge.
-- CodeQL, GitHub's code scanning, also checks every pull request and runs weekly on `main`.
+- Six checks run on every pull request: Lint and types, Unit tests, Database security tests, End-to-end tests, Security scan (dependency audit, a check that every package was published by its owner, and a secret scan of the full history) and CodeQL, GitHub's code scanning. All six must pass before a pull request can merge, and a high or critical CodeQL finding also blocks it. CodeQL runs weekly on `main` as well.
 - Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
 
 ## Architecture
@@ -163,11 +167,25 @@ Signing out clears the session and everything cached under the `shumar-cache:` p
 
 PostgreSQL on Supabase, defined by the migrations in `supabase/migrations/`. Row-level security is on for every table, and each table grants the app roles only the privileges they need.
 
-| Table            | Holds                                                                                       | Who can access it                             |
-| :--------------- | :------------------------------------------------------------------------------------------ | :-------------------------------------------- |
-| `kashmiri_foods` | The food catalog, with values per 100 g and a source for every food                         | Anyone can read; nobody can write via the API |
-| `food_units`     | The weight in grams of one piece, cup or katori of a catalog food                           | Anyone can read; nobody can write via the API |
-| `user_logs`      | One row per logged food: meal, time, amount and the nutrients calculated when it was logged | Only the user who logged it                   |
+| Table             | Holds                                                                                       | Who can access it                             |
+| :---------------- | :------------------------------------------------------------------------------------------ | :-------------------------------------------- |
+| `kashmiri_foods`  | The food catalog, with values per 100 g and a source for every food                         | Anyone can read; nobody can write via the API |
+| `food_units`      | The weight in grams of one piece, cup or katori of a catalog food                           | Anyone can read; nobody can write via the API |
+| `user_logs`       | One row per logged food: meal, time, amount and the nutrients calculated when it was logged | Only the user who logged it                   |
+| `usda_releases`   | Which USDA files are loaded, with the SHA-256 of each download                              | Signed-in people can read                     |
+| `usda_foods`      | About 7,100 USDA foods, values per 100 g, with a flag when the Atwater check is off         | Signed-in people can read                     |
+| `usda_portions`   | USDA household portions, such as "1 cup, chopped", in grams                                 | Signed-in people can read                     |
+| `search_synonyms` | Local food words mapped to USDA wording, such as curd to yogurt                             | Signed-in people can read                     |
+
+### Food data and search
+
+Food values come from named sources only: our own measured Kashmiri recipes in `kashmiri_foods`, and USDA FoodData Central for ingredients and everyday foods. The USDA data is public domain and lives in our own database, so search never calls an outside API.
+
+- `scripts/usda/import_usda.py` downloads the USDA Foundation Foods and SR Legacy files, stops if a file's SHA-256 doesn't match the pinned one, and writes a data migration. It leaves out foods with a missing value instead of filling them in, flags foods whose calories don't match their protein, carbs and fat, and skips US-only categories such as fast food and baby food. The same input always gives the same migration.
+- `search_foods(query)`, a database function, searches our own catalog first, then USDA foods by whole words and words still being typed, then by similar spelling for typos. Local words like curd, dal or haakh find the matching USDA food. It returns at most 20 results with values per 100 g and household portions, and only signed-in people can call it.
+- `src/lib/foodSearch.ts` checks every result before the app uses it, always offers grams as a unit, and remembers the last 50 searches in memory, so a repeated search costs no request.
+
+To import a new USDA release, update the file name and SHA-256 in `DATASETS`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, and update the expected counts in `supabase/tests/database/usda_data.test.sql`.
 
 ### Nutrition math
 
@@ -211,7 +229,7 @@ Weights are `font-normal` (400), `font-medium` (500) and `font-semibold` (600). 
 1. Branch from `main` with a prefix that matches the work: `feat/`, `fix/`, `chore/`, `docs/`, `test/`, `refactor/`, `perf/`, `style/`, `build/`, `ci/`, `data/`, `security/` or `hotfix/`.
 2. Keep each commit to one logical change that builds and passes tests on its own. Write messages in the Conventional Commits style, for example `feat: add food search with household units`.
 3. Before opening a pull request into `main`, run `npm run check`, `npm run test:db` and `npm run test:e2e`.
-4. All five CI jobs must pass before a pull request is merged.
+4. All six checks must pass before a pull request is merged.
 
 ## License
 
