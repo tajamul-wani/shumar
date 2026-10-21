@@ -1,6 +1,6 @@
-import { CircleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../auth/context.ts'
+import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
 import { signInWithGoogle } from '../lib/auth.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
@@ -39,12 +39,7 @@ export function SignIn() {
       <Button onClick={handleSignIn} disabled={busy}>
         {busy ? 'Opening Google' : 'Sign in with Google'}
       </Button>
-      {error && (
-        <p role="alert" className="m-0 flex items-start gap-2 text-body-sm text-koshur-silk">
-          <CircleAlert aria-hidden="true" size={20} strokeWidth={2} className="shrink-0 text-alert-surplus" />
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
     </main>
   )
 }

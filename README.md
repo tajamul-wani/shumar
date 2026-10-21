@@ -7,7 +7,7 @@ A calorie and macro tracker built for Kashmiri and everyday food, delivered as a
 ## Overview
 
 - People sign in with their Google account, and each person's food logs are private to them.
-- Food is logged by grams or by household units such as piece, cup and katori.
+- Food is found by search or picked from recent foods, then added to a meal by grams or by household units such as piece, cup and katori.
 - Calories, protein, carbs, fat and sodium are calculated from values stored per 100 g.
 - The layout is mobile first, with dark and light themes (Koshur Nocturne) that follow the device by default.
 
@@ -40,13 +40,18 @@ src/
   theme/                   The theme choice shared with every screen (ThemeProvider, useTheme)
   shell/                   The frame around every screen: side navigation, tab bar and add button
   screens/                 One file per screen: SignIn, Today, Trends, You, Add food and Sources
-  components/              Shared building blocks, such as Button
+  components/              Shared building blocks: Button, Chip and Alert
+  log/                     Parts of the log sheet: the search as you type, food rows and the chosen food
   lib/
     supabase.ts            Supabase client setup, which refuses secret keys
     auth.ts                Google sign-in and sign-out
     account.ts             The name, initial and sign-in method shown on the You screen
-    dates.ts               Date formats, such as the Today heading
+    dates.ts               Date formats, such as the Today heading, and the local calendar day
     foodSearch.ts          Food search: checks every result and remembers recent searches
+    foodDisplay.ts         How foods and amounts read in the log sheet, and reading typed amounts
+    meals.ts               The five meals and which one the log sheet opens on
+    logs.ts                Checks an amount and saves a food log with its nutrients
+    recentFoods.ts         The foods added most recently, kept on the device
     sources.ts             Names of the USDA releases shown on the Sources screen
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
     theme.ts               Dark and light theme handling
@@ -132,12 +137,12 @@ The app runs at http://localhost:5173.
 
 ## Testing
 
-| Layer             | Command                             | What it covers                                                                                                                        | Needs local Supabase |
-| :---------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :------------------- |
-| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                                                   | No                   |
-| Unit              | `npm run test`                      | Nutrition math, food search, theme handling, sign-in helpers, the key check, the security headers and the USDA importer               | No                   |
-| Database security | `npm run test:db`                   | Each user can reach only their own logs, each role has exactly the table privileges it needs, food search, and the imported USDA data | Yes                  |
-| End to end        | `npm run test:e2e`                  | Sign-in, sign-out, layout, accessibility and the security policy, plus data isolation through the API                                 | Yes                  |
+| Layer             | Command                             | What it covers                                                                                                                                  | Needs local Supabase |
+| :---------------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- | :------------------- |
+| Lint and types    | `npm run lint`, `npm run typecheck` | Code style, type errors and off-token design values                                                                                             | No                   |
+| Unit              | `npm run test`                      | Nutrition math, food search, logging, the log sheet, theme handling, sign-in helpers, the key check, the security headers and the USDA importer | No                   |
+| Database security | `npm run test:db`                   | Each user can reach only their own logs, each role has exactly the table privileges it needs, food search, and the imported USDA data           | Yes                  |
+| End to end        | `npm run test:e2e`                  | Sign-in, sign-out, logging a meal, layout, accessibility and the security policy, plus data isolation through the API                           | Yes                  |
 
 - End-to-end tests run on a phone (Android and iPhone), a tablet and a 1440 px desktop, in both dark and light themes.
 - They always build the app against the local Supabase stack, never a hosted project, into `dist-e2e/` so your own build in `dist/` is left alone. Each run signs up fresh test users there, so no Google account is needed.
@@ -186,6 +191,16 @@ Food values come from named sources only: our own measured Kashmiri recipes in `
 - `src/lib/foodSearch.ts` checks every result before the app uses it, always offers grams as a unit, and remembers the last 50 searches in memory, so a repeated search costs no request.
 
 To import a new USDA release, update the file name and SHA-256 in `DATASETS`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, and update the expected counts in `supabase/tests/database/usda_data.test.sql`.
+
+### Logging a meal
+
+The add button opens the log sheet at `/log` (`src/screens/LogFoodScreen.tsx`).
+
+- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. **Change meal** picks any of the five, including snack.
+- `src/log/useFoodSearch.ts` searches once typing pauses for 300 ms and cancels a search that is no longer wanted.
+- A chosen food offers its household units first, then grams, with a stepper for the amount and the values worked out as it changes. Foods flagged by the calorie check, and Kashmiri dishes not yet confirmed by a second weighing, are marked as estimates.
+- `src/lib/logs.ts` checks the amount (more than 0, at most 10,000 and at most 20 kg) and saves one `user_logs` row with the nutrients as they were at that moment. The log date is the person's local calendar day, and the row's owner comes from the session, never from the app.
+- The last 10 foods added stay on the device under the `shumar-cache:` prefix, so the sheet lists them before any search and adds one again in one tap. They are checked again whenever they are read, and signing out clears them.
 
 ### Nutrition math
 

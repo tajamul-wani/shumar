@@ -99,6 +99,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Search boxes have their own clear button in the app's colors, so the browser's blue one is hidden. */
+input[type='search']::-webkit-search-cancel-button {
+  appearance: none;
+}
+
 /* The phone tab bar and the add button sit above the home indicator on phones that have one. */
 @utility pb-tab-bar {
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));

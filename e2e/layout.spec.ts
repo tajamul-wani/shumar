@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { SCREENS, readTestUsers, signInAs } from './support.ts'
+import { SCREENS, readTestUsers, scrollsSideways, signInAs } from './support.ts'
 
 // Every width the UI skill asks for, plus 1023 and 1024 px on each side of the side navigation,
 // and a phone held sideways.
@@ -17,18 +17,15 @@ const WIDTHS = [
 
 const SIDE_NAV_FROM = 1024
 
-for (const { path, heading } of SCREENS) {
-  test(`${heading} fits every width and shows the right navigation`, async ({ page }) => {
+for (const { path, title, heading } of SCREENS) {
+  test(`${title} fits every width and shows the right navigation`, async ({ page }) => {
     await signInAs(page, readTestUsers().a.session)
     await page.goto(path)
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeAttached()
 
     for (const size of WIDTHS) {
       await page.setViewportSize(size)
-      const scrollsSideways = await page.evaluate(
-        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-      )
-      expect(scrollsSideways, `sideways scroll at ${size.width} px`).toBe(false)
+      expect(await scrollsSideways(page), `sideways scroll at ${size.width} px`).toBe(false)
       await expect(
         page.getByRole('navigation', { name: 'Main' }),
         `one navigation at ${size.width} px`,

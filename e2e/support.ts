@@ -1,3 +1,4 @@
+import { AxeBuilder } from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { createClient, type Session } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
@@ -8,13 +9,14 @@ import { readFileSync } from 'node:fs'
 
 export const USERS_FILE = 'e2e/.auth/users.json'
 
-/** Every signed-in screen, by address and main heading. */
+/** Every signed-in screen, by address, a name for test titles, and its main heading. */
 export const SCREENS = [
-  { path: '/', heading: 'Today' },
-  { path: '/trends', heading: 'Trends' },
-  { path: '/you', heading: 'You' },
-  { path: '/log', heading: 'Add food' },
-  { path: '/sources', heading: 'Where food values come from' },
+  { path: '/', title: 'Today', heading: 'Today' },
+  { path: '/trends', title: 'Trends', heading: 'Trends' },
+  { path: '/you', title: 'You', heading: 'You' },
+  // The log sheet's heading names the meal, which depends on the time of day.
+  { path: '/log', title: 'Add food', heading: /^Add to / },
+  { path: '/sources', title: 'Food sources', heading: 'Where food values come from' },
 ] as const
 
 export interface TestUser {
@@ -79,4 +81,14 @@ export async function watchCsp(page: Page): Promise<void> {
 
 export function cspViolations(page: Page): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)
+}
+
+/** Serious and critical accessibility problems on the page as it is now. */
+export async function accessibilityViolations(page: Page) {
+  const results = await new AxeBuilder({ page }).analyze()
+  return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+}
+
+export function scrollsSideways(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
 }
