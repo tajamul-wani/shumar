@@ -250,6 +250,18 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 </details>
 
 <details>
+<summary><strong>The Today screen</strong></summary>
+
+`src/screens/TodayScreen.tsx` shows the day at a glance. It reads only the day's logs and the number of days logged (`days_logged()`, a database function that returns one number), and works out the rest on the device with `src/lib/today.ts`.
+
+- The ring shows the calories eaten. Protein, carbs and fat follow, always in that order.
+- The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
+- The meals list shows each meal with food in it, in the order of the day, with its calories.
+- Loading, empty and failed days each have their own state, and a failed day can be tried again.
+
+</details>
+
+<details>
 <summary><strong>Nutrition math</strong></summary>
 
 The math lives in `src/lib/nutrition.ts`, apart from the screens, so it can be tested on its own.

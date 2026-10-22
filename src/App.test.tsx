@@ -52,8 +52,12 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
       auth,
       from: () => ({
         select: () => ({
-          // A changed food that isn't there, for the edit screen.
-          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
+          eq: () => ({
+            // A changed food that isn't there, for the edit screen.
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            // Nothing logged yet, for the Today screen.
+            order: () => Promise.resolve({ data: [], error: null }),
+          }),
           order: () =>
             Promise.resolve(
               options.releasesFail
@@ -74,6 +78,7 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
             ),
         }),
       }),
+      rpc: () => Promise.resolve({ data: 0, error: null }),
     } as unknown as Parameters<typeof AuthProvider>[0]['client'],
     auth,
     unsubscribe,
