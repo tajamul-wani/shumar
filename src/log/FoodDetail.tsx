@@ -1,5 +1,5 @@
 import { ChevronLeft, Info, Minus, Plus } from 'lucide-react'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'wouter'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
@@ -66,25 +66,34 @@ interface FoodDetailProps {
   food: FoodResult
   initialUnit: FoodUnit
   initialQuantity: number
-  mealName: string
+  /** The main button, such as "Add to dinner" or "Save changes". */
+  actionLabel: string
+  /** The main button while it works, such as "Adding" or "Saving". */
+  busyLabel: string
+  backLabel: string
   saving: boolean
   error: string | null
+  /** Shown above the unit, such as the meal when changing a logged food. */
+  children?: ReactNode
   onBack: () => void
   /** quantity is NaN when the amount typed isn't a number, so the log check explains it. */
-  onAdd: (unit: FoodUnit, quantity: number) => void
+  onSubmit: (unit: FoodUnit, quantity: number) => void
 }
 
-/** The chosen food: pick a unit and an amount, see the values, then add it to the meal. */
+/** A food: pick a unit and an amount, see the values, then add it or save the change. */
 export function FoodDetail({
   headingLevel = 1,
   food,
   initialUnit,
   initialQuantity,
-  mealName,
+  actionLabel,
+  busyLabel,
+  backLabel,
   saving,
   error,
+  children,
   onBack,
-  onAdd,
+  onSubmit,
 }: FoodDetailProps) {
   const [unit, setUnit] = useState(initialUnit)
   const [text, setText] = useState(() => String(initialQuantity))
@@ -111,12 +120,12 @@ export function FoodDetail({
     if (next > 0 && next <= MAX_QUANTITY) setText(String(next))
   }
 
-  function add() {
-    onAdd(unit, quantity ?? Number.NaN)
+  function submit() {
+    onSubmit(unit, quantity ?? Number.NaN)
   }
 
-  function addOnEnter(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') add()
+  function submitOnEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') submit()
   }
 
   return (
@@ -125,7 +134,7 @@ export function FoodDetail({
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to search"
+          aria-label={backLabel}
           className={`-ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-silk ${FOCUS_RING}`}
         >
           <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} />
@@ -136,6 +145,8 @@ export function FoodDetail({
       </div>
 
       {estimate && <EstimateNote food={food} />}
+
+      {children}
 
       <fieldset className="m-0 min-w-0 border-0 p-0">
         <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
@@ -169,7 +180,7 @@ export function FoodDetail({
             autoComplete="off"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            onKeyDown={addOnEnter}
+            onKeyDown={submitOnEnter}
             aria-describedby={hint ? hintId : undefined}
             className={`h-13 min-w-0 flex-1 rounded-xl border border-koshur-border ${fill} text-center text-heading font-semibold text-koshur-silk ${FOCUS_RING}`}
           />
@@ -220,8 +231,8 @@ export function FoodDetail({
 
       {error && <Alert>{error}</Alert>}
 
-      <Button onClick={add} disabled={saving} className="w-full">
-        {saving ? 'Adding' : `Add to ${mealName}`}
+      <Button onClick={submit} disabled={saving} className="w-full">
+        {saving ? busyLabel : actionLabel}
       </Button>
     </>
   )

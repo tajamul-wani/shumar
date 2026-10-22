@@ -202,14 +202,16 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
             food={chosen.food}
             initialUnit={chosen.unit}
             initialQuantity={chosen.quantity}
-            mealName={mealName}
+            actionLabel={`Add to ${mealName}`}
+            busyLabel="Adding"
+            backLabel="Back to search"
             saving={saving}
             error={error}
             onBack={() => {
               setError(null)
               setChosen(null)
             }}
-            onAdd={(unit, quantity) => add(chosen.food, unit, quantity)}
+            onSubmit={(unit, quantity) => add(chosen.food, unit, quantity)}
           />
         </div>
       </SheetFillContext.Provider>

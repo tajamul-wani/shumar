@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 import { PREFERENCE_LABELS, nextPreference } from '../lib/theme.ts'
 import { useTheme } from '../theme/context.ts'
-import { LOG_FOOD_PATH, NAV_ITEMS, type NavItem } from './nav.ts'
+import { EDIT_LOG_PATH, LOG_FOOD_PATH, NAV_ITEMS, type NavItem } from './nav.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -73,6 +73,7 @@ function ThemeButton() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation()
   const [onLogFood] = useRoute(LOG_FOOD_PATH)
+  const [onEditLog] = useRoute(EDIT_LOG_PATH)
   const previousLocation = useRef(location)
 
   // After moving to another screen, put keyboard and screen reader focus on its heading.
@@ -110,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-260 flex-col gap-6">{children}</div>
       </main>
 
-      {!onLogFood && (
+      {!onLogFood && !onEditLog && (
         <Link
           href={LOG_FOOD_PATH}
           aria-label="Log food"

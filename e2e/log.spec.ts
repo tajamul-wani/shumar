@@ -92,6 +92,60 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   }
 })
 
+test('a person changes the amount and meal of a logged food', async ({ page }) => {
+  const user = await createTestUser('edit')
+  const api = apiClient(user.session.access_token)
+  // A placeholder log with easy numbers: it only exercises the screen and is not nutrition data.
+  const created = await api
+    .from('user_logs')
+    .insert({
+      meal: 'breakfast',
+      food_name: 'Test tea',
+      food_source: 'kashmiri',
+      quantity: 1,
+      unit_name: 'cup',
+      grams: 150,
+      kcal: 45,
+      protein: 1.5,
+      carbs: 4.5,
+      fat: 2.25,
+      sodium_mg: 300,
+    })
+    .select('id')
+    .single()
+  expect(created.error).toBeNull()
+  const id = created.data?.id as string
+
+  await watchCsp(page)
+  await signInAs(page, user.session)
+  await page.goto(`/log/edit/${id}`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Test tea' })).toBeFocused()
+  const blocking = await accessibilityViolations(page)
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+  const size = page.viewportSize()
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await scrollsSideways(page)).toBe(false)
+  if (size) await page.setViewportSize(size)
+
+  await page.getByRole('button', { name: 'Increase quantity' }).click()
+  await page.getByRole('button', { name: 'Increase quantity' }).click()
+  await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Dinner' }).click()
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page).toHaveURL('/')
+  expect(await cspViolations(page)).toEqual([])
+
+  const saved = await api
+    .from('user_logs')
+    .select('meal, quantity, grams, kcal, sodium_mg')
+    .eq('id', id)
+    .single()
+  try {
+    expect(saved.data).toEqual({ meal: 'dinner', quantity: 2, grams: 300, kcal: 90, sodium_mg: 600 })
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
+})
+
 test('a search made earlier today is answered on the device after a reload', async ({ page }) => {
   await signInAs(page, readTestUsers().a.session)
   let requests = 0

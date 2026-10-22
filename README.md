@@ -34,13 +34,13 @@ A calorie and macro tracker for Kashmiri and everyday food. It runs in the brows
 
 ```text
 src/
-  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log, /sources)
+  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log, /log/edit/<id>, /sources)
   main.tsx                 Creates the Supabase client and starts the app
   index.css                Tailwind setup and design tokens
   auth/                    The signed-in session, shared with every screen
   theme/                   The theme choice, shared with every screen
   shell/                   The frame around every screen: side navigation, tab bar and add button
-  screens/                 One file per screen: SignIn, Today, Trends, You, Add food and Sources
+  screens/                 One file per screen: SignIn, Today, Trends, You, Add food, Edit food and Sources
   components/              Shared building blocks: Button, Chip and Alert
   log/                     Parts of the log sheet: search as you type, food rows and the chosen food
   lib/
@@ -52,6 +52,8 @@ src/
     foodDisplay.ts         How foods and amounts read in the log sheet
     meals.ts               The five meals and which one the log sheet opens on
     logs.ts                Checks an amount and saves a food log with its nutrients
+    dayLogs.ts             Reads, changes, removes and restores the foods a person has logged
+    today.ts               The day's totals, meals, sodium alert and calorie ring
     recentFoods.ts         The foods added most recently, kept on the device
     deviceStorage.ts       Device storage, or nothing when the browser blocks it
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
@@ -243,6 +245,7 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 - A chosen food offers its household units first, then grams, with a stepper for the amount. The values update as the amount changes. Foods flagged by the calorie check, and Kashmiri dishes not yet confirmed by a second weighing, are marked as estimates.
 - `src/lib/logs.ts` checks the amount (more than 0, at most 10,000 and at most 20 kg) and saves one `user_logs` row with the nutrients at that moment. The log date is the person's local calendar day, and the row's owner comes from the session, never from the app.
 - The last 10 foods added stay on the device, so the sheet lists them before any search and adds one again in one tap.
+- `/log/edit/<id>` (`src/screens/EditLogScreen.tsx`) changes a food already logged: its amount, its meal, and its unit between the one it was logged in and grams. The values come from the log itself, so they match what the person saw, and its day stays the same.
 
 </details>
 

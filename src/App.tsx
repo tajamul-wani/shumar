@@ -1,5 +1,6 @@
 import { Redirect, Route, Switch } from 'wouter'
 import { useAuth } from './auth/context.ts'
+import { EditLogScreen } from './screens/EditLogScreen.tsx'
 import { LogFoodScreen } from './screens/LogFoodScreen.tsx'
 import { SignIn } from './screens/SignIn.tsx'
 import { SourcesScreen } from './screens/SourcesScreen.tsx'
@@ -7,7 +8,7 @@ import { TodayScreen } from './screens/TodayScreen.tsx'
 import { TrendsScreen } from './screens/TrendsScreen.tsx'
 import { YouScreen } from './screens/YouScreen.tsx'
 import { AppShell } from './shell/AppShell.tsx'
-import { LOG_FOOD_PATH } from './shell/nav.ts'
+import { EDIT_LOG_PATH, LOG_FOOD_PATH } from './shell/nav.ts'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -36,6 +37,7 @@ export default function App() {
         <Route path={LOG_FOOD_PATH}>
           <LogFoodScreen />
         </Route>
+        <Route path={EDIT_LOG_PATH}>{(params) => <EditLogScreen key={params.id} id={params.id} />}</Route>
         <Route path="/sources">
           <SourcesScreen />
         </Route>

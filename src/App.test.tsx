@@ -52,6 +52,8 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
       auth,
       from: () => ({
         select: () => ({
+          // A changed food that isn't there, for the edit screen.
+          eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }),
           order: () =>
             Promise.resolve(
               options.releasesFail
@@ -196,6 +198,14 @@ describe('the app shell', () => {
     expect(window.location.pathname).toBe('/log')
     expect(screen.getByRole('heading', { level: 1, name: /^Add to / })).toBeInTheDocument()
     expect(document.title).toBe('Add food · Shumār')
+    expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
+  })
+
+  it('hides the add button while changing a logged food', async () => {
+    await signedIn('/log/edit/log-1')
+    expect(
+      await screen.findByText("We couldn't find this food. It may have been removed."),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
   })
 
