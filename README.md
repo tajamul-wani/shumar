@@ -40,6 +40,7 @@ src/
   auth/                    The signed-in session, shared with every screen
   theme/                   The theme choice, shared with every screen
   shell/                   The frame around every screen: side navigation, tab bar and add button
+  today/                   Parts of the Today screen: the calories card, review card and meals list
   screens/                 One file per screen: SignIn, Today, Trends, You, Add food, Edit food and Sources
   components/              Shared building blocks: Button, Chip and Alert
   log/                     Parts of the log sheet: search as you type, food rows and the chosen food
@@ -258,6 +259,7 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 - The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
 - The meals list shows each meal with food in it, in the order of the day, with its calories. Opening a meal lists its foods, each with **Change** (the edit screen) and **Remove**.
 - Remove takes the food off the list at once and offers **Undo**, which puts it back exactly as it was logged. Undo stays until the next action, so nobody is rushed.
+- From 1024 px up, the log sheet sits beside the day as **Add food**, so a food added there shows in the day at once, and each meal shows the time of its first food. Phones and tablets use the round add button instead.
 - Loading, empty and failed days each have their own state, and a failed day can be tried again.
 
 </details>

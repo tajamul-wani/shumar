@@ -2,6 +2,7 @@ import { ChevronDown, Pencil, Trash2 } from 'lucide-react'
 import { useId, useState, type Ref } from 'react'
 import { Link } from 'wouter'
 import type { LoggedFood } from '../lib/dayLogs.ts'
+import { formatMealTime } from '../lib/dates.ts'
 import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
 import { MEAL_LABELS, type Meal } from '../lib/meals.ts'
 import { mealFoodNames, type MealGroup } from '../lib/today.ts'
@@ -48,13 +49,14 @@ function FoodItem({ food, busy, onRemove }: FoodItemProps) {
 
 interface MealRowProps {
   group: MealGroup
+  showTime: boolean
   open: boolean
   busy: boolean
   onToggle: () => void
   onRemove: (food: LoggedFood) => void
 }
 
-function MealRow({ group, open, busy, onToggle, onRemove }: MealRowProps) {
+function MealRow({ group, showTime, open, busy, onToggle, onRemove }: MealRowProps) {
   const panelId = useId()
   return (
     <li className="border-b border-koshur-border last:border-b-0">
@@ -66,8 +68,15 @@ function MealRow({ group, open, busy, onToggle, onRemove }: MealRowProps) {
         className={`flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left lg:min-h-15 lg:gap-4 lg:px-6 lg:py-2.5 ${FOCUS_RING} focus-visible:ring-inset`}
       >
         <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:flex-row lg:items-center lg:gap-4">
-          <span className="text-body font-semibold text-koshur-silk lg:w-30 lg:shrink-0 lg:text-body-sm">
-            {MEAL_LABELS[group.meal]}
+          <span className="flex flex-col lg:w-30 lg:shrink-0">
+            <span className="text-body font-semibold text-koshur-silk lg:text-body-sm">
+              {MEAL_LABELS[group.meal]}
+            </span>
+            {showTime && (
+              <span className="text-caption text-koshur-muted">
+                {formatMealTime(new Date(group.firstLoggedAt))}
+              </span>
+            )}
           </span>
           <span className="truncate text-body-sm text-koshur-muted lg:text-body">{mealFoodNames(group)}</span>
         </span>
@@ -95,6 +104,8 @@ function MealRow({ group, open, busy, onToggle, onRemove }: MealRowProps) {
 
 interface MealListProps {
   groups: MealGroup[]
+  /** The time of each meal's first food, shown on wide screens as the design does. */
+  showTimes?: boolean
   /** While a removal is on its way, no other food can be removed. */
   busy?: boolean
   onRemove: (food: LoggedFood) => void
@@ -102,7 +113,7 @@ interface MealListProps {
 }
 
 /** The day's meals in the order of the day. Opening one lists its foods, to change or remove them. */
-export function MealList({ groups, busy = false, onRemove, headingRef }: MealListProps) {
+export function MealList({ groups, showTimes = false, busy = false, onRemove, headingRef }: MealListProps) {
   const headingId = useId()
   const [open, setOpen] = useState<ReadonlySet<Meal>>(() => new Set())
 
@@ -133,6 +144,7 @@ export function MealList({ groups, busy = false, onRemove, headingRef }: MealLis
           <MealRow
             key={group.meal}
             group={group}
+            showTime={showTimes}
             open={open.has(group.meal)}
             busy={busy}
             onToggle={() => toggle(group.meal)}

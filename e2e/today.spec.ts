@@ -63,8 +63,9 @@ for (const theme of ['dark', 'light'] as const) {
         'Sodium is high, mostly from Test tea',
       )
       await expect(page.getByRole('region', { name: 'Meals' }).getByRole('listitem')).toHaveText([
-        /^BreakfastTest tea · Test bread300 kcal$/,
-        /^DinnerTest rice300 kcal$/,
+        // Wide screens also show the time of each meal.
+        /^Breakfast(\d{1,2}:\d{2})?Test tea · Test bread300 kcal$/,
+        /^Dinner(\d{1,2}:\d{2})?Test rice300 kcal$/,
       ])
       await expect(page.getByText('1 day logged')).toBeVisible()
 
@@ -121,6 +122,48 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await page.getByRole('button', { name: 'Save changes' }).click()
     await expect(page).toHaveURL('/')
     await expect(ring).toContainText('350kcal eaten')
+    expect(await cspViolations(page)).toEqual([])
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
+})
+
+test('on a wide screen, a food added beside Today shows in the day at once', async ({ page }) => {
+  const user = await createTestUser('desktop')
+  const api = apiClient(user.session.access_token)
+  try {
+    await watchCsp(page)
+    await signInAs(page, user.session)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/')
+    const ring = page.getByRole('region', { name: 'Calories and macros' })
+    await expect(ring).toContainText('0kcal eaten')
+    await expect(page.getByRole('link', { name: 'Log food' })).toBeHidden()
+
+    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeVisible()
+    await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    await page
+      .getByRole('list', { name: 'Search results' })
+      .getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ })
+      .click()
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Eggs, Grade A, Large, egg whole' }),
+    ).toBeFocused()
+    await page.getByRole('button', { name: /^Add to / }).click()
+
+    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeFocused()
+    await expect(ring).not.toContainText('0kcal eaten')
+    const meal = page.getByRole('region', { name: 'Meals' }).getByRole('listitem')
+    await expect(meal).toContainText('Eggs, Grade A, Large, egg whole')
+    // The time of the meal shows on wide screens.
+    await expect(meal).toContainText(/\d{1,2}:\d{2}/)
+    await expect(page.getByText('1 day logged')).toBeVisible()
+
+    const blocking = await accessibilityViolations(page)
+    expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+    // Where Add food and the day no longer fit side by side, they stack without sideways scroll.
+    await page.setViewportSize({ width: 1024, height: 768 })
+    expect(await scrollsSideways(page)).toBe(false)
     expect(await cspViolations(page)).toEqual([])
   } finally {
     await api.from('user_logs').delete().eq('user_id', user.session.user.id)

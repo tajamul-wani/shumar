@@ -2,14 +2,22 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
+import { parseResults } from '../lib/foodSearch.ts'
+import { rememberFood } from '../lib/recentFoods.ts'
 import { TodayScreen } from './TodayScreen.tsx'
+
+/** A time on 21 October 2026 on this machine's clock, so the tests pass in any time zone. */
+function at(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number)
+  return new Date(2026, 9, 21, hours, minutes).toISOString()
+}
 
 // Made-up logs with easy numbers for checking the screen, not nutrition data.
 function log(id: string, meal: string, name: string, time: string, kcal: number, sodiumMg = 0) {
   return {
     id,
     log_date: '2026-10-21',
-    logged_at: `2026-10-21T${time}:00+05:30`,
+    logged_at: at(time),
     meal,
     food_name: name,
     food_source: 'usda',
@@ -239,7 +247,7 @@ describe('changing and removing foods', () => {
         food_name: 'Test bread',
         meal: 'breakfast',
         kcal: 240,
-        logged_at: '2026-10-21T08:05:00+05:30',
+        logged_at: at('08:05'),
       }),
     )
     expect(await within(meals).findByText('Test bread')).toBeInTheDocument()
@@ -273,5 +281,70 @@ describe('changing and removing foods', () => {
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test rice' }))
     expect(screen.getByText('No meals yet today.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
+  })
+})
+
+describe('on wide screens', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(min-width: 1024px)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+  })
+
+  it('shows Add food beside the day and the time of each meal', async () => {
+    renderToday()
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toBeInTheDocument()
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    expect(within(meals).getByRole('button', { name: /^Breakfast/ })).toHaveTextContent('Breakfast8:05')
+    expect(within(meals).getByRole('button', { name: /^Dinner/ })).toHaveTextContent('Dinner20:45')
+  })
+
+  it('needs no extra Add food button when the day is empty', async () => {
+    renderToday(fakeClient({ logs: [] }))
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    expect(within(meals).queryByRole('link', { name: 'Add food' })).not.toBeInTheDocument()
+  })
+
+  it('shows a food added beside the day straight away', async () => {
+    // A made-up food in the recent list, so one tap adds it.
+    const [food] = parseResults([
+      {
+        source: 'usda',
+        source_id: '9',
+        name: 'Test egg',
+        kcal_per_100g: 150,
+        protein_per_100g: 12,
+        carbs_per_100g: 1,
+        fat_per_100g: 10,
+        sodium_mg_per_100g: 140,
+        flagged: false,
+        verified: true,
+        units: [{ name: '1 egg', grams: 50 }],
+      },
+    ])
+    rememberFood({ food, unitName: '1 egg', quantity: 1 })
+    const fake = renderToday()
+    await screen.findByRole('region', { name: 'Meals' })
+    fake.state.logs = [...day, log('9', 'dinner', 'Test egg', '20:50', 75)]
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 egg Test egg' }))
+    expect(fake.inserted).toHaveBeenCalledWith(
+      expect.objectContaining({ food_name: 'Test egg', meal: 'dinner' }),
+    )
+    expect(await within(ring()).findByText('605')).toBeInTheDocument()
+  })
+})
+
+describe('on phones and tablets', () => {
+  it('leaves adding food to the add button', async () => {
+    renderToday()
+    await screen.findByRole('region', { name: 'Meals' })
+    expect(screen.queryByRole('heading', { level: 2, name: 'Add food' })).not.toBeInTheDocument()
   })
 })

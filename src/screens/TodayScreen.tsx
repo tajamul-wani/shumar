@@ -12,6 +12,8 @@ import { LogError } from '../lib/logs.ts'
 import { MEAL_LABELS } from '../lib/meals.ts'
 import { sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { LOG_FOOD_PATH } from '../shell/nav.ts'
+import { LogSheet } from '../log/LogSheet.tsx'
+import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { CaloriesCard } from '../today/CaloriesCard.tsx'
 import { MealList } from '../today/MealList.tsx'
@@ -49,13 +51,16 @@ function Loading() {
   )
 }
 
-function NoMeals() {
+/** On wide screens Add food sits beside the day, so the empty state needs no button of its own. */
+function NoMeals({ withButton }: { withButton: boolean }) {
   return (
     <section aria-label="Meals" className={`flex flex-col items-start gap-3 p-5 ${CARD}`}>
       <p className="m-0 text-body text-koshur-muted">No meals yet today.</p>
-      <Link href={LOG_FOOD_PATH} className={buttonClass('primary', 'small')}>
-        Add food
-      </Link>
+      {withButton && (
+        <Link href={LOG_FOOD_PATH} className={buttonClass('primary', 'small')}>
+          Add food
+        </Link>
+      )}
     </section>
   )
 }
@@ -66,6 +71,7 @@ export function TodayScreen() {
   // Read once when the screen opens, so re-renders never change the date mid-view.
   const [today] = useState(() => new Date())
   const { client } = useAuth()
+  const desktop = useMediaQuery(DESKTOP_QUERY)
   const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
   // The food just removed, kept so Undo can put it back exactly as it was.
   const [removed, setRemoved] = useState<LoggedFood | null>(null)
@@ -163,9 +169,15 @@ export function TodayScreen() {
         </output>
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (
-          <MealList groups={meals} busy={removing} onRemove={remove} headingRef={mealsHeadingRef} />
+          <MealList
+            groups={meals}
+            showTimes={desktop}
+            busy={removing}
+            onRemove={remove}
+            headingRef={mealsHeadingRef}
+          />
         ) : (
-          <NoMeals />
+          <NoMeals withButton={!desktop} />
         )}
       </>
     )
@@ -203,7 +215,14 @@ export function TodayScreen() {
         </div>
         {daysLogged ? <DaysLogged count={daysLogged} /> : null}
       </header>
-      <div className="flex min-w-0 flex-col gap-4">{content}</div>
+      <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start">
+        {desktop && (
+          <div className={`min-w-0 p-6 lg:grow lg:basis-90 ${CARD}`}>
+            <LogSheet embedded onAdded={reload} />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-col gap-4 lg:grow-2 lg:basis-130">{content}</div>
+      </div>
     </>
   )
 }
