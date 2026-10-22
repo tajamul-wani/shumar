@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import {
   SCREENS,
   accessibilityViolations,
+  apiClient,
+  createTestUser,
   cspViolations,
   readTestUsers,
   scrollsSideways,
@@ -112,4 +114,45 @@ test('the food sources page opens from the You screen and lists the USDA release
     'Foundation Foods, April 2026',
     'SR Legacy, April 2018',
   ])
+})
+
+test('the end of a long screen is never under the add button on a phone', async ({ page }) => {
+  const user = await createTestUser('clear')
+  const api = apiClient(user.session.access_token)
+  // Placeholder logs with easy numbers, enough to fill a phone screen; not nutrition data.
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const meals = ['breakfast', 'lunch', 'evening_tea', 'dinner', 'snack']
+  const inserted = await api.from('user_logs').insert(
+    meals.map((meal) => ({
+      log_date: today,
+      meal,
+      food_name: 'Test item',
+      food_source: 'usda',
+      quantity: 100,
+      unit_name: 'g',
+      grams: 100,
+      kcal: 100,
+      protein: 1,
+      carbs: 1,
+      fat: 1,
+    })),
+  )
+  expect(inserted.error).toBeNull()
+
+  try {
+    await signInAs(page, user.session)
+    await page.setViewportSize({ width: 360, height: 640 })
+    await page.goto('/')
+    const list = page.getByRole('region', { name: 'Meals' })
+    await expect(list).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+
+    const button = await page.getByRole('link', { name: 'Log food' }).boundingBox()
+    const end = await list.boundingBox()
+    if (!button || !end) throw new Error('The add button or the meals list is not on the screen')
+    expect(end.y + end.height).toBeLessThanOrEqual(button.y)
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
 })

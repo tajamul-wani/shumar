@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ThemeButton />
       </aside>
 
-      <main id="main" className="min-w-0 flex-1 px-4 pt-6 pb-36 lg:px-8 lg:pt-7 lg:pb-12">
+      <main id="main" className="min-w-0 flex-1 px-4 pt-6 pb-clear-add-button lg:px-8 lg:pt-7 lg:pb-12">
         <div className="mx-auto flex max-w-260 flex-col gap-6">{children}</div>
       </main>
 
