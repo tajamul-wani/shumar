@@ -34,7 +34,12 @@ const mealName = (food: LoggedFood) => MEAL_LABELS[food.meal].toLowerCase()
 function DaysLogged({ count }: { count: number }) {
   return (
     <p className="m-0 flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-koshur-border bg-koshur-surface px-3.5 text-body-sm font-semibold text-koshur-silk">
-      <CalendarCheck aria-hidden="true" size={20} strokeWidth={2} className="text-deficit-ring" />
+      <CalendarCheck
+        aria-hidden="true"
+        size={20}
+        strokeWidth={2}
+        className="size-4 sm:size-5 text-deficit-ring"
+      />
       {formatNumber(count)} {count === 1 ? 'day' : 'days'} logged
     </p>
   )

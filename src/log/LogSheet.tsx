@@ -245,7 +245,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
               aria-label="Close"
               className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-muted ${FOCUS_RING}`}
             >
-              <X aria-hidden="true" size={24} strokeWidth={2} />
+              <X aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
             </Link>
           )}
         </div>
@@ -255,7 +255,12 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
         <div
           className={`flex h-13 items-center gap-2.5 rounded-xl border border-koshur-border ${fill} px-4 focus-within:ring-2 focus-within:ring-deficit-ring`}
         >
-          <Search aria-hidden="true" size={20} strokeWidth={2} className="shrink-0 text-koshur-muted" />
+          <Search
+            aria-hidden="true"
+            size={20}
+            strokeWidth={2}
+            className="size-4 sm:size-5 shrink-0 text-koshur-muted"
+          />
           <label htmlFor={searchId} className="sr-only">
             Search foods
           </label>
@@ -284,7 +289,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
               aria-label="Clear search"
               className={`-mr-3 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-muted ${FOCUS_RING}`}
             >
-              <X aria-hidden="true" size={20} strokeWidth={2} />
+              <X aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
             </button>
           )}
         </div>

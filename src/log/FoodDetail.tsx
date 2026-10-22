@@ -19,6 +19,11 @@ import { MAX_QUANTITY } from '../lib/logs.ts'
 import { useSheetFill } from './fill.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
+/** Up to this many units show as chips; more (USDA portions can run to ten) fit better in a list. */
+const MAX_UNIT_CHIPS = 4
+
+const unitLabel = (unit: FoodUnit) => (unit.name === 'g' ? 'Grams' : unit.name)
+
 const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
 
 function twoPlaces(value: number): number {
@@ -39,7 +44,12 @@ function EstimateNote({ food }: { food: FoodResult }) {
       ]
   return (
     <div className={`flex gap-3 rounded-2xl border border-koshur-border ${fill} px-4 py-3.5`}>
-      <Info aria-hidden="true" size={20} strokeWidth={2} className="mt-0.5 shrink-0 text-koshur-muted" />
+      <Info
+        aria-hidden="true"
+        size={20}
+        strokeWidth={2}
+        className="mt-0.5 size-4 sm:size-5 shrink-0 text-koshur-muted"
+      />
       <div className="flex min-w-0 flex-col gap-1">
         <p className="m-0 text-body-sm font-semibold text-koshur-silk">{title}</p>
         <p className="m-0 text-body-sm text-koshur-muted">{body}</p>
@@ -100,6 +110,7 @@ export function FoodDetail({
   const Heading = headingLevel === 2 ? 'h2' : 'h1'
   const fill = useSheetFill()
   const quantityId = useId()
+  const unitId = useId()
   const hintId = useId()
   const quantity = parseQuantity(text)
   const step = quantityStep(unit)
@@ -130,16 +141,20 @@ export function FoodDetail({
 
   return (
     <>
-      <div className="flex items-center gap-1">
+      {/* The name can wrap, so the back button aligns with its first line rather than the middle. */}
+      <div className="flex items-start gap-1">
         <button
           type="button"
           onClick={onBack}
           aria-label={backLabel}
-          className={`-ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-silk ${FOCUS_RING}`}
+          className={`-mt-2 -ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-silk sm:-mt-1.5 ${FOCUS_RING}`}
         >
-          <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} />
+          <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
         </button>
-        <Heading tabIndex={-1} className="m-0 min-w-0 flex-1 text-heading font-semibold focus:outline-none">
+        <Heading
+          tabIndex={-1}
+          className="m-0 min-w-0 flex-1 text-title font-semibold focus:outline-none sm:text-heading"
+        >
           {food.name}
         </Heading>
       </div>
@@ -148,16 +163,39 @@ export function FoodDetail({
 
       {children}
 
-      <fieldset className="m-0 min-w-0 border-0 p-0">
-        <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
-        <div className="flex flex-wrap gap-2">
-          {units.map((option) => (
-            <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
-              {option.name === 'g' ? 'Grams' : option.name}
-            </Chip>
-          ))}
+      {units.length > MAX_UNIT_CHIPS ? (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={unitId} className="text-caption text-koshur-muted">
+            Unit
+          </label>
+          <select
+            id={unitId}
+            value={unit.name}
+            onChange={(event) => {
+              const next = units.find((option) => option.name === event.target.value)
+              if (next) chooseUnit(next)
+            }}
+            className={`h-13 min-w-0 rounded-xl border border-koshur-border ${fill} px-4 text-body text-koshur-silk ${FOCUS_RING}`}
+          >
+            {units.map((option) => (
+              <option key={option.name} value={option.name}>
+                {unitLabel(option)}
+              </option>
+            ))}
+          </select>
         </div>
-      </fieldset>
+      ) : (
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
+          <div className="flex flex-wrap gap-2">
+            {units.map((option) => (
+              <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
+                {unitLabel(option)}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={quantityId} className="text-caption text-koshur-muted">
@@ -171,7 +209,7 @@ export function FoodDetail({
             aria-label="Decrease quantity"
             className={`${STEP_BUTTON} ${fill}`}
           >
-            <Minus aria-hidden="true" size={20} strokeWidth={2} />
+            <Minus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
           </button>
           <input
             id={quantityId}
@@ -191,7 +229,7 @@ export function FoodDetail({
             aria-label="Increase quantity"
             className={`${STEP_BUTTON} ${fill}`}
           >
-            <Plus aria-hidden="true" size={20} strokeWidth={2} />
+            <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
           </button>
         </div>
         {hint && (

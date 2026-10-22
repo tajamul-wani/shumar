@@ -223,6 +223,26 @@ describe('a chosen food', () => {
     expect(insert).not.toHaveBeenCalled()
   })
 
+  it('lists many units in a dropdown instead of a wall of chips', async () => {
+    const units = ['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs'].map((name, i) => ({
+      name,
+      grams: 10 + i,
+    }))
+    renderScreen(fakeClient({ rows: [{ ...rice, units }] }))
+    await searchFor('rice')
+    await openFood('Test rice, cooked')
+    expect(screen.queryByRole('group', { name: 'Unit' })).not.toBeInTheDocument()
+    const unit = screen.getByRole('combobox', { name: 'Unit' })
+    expect(unit).toHaveValue('1 slice')
+    expect(
+      within(unit)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs', 'Grams'])
+    await userEvent.selectOptions(unit, 'g')
+    expect(screen.getByRole('textbox', { name: 'Quantity' })).toHaveValue('100')
+  })
+
   it('adds with the Enter key from the amount', async () => {
     const { insert } = renderScreen()
     await searchFor('rice')

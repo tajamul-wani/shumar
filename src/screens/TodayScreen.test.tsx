@@ -138,14 +138,18 @@ describe('the day at a glance', () => {
     expect(macros).toEqual(['Protein 4 g', 'Carbs 8 g', 'Fat 12 g'])
   })
 
-  it('lists the meals with food in them, in the order of the day, with their calories', async () => {
+  it('lists the meals with food in them, in the order of the day, with their calories and macros', async () => {
     renderToday()
     const meals = await screen.findByRole('region', { name: 'Meals' })
-    expect(
-      within(meals)
-        .getAllByRole('listitem')
-        .map((item) => item.textContent),
-    ).toEqual(['BreakfastTest bread · Test tea ×2330 kcal', 'DinnerTest rice200 kcal'])
+    const rows = within(meals).getAllByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner|Snack)/ })
+    expect(rows.map((row) => row.textContent?.match(/^[A-Za-z ]+?(?=\d|Protein)/)?.[0].trim())).toEqual([
+      'Breakfast',
+      'Dinner',
+    ])
+    expect(rows[0]).toHaveTextContent('Protein 3 g Carbs 6 g Fat 9 g 330 kcal')
+    expect(rows[1]).toHaveTextContent('Protein 1 g Carbs 2 g Fat 3 g 200 kcal')
+    // The meal row is a summary: its foods only show once it is opened.
+    expect(rows[0]).not.toHaveTextContent('Test tea')
   })
 
   it('shows how many days have been logged', async () => {
@@ -219,12 +223,12 @@ describe('changing and removing foods', () => {
     renderToday()
     const meals = await openBreakfast()
     expect(within(meals).getByText('Test bread')).toBeInTheDocument()
-    // The two identical teas show as one row, and Change opens the later one.
-    expect(within(meals).getByRole('link', { name: /^Change one Test tea/ })).toHaveAttribute(
+    // The two identical teas show as one row, and Edit opens the later one.
+    expect(within(meals).getByRole('link', { name: 'Edit one Test tea' })).toHaveAttribute(
       'href',
       '/log/edit/4',
     )
-    expect(within(meals).getByRole('link', { name: /^Change Test bread/ })).toHaveAttribute(
+    expect(within(meals).getByRole('link', { name: 'Edit Test bread' })).toHaveAttribute(
       'href',
       '/log/edit/2',
     )
@@ -234,12 +238,14 @@ describe('changing and removing foods', () => {
   it('shows the same food in the same amount once, with its count and their calories together', async () => {
     renderToday()
     const meals = await openBreakfast()
-    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent(
-      'Test tea ×2, 2 times 100 g each · 90 kcal',
-    )
+    const tea = within(meals).getByText('Test tea').closest('li')
+    expect(tea).toHaveTextContent('×2')
+    expect(tea).toHaveTextContent('100 g each · 90 kcal')
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
     expect(screen.getByText('Removed')).toBeInTheDocument()
-    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent('Test tea 100 g · 45 kcal')
+    const single = within(meals).getByText('Test tea').closest('li')
+    expect(single).toHaveTextContent('100 g · 45 kcal')
+    expect(single).not.toHaveTextContent('×')
     expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
   })
 

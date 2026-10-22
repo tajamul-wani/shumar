@@ -35,13 +35,6 @@ export function summarizeDay(logs: readonly LoggedFood[]): DaySummary {
   return { totals: sumNutrients(logs.map((log) => log.nutrients)), meals }
 }
 
-/** The food names in a meal, each once with how often it was logged, such as "Nun Chai ×2 · Girda". */
-export function mealFoodNames(group: MealGroup): string {
-  const counts = new Map<string, number>()
-  for (const food of group.foods) counts.set(food.foodName, (counts.get(food.foodName) ?? 0) + 1)
-  return [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name)).join(' · ')
-}
-
 export interface FoodEntry {
   /** The logs this row stands for, oldest first: one, or several identical ones. */
   logs: LoggedFood[]

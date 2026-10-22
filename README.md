@@ -257,9 +257,11 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 
 - The ring shows the calories eaten. Protein, carbs and fat follow, always in that order.
 - The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
-- The meals list shows each meal with food in it, in the order of the day, with its own icon, a large name and its calories. Opening a meal lists its foods: tapping a food opens the edit screen, and its bin button removes it. The same food in the same amount, logged more than once, shows as one row with its count (such as ×3) and their calories together, and the bin takes one away.
+- The meals list shows each meal with food in it, in the order of the day, with its calories and its protein, carbs and fat. Calories are always saffron and each macro has its own color, always with its name beside it.
+- Opening a meal lists its foods in a smaller size, each with its amount, calories, macros and sodium. Each food has **Edit** (the edit screen) and **Remove** buttons: labelled under the food on phones, icons beside it on wider screens. The same food in the same amount, logged more than once, shows once with its count (such as ×3) and their values together, and the bin takes one away.
 - Adding a food shows a short toast ("Added to lunch"), and Remove takes the food off the list at once and shows a toast with **Undo**, which puts it back exactly as it was logged. Toasts sit at the bottom right on wide screens and, on phones, in the bottom strip beside the add button, with a saffron edge for added and a gray one for removed. They close by themselves (8 seconds with Undo, 5 without) but wait while they are touched, hovered or focused, and focus goes to Undo after a removal, so nobody is rushed.
 - From 1024 px up, the log sheet sits beside the day as **Add food**, so a food added there shows in the day at once, and each meal shows the time of its first food. Phones and tablets use the round add button instead.
+- On phones, names step down a size, icons are smaller and rows keep room around them. No text is cut short: long food names wrap.
 - Loading, empty and failed days each have their own state, and a failed day can be tried again.
 
 </details>

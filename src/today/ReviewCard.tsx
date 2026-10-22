@@ -20,7 +20,7 @@ export function ReviewCard({ alert, now }: { alert: SodiumAlert; now: Date }) {
         id={headingId}
         className="m-0 flex items-center gap-2 text-caption font-semibold tracking-wide text-koshur-muted uppercase"
       >
-        <Icon aria-hidden="true" size={20} strokeWidth={2} className="text-deficit-ring" />
+        <Icon aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5 text-deficit-ring" />
         {title}
       </h2>
       <p className="m-0 flex items-start justify-between gap-3 text-body-sm">
@@ -29,7 +29,7 @@ export function ReviewCard({ alert, now }: { alert: SodiumAlert; now: Date }) {
             aria-hidden="true"
             size={20}
             strokeWidth={2}
-            className="shrink-0 text-alert-surplus"
+            className="mt-0.5 size-4 sm:size-5 shrink-0 text-alert-surplus sm:mt-0"
           />
           Sodium is high, mostly from {alert.mostFrom}
         </span>

@@ -3,7 +3,6 @@ import { parseLoggedFood, type LoggedFood } from './dayLogs.ts'
 import {
   SODIUM_LIMIT_MG,
   groupMealFoods,
-  mealFoodNames,
   reviewTitle,
   ringState,
   sodiumAlert,
@@ -57,10 +56,6 @@ describe('summarizeDay', () => {
       totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 },
       meals: [],
     })
-  })
-
-  it('names each food once, with how often it was logged', () => {
-    expect(mealFoodNames(summarizeDay(day).meals[0])).toBe('Test bread · Test tea ×2')
   })
 })
 

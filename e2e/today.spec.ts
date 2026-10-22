@@ -62,11 +62,14 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(page.getByRole('region', { name: /review$/ })).toContainText(
         'Sodium is high, mostly from Test tea',
       )
-      await expect(page.getByRole('region', { name: 'Meals' }).getByRole('listitem')).toHaveText([
-        // Wide screens also show the time of each meal.
-        /^Breakfast(\d{1,2}:\d{2})?Test tea · Test bread300 kcal$/,
-        /^Dinner(\d{1,2}:\d{2})?Test rice300 kcal$/,
-      ])
+      const meals = page.getByRole('region', { name: 'Meals' })
+      await expect(meals.getByRole('listitem')).toHaveCount(2)
+      await expect(meals.getByRole('button', { name: /^Breakfast/ })).toContainText(
+        'Protein 20 g Carbs 40 g Fat 10 g 300 kcal',
+      )
+      await expect(meals.getByRole('button', { name: /^Dinner/ })).toContainText(
+        'Protein 10 g Carbs 20 g Fat 5 g 300 kcal',
+      )
       await expect(page.getByText('1 day logged')).toBeVisible()
 
       const blocking = await accessibilityViolations(page)
@@ -123,7 +126,7 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await expect(ring).toContainText('300kcal eaten')
     await expect.poll(names).toEqual([{ food_name: 'Test bread' }, { food_name: 'Test tea' }])
 
-    await meals.getByRole('link', { name: /^Change Test tea/ }).click()
+    await meals.getByRole('link', { name: 'Edit Test tea' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Test tea' })).toBeFocused()
     await page.getByRole('button', { name: 'Increase quantity' }).click()
     await page.getByRole('button', { name: 'Save changes' }).click()
@@ -160,10 +163,12 @@ test('on a wide screen, a food added beside Today shows in the day at once', asy
 
     await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeFocused()
     await expect(ring).not.toContainText('0kcal eaten')
-    const meal = page.getByRole('region', { name: 'Meals' }).getByRole('listitem')
-    await expect(meal).toContainText('Eggs, Grade A, Large, egg whole')
-    // The time of the meal shows on wide screens.
+    const meals = page.getByRole('region', { name: 'Meals' })
+    const meal = meals.getByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner)/ })
+    // The time of the meal shows on wide screens, and its foods once it is opened.
     await expect(meal).toContainText(/\d{1,2}:\d{2}/)
+    await meal.click()
+    await expect(meals.getByRole('link', { name: 'Edit Eggs, Grade A, Large, egg whole' })).toBeVisible()
     await expect(page.getByText('1 day logged')).toBeVisible()
 
     const blocking = await accessibilityViolations(page)
@@ -197,7 +202,7 @@ test('the same food in the same amount shows once with its count, and Remove tak
     await page.goto('/')
     const meals = page.getByRole('region', { name: 'Meals' })
     const breakfast = meals.getByRole('button', { name: /^Breakfast/ })
-    await expect(breakfast).toContainText('Test egg ×3')
+    await expect(breakfast).toContainText('177 kcal')
     await breakfast.click()
 
     const row = meals.getByRole('listitem').filter({ hasText: 'Test egg' }).last()
