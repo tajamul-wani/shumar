@@ -16,9 +16,10 @@ import {
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { MAX_QUANTITY } from '../lib/logs.ts'
+import { useSheetFill } from './fill.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
-const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border bg-koshur-surface text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
+const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
 
 function twoPlaces(value: number): number {
   return Math.round(value * 100) / 100
@@ -26,6 +27,7 @@ function twoPlaces(value: number): number {
 
 /** Why the values are an estimate, and where to read how they were worked out. */
 function EstimateNote({ food }: { food: FoodResult }) {
+  const fill = useSheetFill()
   const [title, body] = food.flagged
     ? [
         'Estimate, these values may be off',
@@ -36,7 +38,7 @@ function EstimateNote({ food }: { food: FoodResult }) {
         'Worked out from a weighed recipe and not yet confirmed by a second weighing. Oil and meat cuts change the numbers most.',
       ]
   return (
-    <div className="flex gap-3 rounded-2xl border border-koshur-border bg-koshur-surface px-4 py-3.5">
+    <div className={`flex gap-3 rounded-2xl border border-koshur-border ${fill} px-4 py-3.5`}>
       <Info aria-hidden="true" size={20} strokeWidth={2} className="mt-0.5 shrink-0 text-koshur-muted" />
       <div className="flex min-w-0 flex-col gap-1">
         <p className="m-0 text-body-sm font-semibold text-koshur-silk">{title}</p>
@@ -59,6 +61,8 @@ const MACROS = [
 ] as const
 
 interface FoodDetailProps {
+  /** 1 on a screen of its own, 2 inside another screen. */
+  headingLevel?: 1 | 2
   food: FoodResult
   initialUnit: FoodUnit
   initialQuantity: number
@@ -72,6 +76,7 @@ interface FoodDetailProps {
 
 /** The chosen food: pick a unit and an amount, see the values, then add it to the meal. */
 export function FoodDetail({
+  headingLevel = 1,
   food,
   initialUnit,
   initialQuantity,
@@ -83,6 +88,8 @@ export function FoodDetail({
 }: FoodDetailProps) {
   const [unit, setUnit] = useState(initialUnit)
   const [text, setText] = useState(() => String(initialQuantity))
+  const Heading = headingLevel === 2 ? 'h2' : 'h1'
+  const fill = useSheetFill()
   const quantityId = useId()
   const hintId = useId()
   const quantity = parseQuantity(text)
@@ -123,9 +130,9 @@ export function FoodDetail({
         >
           <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} />
         </button>
-        <h1 tabIndex={-1} className="m-0 min-w-0 flex-1 text-heading font-semibold focus:outline-none">
+        <Heading tabIndex={-1} className="m-0 min-w-0 flex-1 text-heading font-semibold focus:outline-none">
           {food.name}
-        </h1>
+        </Heading>
       </div>
 
       {estimate && <EstimateNote food={food} />}
@@ -151,7 +158,7 @@ export function FoodDetail({
             onClick={() => stepBy(-1)}
             disabled={quantity === null || quantity <= step}
             aria-label="Decrease quantity"
-            className={STEP_BUTTON}
+            className={`${STEP_BUTTON} ${fill}`}
           >
             <Minus aria-hidden="true" size={20} strokeWidth={2} />
           </button>
@@ -164,14 +171,14 @@ export function FoodDetail({
             onChange={(event) => setText(event.target.value)}
             onKeyDown={addOnEnter}
             aria-describedby={hint ? hintId : undefined}
-            className={`h-13 min-w-0 flex-1 rounded-xl border border-koshur-border bg-koshur-surface text-center text-heading font-semibold text-koshur-silk ${FOCUS_RING}`}
+            className={`h-13 min-w-0 flex-1 rounded-xl border border-koshur-border ${fill} text-center text-heading font-semibold text-koshur-silk ${FOCUS_RING}`}
           />
           <button
             type="button"
             onClick={() => stepBy(1)}
             disabled={quantity !== null && quantity + step > MAX_QUANTITY}
             aria-label="Increase quantity"
-            className={STEP_BUTTON}
+            className={`${STEP_BUTTON} ${fill}`}
           >
             <Plus aria-hidden="true" size={20} strokeWidth={2} />
           </button>

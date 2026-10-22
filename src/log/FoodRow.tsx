@@ -8,6 +8,7 @@ import {
   sourceLabel,
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
+import { useSheetFill } from './fill.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -26,6 +27,7 @@ export function FoodRow({ food, unit, quantity, onOpen, onQuickAdd, busy = false
   const amount = amountLabel(quantity, unit)
   const kcal = nutrientsFor(food, quantity, unit)?.kcal ?? 0
   const estimate = isEstimate(food)
+  const fill = useSheetFill()
   return (
     <li className="flex items-center gap-3 border-b border-koshur-border py-2.5">
       <button
@@ -53,7 +55,7 @@ export function FoodRow({ food, unit, quantity, onOpen, onQuickAdd, busy = false
           onClick={onQuickAdd}
           disabled={busy}
           aria-label={`Add ${amount} ${food.name}`}
-          className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border bg-koshur-surface text-deficit-ring disabled:opacity-60 ${FOCUS_RING}`}
+          className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border ${fill} text-deficit-ring disabled:opacity-60 ${FOCUS_RING}`}
         >
           <Plus aria-hidden="true" size={20} strokeWidth={2} />
         </button>

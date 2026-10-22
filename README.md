@@ -236,7 +236,7 @@ To import a new USDA release:
 <details>
 <summary><strong>Logging a meal</strong></summary>
 
-The add button opens the log sheet at `/log` (`src/screens/LogFoodScreen.tsx`).
+The add button opens the log sheet at `/log`. The sheet is one component, `src/log/LogSheet.tsx`, so another screen can show it too.
 
 - It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. **Change meal** picks any of the five, including snack.
 - `src/log/useFoodSearch.ts` searches once typing pauses for 300 ms and cancels a search that is no longer wanted.

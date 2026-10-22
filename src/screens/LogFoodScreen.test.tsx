@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
 import { parseResults } from '../lib/foodSearch.ts'
 import { RECENT_FOODS_KEY, rememberFood } from '../lib/recentFoods.ts'
+import { LogSheet } from '../log/LogSheet.tsx'
 import { LogFoodScreen } from './LogFoodScreen.tsx'
 
 // Made-up foods with easy numbers for checking the screen, not nutrition data.
@@ -288,5 +289,53 @@ describe('recent foods', () => {
     renderScreen(fakeClient({ saveFails: true }))
     await userEvent.click(screen.getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't save this food.")
+  })
+})
+
+describe('inside another screen', () => {
+  function renderEmbedded(onAdded = vi.fn<() => void>(), fake = fakeClient()) {
+    render(
+      <AuthContext.Provider value={{ client: fake.client, session: null, loading: false }}>
+        <main id="main">
+          <h1 tabIndex={-1}>Today</h1>
+          <section aria-label="Add food">
+            <LogSheet embedded onAdded={onAdded} />
+          </section>
+        </main>
+      </AuthContext.Provider>,
+    )
+    return { onAdded, ...fake }
+  }
+
+  it('is a section titled Add food, with the meal on its button and no close button', async () => {
+    renderEmbedded()
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Close' })).not.toBeInTheDocument()
+    const change = screen.getByRole('button', { name: 'To dinner, change meal' })
+    expect(change).toHaveTextContent('To dinner')
+    await userEvent.click(change)
+    await userEvent.click(
+      within(screen.getByRole('group', { name: 'Meal' })).getByRole('button', { name: 'Lunch' }),
+    )
+    expect(screen.getByRole('button', { name: 'To lunch, change meal' })).toHaveFocus()
+  })
+
+  it("keeps focus inside the sheet instead of the page's heading", async () => {
+    renderEmbedded()
+    await searchFor('rice')
+    await openFood('Test rice, cooked')
+    expect(screen.getByRole('heading', { level: 2, name: 'Test rice, cooked' })).toHaveFocus()
+    await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toHaveFocus()
+  })
+
+  it('tells the screen around it when a food is added', async () => {
+    const [food] = parseResults([rice])
+    rememberFood({ food, unitName: '1 cup', quantity: 1 })
+    const { onAdded, insert } = renderEmbedded()
+    expect(screen.getByRole('heading', { level: 3, name: 'Recent' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 cup Test rice, cooked' }))
+    expect(insert).toHaveBeenCalled()
+    expect(onAdded).toHaveBeenCalledTimes(1)
   })
 })
