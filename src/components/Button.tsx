@@ -1,7 +1,7 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ComponentProps } from 'react'
 import { buttonClass, type ButtonSize, type ButtonVariant } from './buttonStyles.ts'
 
-interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
+interface ButtonProps extends Omit<ComponentProps<'button'>, 'type'> {
   variant?: ButtonVariant
   size?: ButtonSize
 }

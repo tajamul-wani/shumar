@@ -38,22 +38,44 @@ interface FakeOptions {
   logs?: unknown[]
   daysLogged?: Result
   failLogs?: boolean
+  failRemove?: boolean
+  failRestore?: boolean
 }
 
 /** Answers the day's logs and the days-logged count, and records what was asked. */
 function fakeClient(options: FakeOptions = {}) {
   const state = { logs: options.logs ?? day, failLogs: options.failLogs ?? false }
   const eq = vi.fn<(column: string, value: unknown) => void>()
+  const removed = vi.fn<(id: unknown) => void>()
+  const inserted = vi.fn<(row: unknown) => void>()
+  const offline = { data: null, error: { message: 'offline' } }
   const from = vi.fn<(table: string) => unknown>(() => {
+    let kind: 'read' | 'remove' | 'restore' = 'read'
+    let row: Record<string, unknown> = {}
+    const answer = (): Result => {
+      if (kind === 'remove') return options.failRemove ? offline : { data: [{ id: 'x' }], error: null }
+      if (kind === 'restore')
+        return options.failRestore ? offline : { data: { ...row, id: 'restored' }, error: null }
+      return state.failLogs ? offline : { data: state.logs, error: null }
+    }
     const query: Record<string, unknown> = {
       then: (resolve: (value: Result) => unknown, reject: (reason: unknown) => unknown) =>
-        Promise.resolve(
-          state.failLogs ? { data: null, error: { message: 'offline' } } : { data: state.logs, error: null },
-        ).then(resolve, reject),
+        Promise.resolve(answer()).then(resolve, reject),
     }
-    for (const name of ['select', 'order']) query[name] = () => query
+    for (const name of ['select', 'order', 'single']) query[name] = () => query
     query.eq = (column: string, value: unknown) => {
       eq(column, value)
+      if (kind === 'remove') removed(value)
+      return query
+    }
+    query.delete = () => {
+      kind = 'remove'
+      return query
+    }
+    query.insert = (value: Record<string, unknown>) => {
+      kind = 'restore'
+      row = value
+      inserted(value)
       return query
     }
     return query
@@ -61,7 +83,7 @@ function fakeClient(options: FakeOptions = {}) {
   const rpc = vi.fn<(name: string) => Promise<Result>>(
     async () => options.daysLogged ?? { data: 12, error: null },
   )
-  return { client: { auth: {}, from, rpc } as unknown as AppClient, state, from, rpc, eq }
+  return { client: { auth: {}, from, rpc } as unknown as AppClient, state, from, rpc, eq, removed, inserted }
 }
 
 function renderToday(fake = fakeClient()) {
@@ -171,5 +193,85 @@ describe('an empty or failed day', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('region', { name: 'Meals' })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('changing and removing foods', () => {
+  async function openBreakfast() {
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    const row = within(meals).getByRole('button', { name: /^Breakfast/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    return meals
+  }
+
+  it('opens a meal to list its foods, each with a way to change it', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
+    expect(within(meals).getAllByRole('link', { name: 'Change Test tea' })[0]).toHaveAttribute(
+      'href',
+      '/log/edit/1',
+    )
+    expect(within(meals).getByRole('link', { name: 'Change Test bread' })).toHaveAttribute(
+      'href',
+      '/log/edit/2',
+    )
+    expect(within(meals).queryByRole('button', { name: 'Remove Test rice' })).not.toBeInTheDocument()
+  })
+
+  it('removes a food at once and puts it back exactly as it was with Undo', async () => {
+    const fake = renderToday()
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+
+    expect(fake.removed).toHaveBeenCalledWith('2')
+    expect(within(meals).queryByText('Test bread')).not.toBeInTheDocument()
+    expect(within(ring()).getByText('290')).toBeInTheDocument()
+    expect(screen.getByText('Removed Test bread from breakfast.')).toBeInTheDocument()
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    expect(undo).toHaveFocus()
+
+    await userEvent.click(undo)
+    expect(fake.inserted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_name: 'Test bread',
+        meal: 'breakfast',
+        kcal: 240,
+        logged_at: '2026-10-21T08:05:00+05:30',
+      }),
+    )
+    expect(await within(meals).findByText('Test bread')).toBeInTheDocument()
+    expect(within(ring()).getByText('530')).toBeInTheDocument()
+    expect(screen.getByText('Put Test bread back in breakfast.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('brings the food back and explains when it cannot be removed', async () => {
+    renderToday(fakeClient({ failRemove: true }))
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't remove this food.")
+    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('keeps Undo and explains when the food cannot be put back', async () => {
+    renderToday(fakeClient({ failRestore: true }))
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't put this food back.")
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled()
+  })
+
+  it("shows the empty day after removing the day's only food", async () => {
+    renderToday(fakeClient({ logs: [log('3', 'dinner', 'Test rice', '20:45', 200)] }))
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    await userEvent.click(within(meals).getByRole('button', { name: /^Dinner/ }))
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test rice' }))
+    expect(screen.getByText('No meals yet today.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
   })
 })

@@ -12,6 +12,10 @@ export interface DayLogs {
   daysLogged: number | null
   /** Reads the day again, for example after a food is added beside it. */
   reload: () => void
+  /** Changes the day's list on the screen at once, such as when a food is removed. */
+  update: (change: (logs: LoggedFood[]) => LoggedFood[]) => void
+  /** Reads the days-logged count again, as removing a day's last food can lower it. */
+  refreshDays: () => void
 }
 
 /** The foods logged on one day, and how many days the person has logged in all. */
@@ -61,5 +65,13 @@ export function useDayLogs(dateKey: string): DayLogs {
     load()
   }, [load])
 
-  return { logs, error, daysLogged, reload }
+  const update = useCallback((change: (current: LoggedFood[]) => LoggedFood[]) => {
+    setLogs((current) => (current ? change(current) : current))
+  }, [])
+
+  const refreshDays = useCallback(() => {
+    fetchDaysLogged(client).then(setDaysLogged, () => undefined)
+  }, [client])
+
+  return { logs, error, daysLogged, reload, update, refreshDays }
 }

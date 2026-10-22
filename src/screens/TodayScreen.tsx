@@ -1,11 +1,15 @@
 import { CalendarCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'wouter'
+import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
+import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
+import { LogError } from '../lib/logs.ts'
+import { MEAL_LABELS } from '../lib/meals.ts'
 import { sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { LOG_FOOD_PATH } from '../shell/nav.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
@@ -15,6 +19,14 @@ import { ReviewCard } from '../today/ReviewCard.tsx'
 import { useDayLogs } from '../today/useDayLogs.ts'
 
 const CARD = 'rounded-2xl border border-koshur-border bg-koshur-surface'
+
+const byTime = (a: LoggedFood, b: LoggedFood) => Date.parse(a.loggedAt) - Date.parse(b.loggedAt)
+
+function messageFrom(failure: unknown, fallback: string): string {
+  return failure instanceof LogError ? failure.message : fallback
+}
+
+const mealName = (food: LoggedFood) => MEAL_LABELS[food.meal].toLowerCase()
 
 function DaysLogged({ count }: { count: number }) {
   return (
@@ -53,7 +65,72 @@ export function TodayScreen() {
   useDocumentTitle('Today')
   // Read once when the screen opens, so re-renders never change the date mid-view.
   const [today] = useState(() => new Date())
-  const { logs, error, daysLogged, reload } = useDayLogs(localDateKey(today))
+  const { client } = useAuth()
+  const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
+  // The food just removed, kept so Undo can put it back exactly as it was.
+  const [removed, setRemoved] = useState<LoggedFood | null>(null)
+  const [removing, setRemoving] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  // Settles true once the last removal is saved, false if it failed. Undo waits for it.
+  const pendingRemoval = useRef<Promise<boolean>>(Promise.resolve(true))
+  const undoRef = useRef<HTMLButtonElement>(null)
+  const mealsHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  // After a removal, focus goes to Undo, so a keyboard can reverse it at once.
+  useEffect(() => {
+    if (removed) undoRef.current?.focus()
+  }, [removed])
+
+  async function remove(food: LoggedFood) {
+    setActionError(null)
+    update((current) => current.filter((log) => log.id !== food.id))
+    setRemoved(food)
+    setNotice(`Removed ${food.foodName} from ${mealName(food)}.`)
+    setRemoving(true)
+    const saved = removeLog(client, food.id).then(
+      () => true,
+      (failure: unknown) => {
+        update((current) => [...current, food].sort(byTime))
+        setRemoved(null)
+        setNotice(null)
+        setActionError(
+          messageFrom(failure, "We couldn't remove this food. Check your connection and try again."),
+        )
+        return false
+      },
+    )
+    pendingRemoval.current = saved
+    if (await saved) refreshDays()
+    setRemoving(false)
+  }
+
+  async function undo() {
+    if (!removed || restoring) return
+    setActionError(null)
+    setRestoring(true)
+    // Undo can be tapped before the removal is saved: wait for it, and if it failed the food is already back.
+    if (!(await pendingRemoval.current)) {
+      setRestoring(false)
+      return
+    }
+    try {
+      const restored = await restoreLog(client, removed)
+      update((current) => [...current, restored].sort(byTime))
+      setNotice(`Put ${removed.foodName} back in ${mealName(removed)}.`)
+      setRemoved(null)
+      refreshDays()
+      // The list may only now be back (when the day's only food was undone), so wait for it to draw.
+      requestAnimationFrame(() => mealsHeadingRef.current?.focus())
+    } catch (failure) {
+      setActionError(
+        messageFrom(failure, "We couldn't put this food back. Check your connection and try again."),
+      )
+    } finally {
+      setRestoring(false)
+    }
+  }
 
   let content
   if (logs) {
@@ -63,7 +140,33 @@ export function TodayScreen() {
       <>
         {alert && <ReviewCard alert={alert} now={today} />}
         <CaloriesCard totals={totals} />
-        {meals.length > 0 ? <MealList groups={meals} /> : <NoMeals />}
+        <output
+          className={
+            notice
+              ? 'flex min-h-11 items-center justify-between gap-3 text-body-sm text-koshur-silk'
+              : 'sr-only'
+          }
+        >
+          {notice}
+          {removed && (
+            <Button
+              ref={undoRef}
+              variant="secondary"
+              size="small"
+              onClick={undo}
+              aria-disabled={restoring}
+              className="aria-disabled:opacity-60"
+            >
+              Undo
+            </Button>
+          )}
+        </output>
+        {actionError && <Alert>{actionError}</Alert>}
+        {meals.length > 0 ? (
+          <MealList groups={meals} busy={removing} onRemove={remove} headingRef={mealsHeadingRef} />
+        ) : (
+          <NoMeals />
+        )}
       </>
     )
   } else if (error) {

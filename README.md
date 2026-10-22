@@ -256,7 +256,8 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 
 - The ring shows the calories eaten. Protein, carbs and fat follow, always in that order.
 - The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
-- The meals list shows each meal with food in it, in the order of the day, with its calories.
+- The meals list shows each meal with food in it, in the order of the day, with its calories. Opening a meal lists its foods, each with **Change** (the edit screen) and **Remove**.
+- Remove takes the food off the list at once and offers **Undo**, which puts it back exactly as it was logged. Undo stays until the next action, so nobody is rushed.
 - Loading, empty and failed days each have their own state, and a failed day can be tried again.
 
 </details>
