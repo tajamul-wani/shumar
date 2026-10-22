@@ -77,10 +77,15 @@ function About() {
       </h2>
       <Link
         href="/sources"
-        className="flex min-h-13 items-center justify-between border-t border-koshur-border px-5 text-body text-koshur-silk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
+        className="flex min-h-13 items-start justify-between gap-3 border-t border-koshur-border px-5 py-3.5 text-body text-koshur-silk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
       >
         Where food values come from
-        <ChevronRight aria-hidden="true" size={20} strokeWidth={2} className="text-koshur-muted lg:hidden" />
+        <ChevronRight
+          aria-hidden="true"
+          size={20}
+          strokeWidth={2}
+          className="mt-0.5 shrink-0 text-koshur-muted lg:hidden"
+        />
       </Link>
       <p className="m-0 border-t border-koshur-border px-5 pt-3 pb-4 text-caption text-koshur-muted">
         Ingredient values from USDA FoodData Central, in the public domain. Shumār 0.1
@@ -107,7 +112,7 @@ export function YouScreen({ user }: { user: AccountUser }) {
         You
       </h1>
       <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6">
-        <section aria-label="Account" className={`${CARD} flex min-w-0 items-center gap-3.5 px-5 py-4`}>
+        <section aria-label="Account" className={`${CARD} flex min-w-0 items-start gap-3.5 px-5 py-4`}>
           <span
             aria-hidden="true"
             className="flex size-12 shrink-0 items-center justify-center rounded-full border border-koshur-border bg-koshur-base text-title font-semibold text-deficit-ring"
@@ -115,11 +120,11 @@ export function YouScreen({ user }: { user: AccountUser }) {
             {initial}
           </span>
           <span className="flex min-w-0 grow flex-col gap-0.5">
-            <span className="truncate text-body font-semibold">{name}</span>
-            {detail && <span className="truncate text-body-sm text-koshur-muted">{detail}</span>}
+            <span className="text-body font-semibold wrap-anywhere">{name}</span>
+            {detail && <span className="text-body-sm text-koshur-muted wrap-anywhere">{detail}</span>}
           </span>
           {/* A wrapper hides it on phones: the button's own display class would win over "hidden". */}
-          <div className="hidden shrink-0 lg:block">
+          <div className="hidden shrink-0 self-center lg:block">
             <Button variant="secondary" size="small" onClick={handleSignOut}>
               Sign out
             </Button>

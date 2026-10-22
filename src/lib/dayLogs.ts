@@ -1,0 +1,218 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FoodResult, FoodSource, FoodUnit } from './foodSearch.ts'
+import { LogError, buildLogRow } from './logs.ts'
+import { isMeal, type Meal } from './meals.ts'
+import { GRAM, type Nutrients } from './nutrition.ts'
+
+/**
+ * Reading and changing the foods a person has logged. Row-level security limits every query
+ * to the signed-in person's own logs, and every row is checked before the app uses it.
+ */
+
+export interface LoggedFood {
+  id: string
+  /** The local calendar day, YYYY-MM-DD. */
+  logDate: string
+  /** When it was logged, as an ISO timestamp. */
+  loggedAt: string
+  meal: Meal
+  foodName: string
+  foodSource: FoodSource
+  foodSourceId: string | null
+  quantity: number
+  unitName: string
+  grams: number
+  /** The values saved when it was logged. */
+  nutrients: Nutrients
+}
+
+type LogsClient = Pick<SupabaseClient, 'from'>
+
+/** Only the columns the app shows, so each read stays small. */
+const LOG_COLUMNS =
+  'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg'
+
+function number(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
+  return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max ? n : null
+}
+
+function text(value: unknown, maxLength: number): string | null {
+  return typeof value === 'string' && value.trim() !== '' && value.length <= maxLength ? value : null
+}
+
+/** Checks one user_logs row against the table's own limits. Returns null if anything is off. */
+export function parseLoggedFood(value: unknown): LoggedFood | null {
+  const row = (value ?? {}) as Record<string, unknown>
+  const id = text(row.id, 64)
+  const logDate =
+    typeof row.log_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.log_date) ? row.log_date : null
+  const loggedAt = text(row.logged_at, 64)
+  const meal = isMeal(row.meal) ? row.meal : null
+  const foodName = text(row.food_name, 200)
+  const foodSource = row.food_source === 'kashmiri' || row.food_source === 'usda' ? row.food_source : null
+  const foodSourceId = row.food_source_id == null ? null : text(row.food_source_id, 100)
+  const quantity = number(row.quantity, Number.MIN_VALUE, 10000)
+  const unitName = text(row.unit_name, 60)
+  const grams = number(row.grams, Number.MIN_VALUE, 20000)
+  const kcal = number(row.kcal, 0, 1e6)
+  const protein = number(row.protein, 0, 1e5)
+  const carbs = number(row.carbs, 0, 1e5)
+  const fat = number(row.fat, 0, 1e5)
+  const sodiumMg = number(row.sodium_mg, 0, 1e7)
+  if (
+    !id ||
+    !logDate ||
+    !loggedAt ||
+    Number.isNaN(Date.parse(loggedAt)) ||
+    !meal ||
+    !foodName ||
+    !foodSource ||
+    (row.food_source_id != null && !foodSourceId) ||
+    quantity === null ||
+    !unitName ||
+    grams === null ||
+    kcal === null ||
+    protein === null ||
+    carbs === null ||
+    fat === null ||
+    sodiumMg === null
+  ) {
+    return null
+  }
+  return {
+    id,
+    logDate,
+    loggedAt,
+    meal,
+    foodName,
+    foodSource,
+    foodSourceId,
+    quantity,
+    unitName,
+    grams,
+    nutrients: { kcal, protein, carbs, fat, sodiumMg },
+  }
+}
+
+function parseRows(rows: unknown): LoggedFood[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map(parseLoggedFood).filter((log): log is LoggedFood => log !== null)
+}
+
+/** Everything logged on one day, oldest first. */
+export async function fetchDayLogs(client: LogsClient, dateKey: string): Promise<LoggedFood[]> {
+  const { data, error } = await client
+    .from('user_logs')
+    .select(LOG_COLUMNS)
+    .eq('log_date', dateKey)
+    .order('logged_at')
+  if (error) throw new LogError("We couldn't load your food for today. Check your connection and try again.")
+  return parseRows(data)
+}
+
+/** One log, or null when it doesn't exist or isn't this person's. */
+export async function fetchLog(client: LogsClient, id: string): Promise<LoggedFood | null> {
+  const { data, error } = await client.from('user_logs').select(LOG_COLUMNS).eq('id', id).maybeSingle()
+  if (error) throw new LogError("We couldn't load this food. Check your connection and try again.")
+  return parseLoggedFood(data)
+}
+
+/** How many different days this person has logged food on, or null if it can't be read. */
+export async function fetchDaysLogged(client: Pick<SupabaseClient, 'rpc'>): Promise<number | null> {
+  const { data, error } = await client.rpc('days_logged')
+  if (error) return null
+  return number(data, 0, 1e6)
+}
+
+export async function removeLog(client: LogsClient, id: string): Promise<void> {
+  const { data, error } = await client.from('user_logs').delete().eq('id', id).select('id')
+  if (error || !Array.isArray(data) || data.length === 0) {
+    throw new LogError("We couldn't remove this food. Check your connection and try again.")
+  }
+}
+
+/** Puts a removed food back exactly as it was logged, and returns it with its new id. */
+export async function restoreLog(client: LogsClient, log: LoggedFood): Promise<LoggedFood> {
+  const { data, error } = await client
+    .from('user_logs')
+    .insert({
+      log_date: log.logDate,
+      logged_at: log.loggedAt,
+      meal: log.meal,
+      food_name: log.foodName,
+      food_source: log.foodSource,
+      food_source_id: log.foodSourceId,
+      quantity: log.quantity,
+      unit_name: log.unitName,
+      grams: log.grams,
+      kcal: log.nutrients.kcal,
+      protein: log.nutrients.protein,
+      carbs: log.nutrients.carbs,
+      fat: log.nutrients.fat,
+      sodium_mg: log.nutrients.sodiumMg,
+    })
+    .select(LOG_COLUMNS)
+    .single()
+  const restored = error ? null : parseLoggedFood(data)
+  if (!restored) throw new LogError("We couldn't put this food back. Check your connection and try again.")
+  return restored
+}
+
+/**
+ * The food behind a log, for changing its amount. A log keeps the values it was saved with, so
+ * the per-100 g values come from those (keeping what the person saw), and the units on offer are
+ * the one it was logged in plus grams. A log keeps no estimate flags, so none are shown.
+ */
+export function foodFromLog(log: LoggedFood): { food: FoodResult; unit: FoodUnit; quantity: number } {
+  const per100 = (value: number) => (value * 100) / log.grams
+  const unit = log.unitName === GRAM.name ? GRAM : { name: log.unitName, grams: log.grams / log.quantity }
+  const food: FoodResult = {
+    source: log.foodSource,
+    sourceId: log.foodSourceId ?? log.id,
+    name: log.foodName,
+    per100g: {
+      kcal: per100(log.nutrients.kcal),
+      protein: per100(log.nutrients.protein),
+      carbs: per100(log.nutrients.carbs),
+      fat: per100(log.nutrients.fat),
+      sodiumMg: per100(log.nutrients.sodiumMg),
+    },
+    units: unit === GRAM ? [GRAM] : [GRAM, unit],
+    flagged: false,
+    verified: true,
+  }
+  return { food, unit, quantity: log.quantity }
+}
+
+export interface LogChange {
+  meal: Meal
+  quantity: number
+  unit: FoodUnit
+}
+
+/** Saves a new meal, amount or unit for a log. Its day and food stay the same. */
+export async function changeLog(client: LogsClient, log: LoggedFood, change: LogChange): Promise<LoggedFood> {
+  const { food } = foodFromLog(log)
+  // Noon on the log's own day, so the checked row keeps that day whatever the time zone.
+  const row = buildLogRow({ ...change, food, date: new Date(`${log.logDate}T12:00:00`) })
+  const { data, error } = await client
+    .from('user_logs')
+    .update({
+      meal: row.meal,
+      quantity: row.quantity,
+      unit_name: row.unit_name,
+      grams: row.grams,
+      kcal: row.kcal,
+      protein: row.protein,
+      carbs: row.carbs,
+      fat: row.fat,
+      sodium_mg: row.sodium_mg,
+    })
+    .eq('id', log.id)
+    .select(LOG_COLUMNS)
+    .maybeSingle()
+  const changed = error ? null : parseLoggedFood(data)
+  if (!changed) throw new LogError("We couldn't save your changes. Check your connection and try again.")
+  return changed
+}

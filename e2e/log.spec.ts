@@ -40,9 +40,9 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   await page.goto('/log')
 
   // Choose lunch, so the test doesn't depend on the time of day.
-  await page.getByRole('button', { name: 'Change meal' }).click()
+  await page.getByRole('button', { name: /, change meal$/ }).click()
   await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Lunch' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Add to lunch' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'To lunch, change meal' })).toBeVisible()
 
   await openEgg(page)
   await expect(
@@ -53,8 +53,8 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   await expect(page.getByRole('textbox', { name: 'Quantity' })).toHaveValue('2')
   await page.getByRole('button', { name: 'Add to lunch' }).click()
 
-  await expect(page.getByText(`Added 2 × ${EGG_UNIT} of ${EGG} to lunch.`)).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: 'Add to lunch' })).toBeFocused()
+  await expect(page.getByRole('status').filter({ hasText: /^Added to lunch/ })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Add food' })).toBeFocused()
   await expect(page.getByRole('region', { name: 'Recent' })).toContainText(EGG)
   expect(await cspViolations(page)).toEqual([])
 
@@ -92,6 +92,60 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   }
 })
 
+test('a person changes the amount and meal of a logged food', async ({ page }) => {
+  const user = await createTestUser('edit')
+  const api = apiClient(user.session.access_token)
+  // A placeholder log with easy numbers: it only exercises the screen and is not nutrition data.
+  const created = await api
+    .from('user_logs')
+    .insert({
+      meal: 'breakfast',
+      food_name: 'Test tea',
+      food_source: 'kashmiri',
+      quantity: 1,
+      unit_name: 'cup',
+      grams: 150,
+      kcal: 45,
+      protein: 1.5,
+      carbs: 4.5,
+      fat: 2.25,
+      sodium_mg: 300,
+    })
+    .select('id')
+    .single()
+  expect(created.error).toBeNull()
+  const id = created.data?.id as string
+
+  await watchCsp(page)
+  await signInAs(page, user.session)
+  await page.goto(`/log/edit/${id}`)
+  await expect(page.getByRole('heading', { level: 1, name: 'Test tea' })).toBeFocused()
+  const blocking = await accessibilityViolations(page)
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+  const size = page.viewportSize()
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await scrollsSideways(page)).toBe(false)
+  if (size) await page.setViewportSize(size)
+
+  await page.getByRole('button', { name: 'Increase quantity' }).click()
+  await page.getByRole('button', { name: 'Increase quantity' }).click()
+  await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Dinner' }).click()
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await expect(page).toHaveURL('/')
+  expect(await cspViolations(page)).toEqual([])
+
+  const saved = await api
+    .from('user_logs')
+    .select('meal, quantity, grams, kcal, sodium_mg')
+    .eq('id', id)
+    .single()
+  try {
+    expect(saved.data).toEqual({ meal: 'dinner', quantity: 2, grams: 300, kcal: 90, sodium_mg: 600 })
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
+})
+
 test('a search made earlier today is answered on the device after a reload', async ({ page }) => {
   await signInAs(page, readTestUsers().a.session)
   let requests = 0
@@ -109,6 +163,24 @@ test('a search made earlier today is answered on the device after a reload', asy
   await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
   await expect(results).toContainText(EGG)
   expect(requests).toBe(1)
+})
+
+test('the log sheet header stays on one line on a 320 px phone, even for evening tea', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/log')
+  await page.getByRole('button', { name: /, change meal$/ }).click()
+  await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Evening tea' }).click()
+
+  const heading = await page.getByRole('heading', { level: 1, name: 'Add food' }).boundingBox()
+  const meal = await page.getByRole('button', { name: 'To evening tea, change meal' }).boundingBox()
+  if (!heading || !meal) throw new Error('The header is not on the screen')
+  // One line each: the heading no taller than its 28 px line, the button no taller than its 44 px.
+  expect(heading.height).toBeLessThanOrEqual(28)
+  expect(meal.height).toBeLessThanOrEqual(44)
+  // And side by side, level with each other.
+  expect(Math.abs(heading.y + heading.height / 2 - (meal.y + meal.height / 2))).toBeLessThan(4)
+  expect(await scrollsSideways(page)).toBe(false)
 })
 
 for (const theme of ['dark', 'light'] as const) {
@@ -129,7 +201,7 @@ for (const theme of ['dark', 'light'] as const) {
       if (size) await page.setViewportSize(size)
     }
 
-    await page.getByRole('button', { name: 'Change meal' }).click()
+    await page.getByRole('button', { name: /, change meal$/ }).click()
     await expect(page.getByRole('group', { name: 'Meal' })).toBeVisible()
     await check('meal picker')
 

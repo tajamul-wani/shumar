@@ -34,13 +34,14 @@ A calorie and macro tracker for Kashmiri and everyday food. It runs in the brows
 
 ```text
 src/
-  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log, /sources)
+  App.tsx                  Sign-in, then the screens by address (/, /trends, /you, /log, /log/edit/<id>, /sources)
   main.tsx                 Creates the Supabase client and starts the app
   index.css                Tailwind setup and design tokens
   auth/                    The signed-in session, shared with every screen
   theme/                   The theme choice, shared with every screen
   shell/                   The frame around every screen: side navigation, tab bar and add button
-  screens/                 One file per screen: SignIn, Today, Trends, You, Add food and Sources
+  today/                   Parts of the Today screen: the calories card, review card and meals list
+  screens/                 One file per screen: SignIn, Today, Trends, You, Add food, Edit food and Sources
   components/              Shared building blocks: Button, Chip and Alert
   log/                     Parts of the log sheet: search as you type, food rows and the chosen food
   lib/
@@ -52,6 +53,8 @@ src/
     foodDisplay.ts         How foods and amounts read in the log sheet
     meals.ts               The five meals and which one the log sheet opens on
     logs.ts                Checks an amount and saves a food log with its nutrients
+    dayLogs.ts             Reads, changes, removes and restores the foods a person has logged
+    today.ts               The day's totals, meals, sodium alert and calorie ring
     recentFoods.ts         The foods added most recently, kept on the device
     deviceStorage.ts       Device storage, or nothing when the browser blocks it
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
@@ -236,13 +239,30 @@ To import a new USDA release:
 <details>
 <summary><strong>Logging a meal</strong></summary>
 
-The add button opens the log sheet at `/log` (`src/screens/LogFoodScreen.tsx`).
+The add button opens the log sheet at `/log`. The sheet is one component, `src/log/LogSheet.tsx`, so another screen can show it too.
 
-- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. **Change meal** picks any of the five, including snack.
+- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. Its button (such as **To dinner**) picks any of the five, including snack.
 - `src/log/useFoodSearch.ts` searches once typing pauses for 300 ms and cancels a search that is no longer wanted.
 - A chosen food offers its household units first, then grams, with a stepper for the amount. The values update as the amount changes. Foods flagged by the calorie check, and Kashmiri dishes not yet confirmed by a second weighing, are marked as estimates.
 - `src/lib/logs.ts` checks the amount (more than 0, at most 10,000 and at most 20 kg) and saves one `user_logs` row with the nutrients at that moment. The log date is the person's local calendar day, and the row's owner comes from the session, never from the app.
 - The last 10 foods added stay on the device, so the sheet lists them before any search and adds one again in one tap.
+- `/log/edit/<id>` (`src/screens/EditLogScreen.tsx`) changes a food already logged: its amount, its meal, and its unit between the one it was logged in and grams. The values come from the log itself, so they match what the person saw, and its day stays the same.
+
+</details>
+
+<details>
+<summary><strong>The Today screen</strong></summary>
+
+`src/screens/TodayScreen.tsx` shows the day at a glance. It reads only the day's logs and the number of days logged (`days_logged()`, a database function that returns one number), and works out the rest on the device with `src/lib/today.ts`.
+
+- The ring shows the calories eaten. Protein, carbs and fat follow, always in that order.
+- The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
+- The meals list shows each meal with food in it, in the order of the day, with its calories and its protein, carbs and fat. Calories are always saffron and each macro has its own color, always with its name beside it.
+- Opening a meal lists its foods in a smaller size, each with its amount, calories, macros and sodium. Each food has **Edit** (the edit screen) and **Remove** buttons: labelled under the food on phones, icons beside it on wider screens. The same food in the same amount, logged more than once, shows once with its count (such as ×3) and their values together, and the bin takes one away.
+- Adding a food shows a short toast ("Added to lunch"), and Remove takes the food off the list at once and shows a toast with **Undo**, which puts it back exactly as it was logged. Toasts sit at the bottom right on wide screens and, on phones, in the bottom strip beside the add button, with a saffron edge for added and a gray one for removed. They close by themselves (8 seconds with Undo, 5 without) but wait while they are touched, hovered or focused, and focus goes to Undo after a removal, so nobody is rushed.
+- From 1024 px up, the log sheet sits beside the day as **Add food**, so a food added there shows in the day at once, and each meal shows the time of its first food. Phones and tablets use the round add button instead.
+- On phones, names step down a size, icons are smaller and rows keep room around them. No text is cut short: long food names wrap.
+- Loading, empty and failed days each have their own state, and a failed day can be tried again.
 
 </details>
 

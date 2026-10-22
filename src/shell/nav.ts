@@ -14,3 +14,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
 ]
 
 export const LOG_FOOD_PATH = '/log'
+
+/** Changing a food already logged. */
+export const EDIT_LOG_PATH = '/log/edit/:id'
+
+export function editLogPath(id: string): string {
+  return `/log/edit/${encodeURIComponent(id)}`
+}

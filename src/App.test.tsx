@@ -52,6 +52,12 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
       auth,
       from: () => ({
         select: () => ({
+          eq: () => ({
+            // A changed food that isn't there, for the edit screen.
+            maybeSingle: () => Promise.resolve({ data: null, error: null }),
+            // Nothing logged yet, for the Today screen.
+            order: () => Promise.resolve({ data: [], error: null }),
+          }),
           order: () =>
             Promise.resolve(
               options.releasesFail
@@ -72,6 +78,7 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
             ),
         }),
       }),
+      rpc: () => Promise.resolve({ data: 0, error: null }),
     } as unknown as Parameters<typeof AuthProvider>[0]['client'],
     auth,
     unsubscribe,
@@ -194,8 +201,16 @@ describe('the app shell', () => {
     await signedIn()
     await userEvent.click(screen.getByRole('link', { name: 'Log food' }))
     expect(window.location.pathname).toBe('/log')
-    expect(screen.getByRole('heading', { level: 1, name: /^Add to / })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Add food' })).toBeInTheDocument()
     expect(document.title).toBe('Add food · Shumār')
+    expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
+  })
+
+  it('hides the add button while changing a logged food', async () => {
+    await signedIn('/log/edit/log-1')
+    expect(
+      await screen.findByText("We couldn't find this food. It may have been removed."),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Log food' })).not.toBeInTheDocument()
   })
 

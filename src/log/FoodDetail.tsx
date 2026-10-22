@@ -1,5 +1,5 @@
 import { ChevronLeft, Info, Minus, Plus } from 'lucide-react'
-import { useId, useState, type KeyboardEvent } from 'react'
+import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'wouter'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
@@ -16,9 +16,15 @@ import {
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { MAX_QUANTITY } from '../lib/logs.ts'
+import { useSheetFill } from './fill.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
-const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border bg-koshur-surface text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
+/** Up to this many units show as chips; more (USDA portions can run to ten) fit better in a list. */
+const MAX_UNIT_CHIPS = 4
+
+const unitLabel = (unit: FoodUnit) => (unit.name === 'g' ? 'Grams' : unit.name)
+
+const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
 
 function twoPlaces(value: number): number {
   return Math.round(value * 100) / 100
@@ -26,6 +32,7 @@ function twoPlaces(value: number): number {
 
 /** Why the values are an estimate, and where to read how they were worked out. */
 function EstimateNote({ food }: { food: FoodResult }) {
+  const fill = useSheetFill()
   const [title, body] = food.flagged
     ? [
         'Estimate, these values may be off',
@@ -36,8 +43,13 @@ function EstimateNote({ food }: { food: FoodResult }) {
         'Worked out from a weighed recipe and not yet confirmed by a second weighing. Oil and meat cuts change the numbers most.',
       ]
   return (
-    <div className="flex gap-3 rounded-2xl border border-koshur-border bg-koshur-surface px-4 py-3.5">
-      <Info aria-hidden="true" size={20} strokeWidth={2} className="mt-0.5 shrink-0 text-koshur-muted" />
+    <div className={`flex gap-3 rounded-2xl border border-koshur-border ${fill} px-4 py-3.5`}>
+      <Info
+        aria-hidden="true"
+        size={20}
+        strokeWidth={2}
+        className="mt-0.5 size-4 sm:size-5 shrink-0 text-koshur-muted"
+      />
       <div className="flex min-w-0 flex-col gap-1">
         <p className="m-0 text-body-sm font-semibold text-koshur-silk">{title}</p>
         <p className="m-0 text-body-sm text-koshur-muted">{body}</p>
@@ -59,31 +71,46 @@ const MACROS = [
 ] as const
 
 interface FoodDetailProps {
+  /** 1 on a screen of its own, 2 inside another screen. */
+  headingLevel?: 1 | 2
   food: FoodResult
   initialUnit: FoodUnit
   initialQuantity: number
-  mealName: string
+  /** The main button, such as "Add to dinner" or "Save changes". */
+  actionLabel: string
+  /** The main button while it works, such as "Adding" or "Saving". */
+  busyLabel: string
+  backLabel: string
   saving: boolean
   error: string | null
+  /** Shown above the unit, such as the meal when changing a logged food. */
+  children?: ReactNode
   onBack: () => void
   /** quantity is NaN when the amount typed isn't a number, so the log check explains it. */
-  onAdd: (unit: FoodUnit, quantity: number) => void
+  onSubmit: (unit: FoodUnit, quantity: number) => void
 }
 
-/** The chosen food: pick a unit and an amount, see the values, then add it to the meal. */
+/** A food: pick a unit and an amount, see the values, then add it or save the change. */
 export function FoodDetail({
+  headingLevel = 1,
   food,
   initialUnit,
   initialQuantity,
-  mealName,
+  actionLabel,
+  busyLabel,
+  backLabel,
   saving,
   error,
+  children,
   onBack,
-  onAdd,
+  onSubmit,
 }: FoodDetailProps) {
   const [unit, setUnit] = useState(initialUnit)
   const [text, setText] = useState(() => String(initialQuantity))
+  const Heading = headingLevel === 2 ? 'h2' : 'h1'
+  const fill = useSheetFill()
   const quantityId = useId()
+  const unitId = useId()
   const hintId = useId()
   const quantity = parseQuantity(text)
   const step = quantityStep(unit)
@@ -104,42 +131,71 @@ export function FoodDetail({
     if (next > 0 && next <= MAX_QUANTITY) setText(String(next))
   }
 
-  function add() {
-    onAdd(unit, quantity ?? Number.NaN)
+  function submit() {
+    onSubmit(unit, quantity ?? Number.NaN)
   }
 
-  function addOnEnter(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') add()
+  function submitOnEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') submit()
   }
 
   return (
     <>
-      <div className="flex items-center gap-1">
+      {/* The name can wrap, so the back button aligns with its first line rather than the middle. */}
+      <div className="flex items-start gap-1">
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to search"
-          className={`-ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-silk ${FOCUS_RING}`}
+          aria-label={backLabel}
+          className={`-mt-2 -ml-2.5 flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-silk sm:-mt-1.5 ${FOCUS_RING}`}
         >
-          <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} />
+          <ChevronLeft aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
         </button>
-        <h1 tabIndex={-1} className="m-0 min-w-0 flex-1 text-heading font-semibold focus:outline-none">
+        <Heading
+          tabIndex={-1}
+          className="m-0 min-w-0 flex-1 text-title font-semibold focus:outline-none sm:text-heading"
+        >
           {food.name}
-        </h1>
+        </Heading>
       </div>
 
       {estimate && <EstimateNote food={food} />}
 
-      <fieldset className="m-0 min-w-0 border-0 p-0">
-        <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
-        <div className="flex flex-wrap gap-2">
-          {units.map((option) => (
-            <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
-              {option.name === 'g' ? 'Grams' : option.name}
-            </Chip>
-          ))}
+      {children}
+
+      {units.length > MAX_UNIT_CHIPS ? (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={unitId} className="text-caption text-koshur-muted">
+            Unit
+          </label>
+          <select
+            id={unitId}
+            value={unit.name}
+            onChange={(event) => {
+              const next = units.find((option) => option.name === event.target.value)
+              if (next) chooseUnit(next)
+            }}
+            className={`h-13 min-w-0 rounded-xl border border-koshur-border ${fill} px-4 text-body text-koshur-silk ${FOCUS_RING}`}
+          >
+            {units.map((option) => (
+              <option key={option.name} value={option.name}>
+                {unitLabel(option)}
+              </option>
+            ))}
+          </select>
         </div>
-      </fieldset>
+      ) : (
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
+          <div className="flex flex-wrap gap-2">
+            {units.map((option) => (
+              <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
+                {unitLabel(option)}
+              </Chip>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={quantityId} className="text-caption text-koshur-muted">
@@ -151,9 +207,9 @@ export function FoodDetail({
             onClick={() => stepBy(-1)}
             disabled={quantity === null || quantity <= step}
             aria-label="Decrease quantity"
-            className={STEP_BUTTON}
+            className={`${STEP_BUTTON} ${fill}`}
           >
-            <Minus aria-hidden="true" size={20} strokeWidth={2} />
+            <Minus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
           </button>
           <input
             id={quantityId}
@@ -162,18 +218,18 @@ export function FoodDetail({
             autoComplete="off"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            onKeyDown={addOnEnter}
+            onKeyDown={submitOnEnter}
             aria-describedby={hint ? hintId : undefined}
-            className={`h-13 min-w-0 flex-1 rounded-xl border border-koshur-border bg-koshur-surface text-center text-heading font-semibold text-koshur-silk ${FOCUS_RING}`}
+            className={`h-13 min-w-0 flex-1 rounded-xl border border-koshur-border ${fill} text-center text-heading font-semibold text-koshur-silk ${FOCUS_RING}`}
           />
           <button
             type="button"
             onClick={() => stepBy(1)}
             disabled={quantity !== null && quantity + step > MAX_QUANTITY}
             aria-label="Increase quantity"
-            className={STEP_BUTTON}
+            className={`${STEP_BUTTON} ${fill}`}
           >
-            <Plus aria-hidden="true" size={20} strokeWidth={2} />
+            <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
           </button>
         </div>
         {hint && (
@@ -213,8 +269,8 @@ export function FoodDetail({
 
       {error && <Alert>{error}</Alert>}
 
-      <Button onClick={add} disabled={saving} className="w-full">
-        {saving ? 'Adding' : `Add to ${mealName}`}
+      <Button onClick={submit} disabled={saving} className="w-full">
+        {saving ? busyLabel : actionLabel}
       </Button>
     </>
   )

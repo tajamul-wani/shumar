@@ -1,0 +1,370 @@
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthContext, type AppClient } from '../auth/context.ts'
+import { parseResults } from '../lib/foodSearch.ts'
+import { rememberFood } from '../lib/recentFoods.ts'
+import { TodayScreen } from './TodayScreen.tsx'
+
+/** A time on 21 October 2026 on this machine's clock, so the tests pass in any time zone. */
+function at(time: string): string {
+  const [hours, minutes] = time.split(':').map(Number)
+  return new Date(2026, 9, 21, hours, minutes).toISOString()
+}
+
+// Made-up logs with easy numbers for checking the screen, not nutrition data.
+function log(id: string, meal: string, name: string, time: string, kcal: number, sodiumMg = 0) {
+  return {
+    id,
+    log_date: '2026-10-21',
+    logged_at: at(time),
+    meal,
+    food_name: name,
+    food_source: 'usda',
+    // The same food always has the same source id, as in real data.
+    food_source_id: name,
+    quantity: 100,
+    unit_name: 'g',
+    grams: 100,
+    kcal,
+    protein: 1,
+    carbs: 2,
+    fat: 3,
+    sodium_mg: sodiumMg,
+  }
+}
+
+const day = [
+  log('1', 'breakfast', 'Test tea', '08:10', 45, 600),
+  log('2', 'breakfast', 'Test bread', '08:05', 240, 300),
+  log('3', 'dinner', 'Test rice', '20:45', 200),
+  log('4', 'breakfast', 'Test tea', '09:00', 45, 600),
+]
+
+type Result = { data: unknown; error: { message: string } | null }
+
+interface FakeOptions {
+  logs?: unknown[]
+  daysLogged?: Result
+  failLogs?: boolean
+  failRemove?: boolean
+  failRestore?: boolean
+}
+
+/** Answers the day's logs and the days-logged count, and records what was asked. */
+function fakeClient(options: FakeOptions = {}) {
+  const state = { logs: options.logs ?? day, failLogs: options.failLogs ?? false }
+  const eq = vi.fn<(column: string, value: unknown) => void>()
+  const removed = vi.fn<(id: unknown) => void>()
+  const inserted = vi.fn<(row: unknown) => void>()
+  const offline = { data: null, error: { message: 'offline' } }
+  const from = vi.fn<(table: string) => unknown>(() => {
+    let kind: 'read' | 'remove' | 'restore' = 'read'
+    let row: Record<string, unknown> = {}
+    const answer = (): Result => {
+      if (kind === 'remove') return options.failRemove ? offline : { data: [{ id: 'x' }], error: null }
+      if (kind === 'restore')
+        return options.failRestore ? offline : { data: { ...row, id: 'restored' }, error: null }
+      return state.failLogs ? offline : { data: state.logs, error: null }
+    }
+    const query: Record<string, unknown> = {
+      then: (resolve: (value: Result) => unknown, reject: (reason: unknown) => unknown) =>
+        Promise.resolve(answer()).then(resolve, reject),
+    }
+    for (const name of ['select', 'order', 'single']) query[name] = () => query
+    query.eq = (column: string, value: unknown) => {
+      eq(column, value)
+      if (kind === 'remove') removed(value)
+      return query
+    }
+    query.delete = () => {
+      kind = 'remove'
+      return query
+    }
+    query.insert = (value: Record<string, unknown>) => {
+      kind = 'restore'
+      row = value
+      inserted(value)
+      return query
+    }
+    return query
+  })
+  const rpc = vi.fn<(name: string) => Promise<Result>>(
+    async () => options.daysLogged ?? { data: 12, error: null },
+  )
+  return { client: { auth: {}, from, rpc } as unknown as AppClient, state, from, rpc, eq, removed, inserted }
+}
+
+function renderToday(fake = fakeClient()) {
+  render(
+    <AuthContext.Provider value={{ client: fake.client, session: null, loading: false }}>
+      <main id="main">
+        <TodayScreen />
+      </main>
+    </AuthContext.Provider>,
+  )
+  return fake
+}
+
+const ring = () => screen.getByRole('region', { name: 'Calories and macros' })
+
+beforeEach(() => {
+  // 8 pm on 21 October 2026. Only the clock is faked; timers stay real.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 9, 21, 20, 0))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+describe('the day at a glance', () => {
+  it("reads only today's logs and shows a loading state first", async () => {
+    const { eq } = renderToday()
+    expect(screen.getByText('Loading your day')).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'Calories and macros' })).toBeInTheDocument()
+    expect(eq).toHaveBeenCalledWith('log_date', '2026-10-21')
+    expect(screen.queryByText('Loading your day')).not.toBeInTheDocument()
+  })
+
+  it('shows the calories eaten in the ring, then protein, carbs and fat in that order', async () => {
+    renderToday()
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(within(ring()).getByText('530')).toBeInTheDocument()
+    expect(within(ring()).getByText('kcal eaten')).toBeInTheDocument()
+    const macros = within(ring())
+      .getAllByText(/^(Protein|Carbs|Fat)$/)
+      .map((label) => `${label.textContent} ${label.nextElementSibling?.textContent}`)
+    expect(macros).toEqual(['Protein 4 g', 'Carbs 8 g', 'Fat 12 g'])
+  })
+
+  it('lists the meals with food in them, in the order of the day, with their calories and macros', async () => {
+    renderToday()
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    const rows = within(meals).getAllByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner|Snack)/ })
+    expect(rows.map((row) => row.textContent?.match(/^[A-Za-z ]+?(?=\d|Protein)/)?.[0].trim())).toEqual([
+      'Breakfast',
+      'Dinner',
+    ])
+    expect(rows[0]).toHaveTextContent('Protein 3 g Carbs 6 g Fat 9 g 330 kcal')
+    expect(rows[1]).toHaveTextContent('Protein 1 g Carbs 2 g Fat 3 g 200 kcal')
+    // The meal row is a summary: its foods only show once it is opened.
+    expect(rows[0]).not.toHaveTextContent('Test tea')
+  })
+
+  it('shows how many days have been logged', async () => {
+    renderToday()
+    expect(await screen.findByText('12 days logged')).toBeInTheDocument()
+  })
+
+  it('says "1 day" for one day', async () => {
+    renderToday(fakeClient({ daysLogged: { data: 1, error: null } }))
+    expect(await screen.findByText('1 day logged')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['no days', { data: 0, error: null }],
+    ['an error', { data: null, error: { message: 'offline' } }],
+  ])('hides the count for %s', async (_, daysLogged) => {
+    const fake = renderToday(fakeClient({ daysLogged }))
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    await fake.rpc.mock.results[0].value
+    expect(screen.queryByText(/logged$/)).not.toBeInTheDocument()
+  })
+})
+
+describe('the sodium alert', () => {
+  it('stays away while the day is under 2,000 mg', async () => {
+    renderToday()
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(screen.queryByRole('region', { name: 'Evening review' })).not.toBeInTheDocument()
+  })
+
+  it('names the food that gave the most once the day passes 2,000 mg', async () => {
+    renderToday(fakeClient({ logs: [...day, log('5', 'lunch', 'Test pickle', '13:00', 10, 1000)] }))
+    const review = await screen.findByRole('region', { name: 'Evening review' })
+    expect(review).toHaveTextContent('Sodium is high, mostly from Test tea')
+    expect(review).toHaveTextContent('2,500 mg')
+    // The warning icon goes with the text and is hidden from screen readers.
+    expect(review.querySelector('svg.text-alert-surplus')).toHaveAttribute('aria-hidden', 'true')
+  })
+})
+
+describe('an empty or failed day', () => {
+  it('shows nothing eaten and how to add the first food', async () => {
+    renderToday(fakeClient({ logs: [], daysLogged: { data: 0, error: null } }))
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    expect(within(ring()).getByText('0')).toBeInTheDocument()
+    expect(meals).toHaveTextContent('No meals yet today.')
+    expect(within(meals).getByRole('link', { name: 'Add food' })).toHaveAttribute('href', '/log')
+  })
+
+  it('explains a failed load and tries again on request', async () => {
+    const fake = renderToday(fakeClient({ failLogs: true }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't load your food for today.")
+    fake.state.failLogs = false
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('region', { name: 'Meals' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('changing and removing foods', () => {
+  async function openBreakfast() {
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    const row = within(meals).getByRole('button', { name: /^Breakfast/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    return meals
+  }
+
+  it('opens a meal to list its foods, each with a way to change it', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
+    // The two identical teas show as one row, and Edit opens the later one.
+    expect(within(meals).getByRole('link', { name: 'Edit one Test tea' })).toHaveAttribute(
+      'href',
+      '/log/edit/4',
+    )
+    expect(within(meals).getByRole('link', { name: 'Edit Test bread' })).toHaveAttribute(
+      'href',
+      '/log/edit/2',
+    )
+    expect(within(meals).queryByRole('button', { name: 'Remove Test rice' })).not.toBeInTheDocument()
+  })
+
+  it('shows the same food in the same amount once, with its count and their calories together', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    const tea = within(meals).getByText('Test tea').closest('li')
+    expect(tea).toHaveTextContent('×2')
+    expect(tea).toHaveTextContent('100 g each · 90 kcal')
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
+    expect(screen.getByText('Removed')).toBeInTheDocument()
+    const single = within(meals).getByText('Test tea').closest('li')
+    expect(single).toHaveTextContent('100 g · 45 kcal')
+    expect(single).not.toHaveTextContent('×')
+    expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
+  })
+
+  it('removes a food at once and puts it back exactly as it was with Undo', async () => {
+    const fake = renderToday()
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+
+    expect(fake.removed).toHaveBeenCalledWith('2')
+    expect(within(meals).queryByText('Test bread')).not.toBeInTheDocument()
+    expect(within(ring()).getByText('290')).toBeInTheDocument()
+    expect(screen.getByText('Removed')).toBeInTheDocument()
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    expect(undo).toHaveFocus()
+
+    await userEvent.click(undo)
+    expect(fake.inserted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_name: 'Test bread',
+        meal: 'breakfast',
+        kcal: 240,
+        logged_at: at('08:05'),
+      }),
+    )
+    expect(await within(meals).findByText('Test bread')).toBeInTheDocument()
+    expect(within(ring()).getByText('530')).toBeInTheDocument()
+    expect(screen.getByText('Put back')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('brings the food back and explains when it cannot be removed', async () => {
+    renderToday(fakeClient({ failRemove: true }))
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't remove this food.")
+    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('keeps Undo and explains when the food cannot be put back', async () => {
+    renderToday(fakeClient({ failRestore: true }))
+    const meals = await openBreakfast()
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't put this food back.")
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled()
+  })
+
+  it("shows the empty day after removing the day's only food", async () => {
+    renderToday(fakeClient({ logs: [log('3', 'dinner', 'Test rice', '20:45', 200)] }))
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    await userEvent.click(within(meals).getByRole('button', { name: /^Dinner/ }))
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test rice' }))
+    expect(screen.getByText('No meals yet today.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
+  })
+})
+
+describe('on wide screens', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(min-width: 1024px)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+  })
+
+  it('shows Add food beside the day and the time of each meal', async () => {
+    renderToday()
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toBeInTheDocument()
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    expect(within(meals).getByRole('button', { name: /^Breakfast/ })).toHaveTextContent('Breakfast8:05')
+    expect(within(meals).getByRole('button', { name: /^Dinner/ })).toHaveTextContent('Dinner20:45')
+  })
+
+  it('needs no extra Add food button when the day is empty', async () => {
+    renderToday(fakeClient({ logs: [] }))
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    expect(within(meals).queryByRole('link', { name: 'Add food' })).not.toBeInTheDocument()
+  })
+
+  it('shows a food added beside the day straight away', async () => {
+    // A made-up food in the recent list, so one tap adds it.
+    const [food] = parseResults([
+      {
+        source: 'usda',
+        source_id: '9',
+        name: 'Test egg',
+        kcal_per_100g: 150,
+        protein_per_100g: 12,
+        carbs_per_100g: 1,
+        fat_per_100g: 10,
+        sodium_mg_per_100g: 140,
+        flagged: false,
+        verified: true,
+        units: [{ name: '1 egg', grams: 50 }],
+      },
+    ])
+    rememberFood({ food, unitName: '1 egg', quantity: 1 })
+    const fake = renderToday()
+    await screen.findByRole('region', { name: 'Meals' })
+    fake.state.logs = [...day, log('9', 'dinner', 'Test egg', '20:50', 75)]
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 egg Test egg' }))
+    expect(fake.inserted).toHaveBeenCalledWith(
+      expect.objectContaining({ food_name: 'Test egg', meal: 'dinner' }),
+    )
+    expect(await within(ring()).findByText('605')).toBeInTheDocument()
+  })
+})
+
+describe('on phones and tablets', () => {
+  it('leaves adding food to the add button', async () => {
+    renderToday()
+    await screen.findByRole('region', { name: 'Meals' })
+    expect(screen.queryByRole('heading', { level: 2, name: 'Add food' })).not.toBeInTheDocument()
+  })
+})

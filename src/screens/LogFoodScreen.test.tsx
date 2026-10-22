@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
 import { parseResults } from '../lib/foodSearch.ts'
 import { RECENT_FOODS_KEY, rememberFood } from '../lib/recentFoods.ts'
+import { LogSheet } from '../log/LogSheet.tsx'
 import { LogFoodScreen } from './LogFoodScreen.tsx'
 
 // Made-up foods with easy numbers for checking the screen, not nutrition data.
@@ -74,10 +75,12 @@ afterEach(() => {
 describe('choosing the meal', () => {
   it('opens on the meal for the time of day and can change it', async () => {
     renderScreen()
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(screen.getByText('Search for a food to add it to dinner.')).toBeInTheDocument()
 
-    const change = screen.getByRole('button', { name: 'Change meal' })
+    // The meal is on its button, so the header fits on one line on small phones.
+    const change = screen.getByRole('button', { name: 'To dinner, change meal' })
+    expect(change).toHaveTextContent('To dinner')
     await userEvent.click(change)
     expect(change).toHaveAttribute('aria-expanded', 'true')
     const meals = screen.getByRole('group', { name: 'Meal' })
@@ -89,7 +92,7 @@ describe('choosing the meal', () => {
     expect(within(meals).getByRole('button', { name: 'Dinner' })).toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(within(meals).getByRole('button', { name: 'Evening tea' }))
-    expect(heading()).toHaveTextContent('Add to evening tea')
+    expect(change).toHaveAccessibleName('To evening tea, change meal')
     expect(screen.queryByRole('group', { name: 'Meal' })).not.toBeInTheDocument()
     expect(change).toHaveFocus()
   })
@@ -191,9 +194,9 @@ describe('a chosen food', () => {
       fat: 0.72,
       sodium_mg: 2.4,
     })
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
-    expect(screen.getByText('Added 1.5 × 1 cup of Test rice, cooked to dinner.')).toBeInTheDocument()
+    expect(screen.getByText('Added to dinner')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Add 1.5 × 1 cup Test rice, cooked' })).toBeInTheDocument()
     expect(localStorage.getItem(RECENT_FOODS_KEY)).toContain('Test rice, cooked')
@@ -218,6 +221,26 @@ describe('a chosen food', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add to dinner' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Enter an amount more than 0 and up to 10,000.')
     expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('lists many units in a dropdown instead of a wall of chips', async () => {
+    const units = ['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs'].map((name, i) => ({
+      name,
+      grams: 10 + i,
+    }))
+    renderScreen(fakeClient({ rows: [{ ...rice, units }] }))
+    await searchFor('rice')
+    await openFood('Test rice, cooked')
+    expect(screen.queryByRole('group', { name: 'Unit' })).not.toBeInTheDocument()
+    const unit = screen.getByRole('combobox', { name: 'Unit' })
+    expect(unit).toHaveValue('1 slice')
+    expect(
+      within(unit)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs', 'Grams'])
+    await userEvent.selectOptions(unit, 'g')
+    expect(screen.getByRole('textbox', { name: 'Quantity' })).toHaveValue('100')
   })
 
   it('adds with the Enter key from the amount', async () => {
@@ -256,7 +279,7 @@ describe('a chosen food', () => {
     await searchFor('rice')
     await openFood('Test rice, cooked')
     await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
     expect(screen.getByRole('list', { name: 'Search results' })).toBeInTheDocument()
     expect(rpc).toHaveBeenCalledTimes(1)
@@ -275,7 +298,7 @@ describe('recent foods', () => {
     expect(within(recent).getByRole('listitem')).toHaveTextContent('2 × 1 cup · 416 kcal · Ingredient')
     await userEvent.click(within(recent).getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ quantity: 2, kcal: 416, meal: 'dinner' }))
-    expect(screen.getByText('Added 2 × 1 cup of Test rice, cooked to dinner.')).toBeInTheDocument()
+    expect(screen.getByText('Added to dinner')).toBeInTheDocument()
   })
 
   it('opens a recent food on its last amount', async () => {
@@ -288,5 +311,53 @@ describe('recent foods', () => {
     renderScreen(fakeClient({ saveFails: true }))
     await userEvent.click(screen.getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't save this food.")
+  })
+})
+
+describe('inside another screen', () => {
+  function renderEmbedded(onAdded = vi.fn<() => void>(), fake = fakeClient()) {
+    render(
+      <AuthContext.Provider value={{ client: fake.client, session: null, loading: false }}>
+        <main id="main">
+          <h1 tabIndex={-1}>Today</h1>
+          <section aria-label="Add food">
+            <LogSheet embedded onAdded={onAdded} />
+          </section>
+        </main>
+      </AuthContext.Provider>,
+    )
+    return { onAdded, ...fake }
+  }
+
+  it('is a section titled Add food, with the meal on its button and no close button', async () => {
+    renderEmbedded()
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Close' })).not.toBeInTheDocument()
+    const change = screen.getByRole('button', { name: 'To dinner, change meal' })
+    expect(change).toHaveTextContent('To dinner')
+    await userEvent.click(change)
+    await userEvent.click(
+      within(screen.getByRole('group', { name: 'Meal' })).getByRole('button', { name: 'Lunch' }),
+    )
+    expect(screen.getByRole('button', { name: 'To lunch, change meal' })).toHaveFocus()
+  })
+
+  it("keeps focus inside the sheet instead of the page's heading", async () => {
+    renderEmbedded()
+    await searchFor('rice')
+    await openFood('Test rice, cooked')
+    expect(screen.getByRole('heading', { level: 2, name: 'Test rice, cooked' })).toHaveFocus()
+    await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+    expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toHaveFocus()
+  })
+
+  it('tells the screen around it when a food is added', async () => {
+    const [food] = parseResults([rice])
+    rememberFood({ food, unitName: '1 cup', quantity: 1 })
+    const { onAdded, insert } = renderEmbedded()
+    expect(screen.getByRole('heading', { level: 3, name: 'Recent' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 cup Test rice, cooked' }))
+    expect(insert).toHaveBeenCalled()
+    expect(onAdded).toHaveBeenCalledTimes(1)
   })
 })
