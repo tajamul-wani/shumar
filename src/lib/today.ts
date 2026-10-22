@@ -35,9 +35,33 @@ export function summarizeDay(logs: readonly LoggedFood[]): DaySummary {
   return { totals: sumNutrients(logs.map((log) => log.nutrients)), meals }
 }
 
-/** The food names in a meal, each once, in the order they were logged. */
+/** The food names in a meal, each once with how often it was logged, such as "Nun Chai ×2 · Girda". */
 export function mealFoodNames(group: MealGroup): string {
-  return [...new Set(group.foods.map((food) => food.foodName))].join(' · ')
+  const counts = new Map<string, number>()
+  for (const food of group.foods) counts.set(food.foodName, (counts.get(food.foodName) ?? 0) + 1)
+  return [...counts].map(([name, count]) => (count > 1 ? `${name} ×${count}` : name)).join(' · ')
+}
+
+export interface FoodEntry {
+  /** The logs this row stands for, oldest first: one, or several identical ones. */
+  logs: LoggedFood[]
+  /** All of them together. */
+  totals: Nutrients
+}
+
+/** The same food in the same unit and amount: logged more than once, it shows as one row. */
+function entryKey(log: LoggedFood): string {
+  return [log.foodSource, log.foodSourceId ?? '', log.foodName, log.unitName, log.quantity].join('|')
+}
+
+/** A meal's foods as rows, joining identical entries, in the order each was first logged. */
+export function groupMealFoods(foods: readonly LoggedFood[]): FoodEntry[] {
+  const rows = new Map<string, LoggedFood[]>()
+  for (const food of [...foods].sort(byTime)) {
+    const key = entryKey(food)
+    rows.set(key, [...(rows.get(key) ?? []), food])
+  }
+  return [...rows.values()].map((logs) => ({ logs, totals: sumNutrients(logs.map((log) => log.nutrients)) }))
 }
 
 /**

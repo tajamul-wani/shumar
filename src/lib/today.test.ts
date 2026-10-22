@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { parseLoggedFood, type LoggedFood } from './dayLogs.ts'
-import { SODIUM_LIMIT_MG, mealFoodNames, reviewTitle, ringState, sodiumAlert, summarizeDay } from './today.ts'
+import {
+  SODIUM_LIMIT_MG,
+  groupMealFoods,
+  mealFoodNames,
+  reviewTitle,
+  ringState,
+  sodiumAlert,
+  summarizeDay,
+} from './today.ts'
 
 // Made-up logs with easy numbers for checking the maths, not nutrition data.
 function log(id: string, meal: string, name: string, at: string, kcal: number, sodiumMg = 0): LoggedFood {
@@ -11,7 +19,8 @@ function log(id: string, meal: string, name: string, at: string, kcal: number, s
     meal,
     food_name: name,
     food_source: 'usda',
-    food_source_id: id,
+    // The same food always has the same source id, as in real data.
+    food_source_id: name,
     quantity: 1,
     unit_name: 'g',
     grams: 100,
@@ -50,8 +59,31 @@ describe('summarizeDay', () => {
     })
   })
 
-  it('names each food once', () => {
-    expect(mealFoodNames(summarizeDay(day).meals[0])).toBe('Test bread · Test tea')
+  it('names each food once, with how often it was logged', () => {
+    expect(mealFoodNames(summarizeDay(day).meals[0])).toBe('Test bread · Test tea ×2')
+  })
+})
+
+describe('groupMealFoods', () => {
+  it('joins the same food in the same amount into one row, with their values together', () => {
+    const rows = groupMealFoods(summarizeDay(day).meals[0].foods)
+    expect(rows.map((row) => row.logs.map((l) => l.id))).toEqual([['2'], ['1', '4']])
+    expect(rows[1].totals.kcal).toBe(90)
+    expect(rows[1].totals.sodiumMg).toBe(1200)
+  })
+
+  it('keeps a different amount or unit on its own row', () => {
+    const tea = log('1', 'breakfast', 'Test tea', '08:10', 45)
+    const bigger = { ...log('2', 'breakfast', 'Test tea', '08:20', 90), quantity: 2 }
+    const inCups = { ...log('3', 'breakfast', 'Test tea', '08:30', 45), unitName: 'cup' }
+    expect(groupMealFoods([tea, bigger, inCups]).map((row) => row.logs.length)).toEqual([1, 1, 1])
+  })
+
+  it('orders rows by when each food was first logged', () => {
+    const later = log('9', 'breakfast', 'Test bread', '10:00', 240)
+    const rows = groupMealFoods([later, ...summarizeDay(day).meals[0].foods])
+    expect(rows.map((row) => row.logs[0].foodName)).toEqual(['Test bread', 'Test tea'])
+    expect(rows[0].logs.map((l) => l.id)).toEqual(['2', '9'])
   })
 })
 

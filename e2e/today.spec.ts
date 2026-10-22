@@ -169,3 +169,41 @@ test('on a wide screen, a food added beside Today shows in the day at once', asy
     await api.from('user_logs').delete().eq('user_id', user.session.user.id)
   }
 })
+
+test('the same food in the same amount shows once with its count, and Remove takes one away', async ({
+  page,
+}) => {
+  const user = await createTestUser('group')
+  const api = apiClient(user.session.access_token)
+  // Three of the same 40 g placeholder, logged one after another.
+  const egg = (minute: number) => ({
+    ...placeholder('breakfast', 'Test egg', 8, 59, 50),
+    logged_at: new Date(new Date().setHours(8, minute, 0, 0)).toISOString(),
+    quantity: 40,
+    grams: 40,
+  })
+  const inserted = await api.from('user_logs').insert([egg(1), egg(2), egg(3)])
+  expect(inserted.error).toBeNull()
+
+  try {
+    await signInAs(page, user.session)
+    await page.goto('/')
+    const meals = page.getByRole('region', { name: 'Meals' })
+    const breakfast = meals.getByRole('button', { name: /^Breakfast/ })
+    await expect(breakfast).toContainText('Test egg ×3')
+    await breakfast.click()
+
+    const row = meals.getByRole('listitem').filter({ hasText: 'Test egg' }).last()
+    await expect(row).toContainText('×3')
+    await expect(row).toContainText('40 g each · 177 kcal')
+
+    await row.getByRole('button', { name: 'Remove one Test egg' }).click()
+    await expect(row).toContainText('×2')
+    await expect(row).toContainText('40 g each · 118 kcal')
+    await expect
+      .poll(async () => (await api.from('user_logs').select('id', { count: 'exact', head: true })).count)
+      .toBe(2)
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
+})

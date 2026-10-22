@@ -21,8 +21,9 @@ function log(id: string, meal: string, name: string, time: string, kcal: number,
     meal,
     food_name: name,
     food_source: 'usda',
-    food_source_id: id,
-    quantity: 1,
+    // The same food always has the same source id, as in real data.
+    food_source_id: name,
+    quantity: 100,
     unit_name: 'g',
     grams: 100,
     kcal,
@@ -144,7 +145,7 @@ describe('the day at a glance', () => {
       within(meals)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['BreakfastTest bread · Test tea330 kcal', 'DinnerTest rice200 kcal'])
+    ).toEqual(['BreakfastTest bread · Test tea ×2330 kcal', 'DinnerTest rice200 kcal'])
   })
 
   it('shows how many days have been logged', async () => {
@@ -218,15 +219,28 @@ describe('changing and removing foods', () => {
     renderToday()
     const meals = await openBreakfast()
     expect(within(meals).getByText('Test bread')).toBeInTheDocument()
-    expect(within(meals).getAllByRole('link', { name: 'Change Test tea' })[0]).toHaveAttribute(
+    // The two identical teas show as one row, and Change opens the later one.
+    expect(within(meals).getByRole('link', { name: 'Change one Test tea' })).toHaveAttribute(
       'href',
-      '/log/edit/1',
+      '/log/edit/4',
     )
     expect(within(meals).getByRole('link', { name: 'Change Test bread' })).toHaveAttribute(
       'href',
       '/log/edit/2',
     )
     expect(within(meals).queryByRole('button', { name: 'Remove Test rice' })).not.toBeInTheDocument()
+  })
+
+  it('shows the same food in the same amount once, with its count and their calories together', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent(
+      'Test tea ×2, 2 times100 g each · 90 kcal',
+    )
+    await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
+    expect(screen.getByText('Removed Test tea from breakfast.')).toBeInTheDocument()
+    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent('Test tea100 g · 45 kcal')
+    expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
   })
 
   it('removes a food at once and puts it back exactly as it was with Undo', async () => {

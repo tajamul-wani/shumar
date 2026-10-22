@@ -5,31 +5,51 @@ import type { LoggedFood } from '../lib/dayLogs.ts'
 import { formatMealTime } from '../lib/dates.ts'
 import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
 import { MEAL_LABELS, type Meal } from '../lib/meals.ts'
-import { mealFoodNames, type MealGroup } from '../lib/today.ts'
+import { groupMealFoods, mealFoodNames, type FoodEntry, type MealGroup } from '../lib/today.ts'
 import { editLogPath } from '../shell/nav.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 const ICON_BUTTON = `flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border bg-koshur-base ${FOCUS_RING}`
 
-interface FoodItemProps {
-  food: LoggedFood
+interface EntryItemProps {
+  entry: FoodEntry
   busy: boolean
   onRemove: (food: LoggedFood) => void
 }
 
-function FoodItem({ food, busy, onRemove }: FoodItemProps) {
+/**
+ * One food in an open meal. The same food in the same amount, logged several times, shows once
+ * with its count ("×3") and their calories together; Change and Remove act on one of them.
+ */
+function EntryItem({ entry, busy, onRemove }: EntryItemProps) {
+  const count = entry.logs.length
+  // The latest one, so Remove takes away the one most likely added by mistake.
+  const food = entry.logs[count - 1]
   const amount = amountLabel(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })
+  const one = count > 1 ? 'one ' : ''
   return (
     <li className="flex items-center gap-3 border-t border-koshur-border px-4 py-2.5 lg:px-6">
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-body text-koshur-silk">{food.foodName}</span>
+        <span className="text-body text-koshur-silk">
+          {food.foodName}
+          {count > 1 && (
+            <>
+              <span aria-hidden="true" className="font-semibold">
+                {' '}
+                ×{count}
+              </span>
+              <span className="sr-only">, {count} times</span>
+            </>
+          )}
+        </span>
         <span className="text-caption text-koshur-muted">
-          {amount} · {formatNumber(Math.round(food.nutrients.kcal))} kcal
+          {amount}
+          {count > 1 ? ' each' : ''} · {formatNumber(Math.round(entry.totals.kcal))} kcal
         </span>
       </span>
       <Link
         href={editLogPath(food.id)}
-        aria-label={`Change ${food.foodName}`}
+        aria-label={`Change ${one}${food.foodName}`}
         className={`${ICON_BUTTON} text-koshur-silk`}
       >
         <Pencil aria-hidden="true" size={20} strokeWidth={2} />
@@ -38,7 +58,7 @@ function FoodItem({ food, busy, onRemove }: FoodItemProps) {
         type="button"
         onClick={() => onRemove(food)}
         disabled={busy}
-        aria-label={`Remove ${food.foodName}`}
+        aria-label={`Remove ${one}${food.foodName}`}
         className={`${ICON_BUTTON} text-koshur-muted disabled:opacity-60`}
       >
         <Trash2 aria-hidden="true" size={20} strokeWidth={2} />
@@ -93,8 +113,8 @@ function MealRow({ group, showTime, open, busy, onToggle, onRemove }: MealRowPro
       </button>
       {open && (
         <ul id={panelId} className="m-0 list-none p-0">
-          {group.foods.map((food) => (
-            <FoodItem key={food.id} food={food} busy={busy} onRemove={onRemove} />
+          {groupMealFoods(group.foods).map((entry) => (
+            <EntryItem key={entry.logs[0].id} entry={entry} busy={busy} onRemove={onRemove} />
           ))}
         </ul>
       )}
