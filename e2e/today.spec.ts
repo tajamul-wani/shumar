@@ -116,7 +116,7 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await expect(ring).toContainText('300kcal eaten')
     await expect.poll(names).toEqual([{ food_name: 'Test bread' }, { food_name: 'Test tea' }])
 
-    await meals.getByRole('link', { name: 'Change Test tea' }).click()
+    await meals.getByRole('link', { name: /^Change Test tea/ }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Test tea' })).toBeFocused()
     await page.getByRole('button', { name: 'Increase quantity' }).click()
     await page.getByRole('button', { name: 'Save changes' }).click()

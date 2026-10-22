@@ -220,11 +220,11 @@ describe('changing and removing foods', () => {
     const meals = await openBreakfast()
     expect(within(meals).getByText('Test bread')).toBeInTheDocument()
     // The two identical teas show as one row, and Change opens the later one.
-    expect(within(meals).getByRole('link', { name: 'Change one Test tea' })).toHaveAttribute(
+    expect(within(meals).getByRole('link', { name: /^Change one Test tea/ })).toHaveAttribute(
       'href',
       '/log/edit/4',
     )
-    expect(within(meals).getByRole('link', { name: 'Change Test bread' })).toHaveAttribute(
+    expect(within(meals).getByRole('link', { name: /^Change Test bread/ })).toHaveAttribute(
       'href',
       '/log/edit/2',
     )
@@ -235,11 +235,11 @@ describe('changing and removing foods', () => {
     renderToday()
     const meals = await openBreakfast()
     expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent(
-      'Test tea ×2, 2 times100 g each · 90 kcal',
+      'Test tea ×2, 2 times 100 g each · 90 kcal',
     )
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
     expect(screen.getByText('Removed Test tea from breakfast.')).toBeInTheDocument()
-    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent('Test tea100 g · 45 kcal')
+    expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent('Test tea 100 g · 45 kcal')
     expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
   })
 

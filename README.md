@@ -257,7 +257,7 @@ The add button opens the log sheet at `/log`. The sheet is one component, `src/l
 
 - The ring shows the calories eaten. Protein, carbs and fat follow, always in that order.
 - The review card appears when the day's sodium passes 2,000 mg, the World Health Organization's limit for adults, and names the food that gave the most.
-- The meals list shows each meal with food in it, in the order of the day, with its calories. Opening a meal lists its foods, each with **Change** (the edit screen) and **Remove**. The same food in the same amount, logged more than once, shows as one row with its count (such as ×3) and their calories together, and **Remove** takes one away.
+- The meals list shows each meal with food in it, in the order of the day, with its own icon, a large name and its calories. Opening a meal lists its foods: tapping a food opens the edit screen, and its bin button removes it. The same food in the same amount, logged more than once, shows as one row with its count (such as ×3) and their calories together, and the bin takes one away.
 - Remove takes the food off the list at once and offers **Undo**, which puts it back exactly as it was logged. Undo stays until the next action, so nobody is rushed.
 - From 1024 px up, the log sheet sits beside the day as **Add food**, so a food added there shows in the day at once, and each meal shows the time of its first food. Phones and tablets use the round add button instead.
 - Loading, empty and failed days each have their own state, and a failed day can be tried again.
