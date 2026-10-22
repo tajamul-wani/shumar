@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDayHeading, localDateKey } from './dates.ts'
+import { formatDayHeading, formatMealTime, localDateKey } from './dates.ts'
 
 describe('formatDayHeading', () => {
   it('shows the weekday, then the day and month', () => {
@@ -18,5 +18,13 @@ describe('localDateKey', () => {
 
   it('keeps a meal just after midnight on the new day', () => {
     expect(localDateKey(new Date(2026, 9, 22, 0, 15))).toBe('2026-10-22')
+  })
+})
+
+describe('formatMealTime', () => {
+  it('shows 24-hour time without a leading zero', () => {
+    expect(formatMealTime(new Date(2026, 9, 21, 8, 10))).toBe('8:10')
+    expect(formatMealTime(new Date(2026, 9, 21, 20, 45))).toBe('20:45')
+    expect(formatMealTime(new Date(2026, 9, 21, 0, 5))).toBe('0:05')
   })
 })

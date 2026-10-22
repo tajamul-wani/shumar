@@ -14,3 +14,8 @@ export function localDateKey(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+/** A 24-hour time without a leading zero, such as "8:10" or "20:45", as the meal list shows it. */
+export function formatMealTime(date: Date): string {
+  return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
+}
