@@ -223,7 +223,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
       <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
         <div className="flex items-center gap-2">
           <Heading tabIndex={-1} className="m-0 min-w-0 flex-1 text-title font-semibold focus:outline-none">
-            {embedded ? 'Add food' : `Add to ${mealName}`}
+            Add food
           </Heading>
           <button
             ref={changeMealRef}
@@ -231,10 +231,10 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
             onClick={() => setPickingMeal((shown) => !shown)}
             aria-expanded={pickingMeal}
             aria-controls={pickingMeal ? pickerId : undefined}
-            aria-label={embedded ? `To ${mealName}, change meal` : undefined}
+            aria-label={`To ${mealName}, change meal`}
             className={`min-h-11 shrink-0 rounded-full border border-koshur-border ${fill} px-3.5 text-body-sm font-medium text-koshur-silk ${FOCUS_RING}`}
           >
-            {embedded ? `To ${mealName}` : 'Change meal'}
+            To {mealName}
           </button>
           {!embedded && (
             <Link

@@ -75,10 +75,12 @@ afterEach(() => {
 describe('choosing the meal', () => {
   it('opens on the meal for the time of day and can change it', async () => {
     renderScreen()
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(screen.getByText('Search for a food to add it to dinner.')).toBeInTheDocument()
 
-    const change = screen.getByRole('button', { name: 'Change meal' })
+    // The meal is on its button, so the header fits on one line on small phones.
+    const change = screen.getByRole('button', { name: 'To dinner, change meal' })
+    expect(change).toHaveTextContent('To dinner')
     await userEvent.click(change)
     expect(change).toHaveAttribute('aria-expanded', 'true')
     const meals = screen.getByRole('group', { name: 'Meal' })
@@ -90,7 +92,7 @@ describe('choosing the meal', () => {
     expect(within(meals).getByRole('button', { name: 'Dinner' })).toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(within(meals).getByRole('button', { name: 'Evening tea' }))
-    expect(heading()).toHaveTextContent('Add to evening tea')
+    expect(change).toHaveAccessibleName('To evening tea, change meal')
     expect(screen.queryByRole('group', { name: 'Meal' })).not.toBeInTheDocument()
     expect(change).toHaveFocus()
   })
@@ -192,7 +194,7 @@ describe('a chosen food', () => {
       fat: 0.72,
       sodium_mg: 2.4,
     })
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
     expect(screen.getByText('Added 1.5 × 1 cup of Test rice, cooked to dinner.')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
@@ -257,7 +259,7 @@ describe('a chosen food', () => {
     await searchFor('rice')
     await openFood('Test rice, cooked')
     await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
-    expect(heading()).toHaveTextContent('Add to dinner')
+    expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
     expect(screen.getByRole('list', { name: 'Search results' })).toBeInTheDocument()
     expect(rpc).toHaveBeenCalledTimes(1)

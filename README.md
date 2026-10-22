@@ -241,7 +241,7 @@ To import a new USDA release:
 
 The add button opens the log sheet at `/log`. The sheet is one component, `src/log/LogSheet.tsx`, so another screen can show it too.
 
-- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. **Change meal** picks any of the five, including snack.
+- It opens on the meal for the time of day: breakfast until 11:00, lunch until 16:00, evening tea until 19:00 and dinner after that. Its button (such as **To dinner**) picks any of the five, including snack.
 - `src/log/useFoodSearch.ts` searches once typing pauses for 300 ms and cancels a search that is no longer wanted.
 - A chosen food offers its household units first, then grams, with a stepper for the amount. The values update as the amount changes. Foods flagged by the calorie check, and Kashmiri dishes not yet confirmed by a second weighing, are marked as estimates.
 - `src/lib/logs.ts` checks the amount (more than 0, at most 10,000 and at most 20 kg) and saves one `user_logs` row with the nutrients at that moment. The log date is the person's local calendar day, and the row's owner comes from the session, never from the app.

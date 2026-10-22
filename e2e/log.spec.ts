@@ -40,9 +40,9 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   await page.goto('/log')
 
   // Choose lunch, so the test doesn't depend on the time of day.
-  await page.getByRole('button', { name: 'Change meal' }).click()
+  await page.getByRole('button', { name: /, change meal$/ }).click()
   await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Lunch' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Add to lunch' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'To lunch, change meal' })).toBeVisible()
 
   await openEgg(page)
   await expect(
@@ -54,7 +54,7 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   await page.getByRole('button', { name: 'Add to lunch' }).click()
 
   await expect(page.getByText(`Added 2 × ${EGG_UNIT} of ${EGG} to lunch.`)).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: 'Add to lunch' })).toBeFocused()
+  await expect(page.getByRole('heading', { level: 1, name: 'Add food' })).toBeFocused()
   await expect(page.getByRole('region', { name: 'Recent' })).toContainText(EGG)
   expect(await cspViolations(page)).toEqual([])
 
@@ -165,6 +165,24 @@ test('a search made earlier today is answered on the device after a reload', asy
   expect(requests).toBe(1)
 })
 
+test('the log sheet header stays on one line on a 320 px phone, even for evening tea', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/log')
+  await page.getByRole('button', { name: /, change meal$/ }).click()
+  await page.getByRole('group', { name: 'Meal' }).getByRole('button', { name: 'Evening tea' }).click()
+
+  const heading = await page.getByRole('heading', { level: 1, name: 'Add food' }).boundingBox()
+  const meal = await page.getByRole('button', { name: 'To evening tea, change meal' }).boundingBox()
+  if (!heading || !meal) throw new Error('The header is not on the screen')
+  // One line each: the heading no taller than its 28 px line, the button no taller than its 44 px.
+  expect(heading.height).toBeLessThanOrEqual(28)
+  expect(meal.height).toBeLessThanOrEqual(44)
+  // And side by side, level with each other.
+  expect(Math.abs(heading.y + heading.height / 2 - (meal.y + meal.height / 2))).toBeLessThan(4)
+  expect(await scrollsSideways(page)).toBe(false)
+})
+
 for (const theme of ['dark', 'light'] as const) {
   test(`every step of the log sheet passes accessibility checks and fits 320 px, ${theme} theme`, async ({
     page,
@@ -183,7 +201,7 @@ for (const theme of ['dark', 'light'] as const) {
       if (size) await page.setViewportSize(size)
     }
 
-    await page.getByRole('button', { name: 'Change meal' }).click()
+    await page.getByRole('button', { name: /, change meal$/ }).click()
     await expect(page.getByRole('group', { name: 'Meal' })).toBeVisible()
     await check('meal picker')
 

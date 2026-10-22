@@ -14,8 +14,7 @@ export const SCREENS = [
   { path: '/', title: 'Today', heading: 'Today' },
   { path: '/trends', title: 'Trends', heading: 'Trends' },
   { path: '/you', title: 'You', heading: 'You' },
-  // The log sheet's heading names the meal, which depends on the time of day.
-  { path: '/log', title: 'Add food', heading: /^Add to / },
+  { path: '/log', title: 'Add food', heading: 'Add food' },
   { path: '/sources', title: 'Food sources', heading: 'Where food values come from' },
 ] as const
 
