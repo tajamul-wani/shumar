@@ -1,10 +1,11 @@
-import { Check, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
+import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import { Chip } from '../components/Chip.tsx'
-import { amountLabel, defaultQuantity, defaultUnit } from '../lib/foodDisplay.ts'
+import { defaultQuantity, defaultUnit } from '../lib/foodDisplay.ts'
 import { MAX_QUERY_LENGTH, type FoodResult, type FoodUnit } from '../lib/foodSearch.ts'
 import { LogError, logFood } from '../lib/logs.ts'
 import { MEALS, MEAL_LABELS, defaultMeal, type Meal } from '../lib/meals.ts'
@@ -136,7 +137,8 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
   const [recent, setRecent] = useState(() => readRecentFoods())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [added, setAdded] = useState<string | null>(null)
+  const [added, setAdded] = useState<ToastMessage | null>(null)
+  const toastId = useRef(0)
   const savingRef = useRef(false)
   const changeMealRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -180,7 +182,8 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
     try {
       const row = await logFood(client, { meal, food, quantity, unit })
       setRecent(rememberFood({ food, unitName: unit.name, quantity: row.quantity }))
-      setAdded(`Added ${amountLabel(row.quantity, unit)} of ${food.name} to ${mealName}.`)
+      toastId.current += 1
+      setAdded({ id: toastId.current, text: `Added to ${mealName}`, detail: food.name, tone: 'added' })
       setChosen(null)
       setQuery('')
       onAdded?.()
@@ -286,12 +289,6 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
           )}
         </div>
 
-        <output className={added ? 'flex items-start gap-2 text-body-sm text-koshur-silk' : 'sr-only'}>
-          {added && (
-            <Check aria-hidden="true" size={20} strokeWidth={2} className="shrink-0 text-deficit-ring" />
-          )}
-          {added}
-        </output>
         {error && <Alert>{error}</Alert>}
         <output className="sr-only">{searchAnnouncement(search)}</output>
 
@@ -327,6 +324,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
         ) : (
           <SearchResults search={search} onOpen={open} />
         )}
+        <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />
       </div>
     </SheetFillContext.Provider>
   )

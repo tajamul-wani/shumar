@@ -53,7 +53,7 @@ test('a person finds a food, chooses an amount and adds it to a meal', async ({ 
   await expect(page.getByRole('textbox', { name: 'Quantity' })).toHaveValue('2')
   await page.getByRole('button', { name: 'Add to lunch' }).click()
 
-  await expect(page.getByText(`Added 2 × ${EGG_UNIT} of ${EGG} to lunch.`)).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: /^Added to lunch/ })).toBeVisible()
   await expect(page.getByRole('heading', { level: 1, name: 'Add food' })).toBeFocused()
   await expect(page.getByRole('region', { name: 'Recent' })).toContainText(EGG)
   expect(await cspViolations(page)).toEqual([])

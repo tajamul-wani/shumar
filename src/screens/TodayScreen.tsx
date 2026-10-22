@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
+import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
@@ -77,12 +78,18 @@ export function TodayScreen() {
   const [removed, setRemoved] = useState<LoggedFood | null>(null)
   const [removing, setRemoving] = useState(false)
   const [restoring, setRestoring] = useState(false)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [toast, setToast] = useState<ToastMessage | null>(null)
+  const toastId = useRef(0)
   const [actionError, setActionError] = useState<string | null>(null)
   // Settles true once the last removal is saved, false if it failed. Undo waits for it.
   const pendingRemoval = useRef<Promise<boolean>>(Promise.resolve(true))
   const undoRef = useRef<HTMLButtonElement>(null)
   const mealsHeadingRef = useRef<HTMLHeadingElement>(null)
+
+  function showToast(text: string, tone: ToastMessage['tone'], detail: string) {
+    toastId.current += 1
+    setToast({ id: toastId.current, text, tone, detail })
+  }
 
   // After a removal, focus goes to Undo, so a keyboard can reverse it at once.
   useEffect(() => {
@@ -93,14 +100,14 @@ export function TodayScreen() {
     setActionError(null)
     update((current) => current.filter((log) => log.id !== food.id))
     setRemoved(food)
-    setNotice(`Removed ${food.foodName} from ${mealName(food)}.`)
+    showToast('Removed', 'removed', `${food.foodName} from ${mealName(food)}`)
     setRemoving(true)
     const saved = removeLog(client, food.id).then(
       () => true,
       (failure: unknown) => {
         update((current) => [...current, food].sort(byTime))
         setRemoved(null)
-        setNotice(null)
+        setToast(null)
         setActionError(
           messageFrom(failure, "We couldn't remove this food. Check your connection and try again."),
         )
@@ -124,7 +131,7 @@ export function TodayScreen() {
     try {
       const restored = await restoreLog(client, removed)
       update((current) => [...current, restored].sort(byTime))
-      setNotice(`Put ${removed.foodName} back in ${mealName(removed)}.`)
+      showToast('Put back', 'added', `${removed.foodName} in ${mealName(removed)}`)
       setRemoved(null)
       refreshDays()
       // The list may only now be back (when the day's only food was undone), so wait for it to draw.
@@ -146,27 +153,6 @@ export function TodayScreen() {
       <>
         {alert && <ReviewCard alert={alert} now={today} />}
         <CaloriesCard totals={totals} />
-        <output
-          className={
-            notice
-              ? 'flex min-h-11 items-center justify-between gap-3 text-body-sm text-koshur-silk'
-              : 'sr-only'
-          }
-        >
-          {notice}
-          {removed && (
-            <Button
-              ref={undoRef}
-              variant="secondary"
-              size="small"
-              onClick={undo}
-              aria-disabled={restoring}
-              className="aria-disabled:opacity-60"
-            >
-              Undo
-            </Button>
-          )}
-        </output>
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (
           <MealList
@@ -223,6 +209,17 @@ export function TodayScreen() {
         )}
         <div className="flex min-w-0 flex-col gap-4 lg:grow-2 lg:basis-130">{content}</div>
       </div>
+      <Toast
+        message={toast}
+        duration={removed ? 8000 : 5000}
+        onDismiss={() => {
+          setToast(null)
+          setRemoved(null)
+        }}
+        action={removed && { label: 'Undo', onClick: undo, busy: restoring }}
+        actionRef={undoRef}
+        besideAddButton
+      />
     </>
   )
 }

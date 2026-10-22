@@ -238,7 +238,7 @@ describe('changing and removing foods', () => {
       'Test tea ×2, 2 times 100 g each · 90 kcal',
     )
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
-    expect(screen.getByText('Removed Test tea from breakfast.')).toBeInTheDocument()
+    expect(screen.getByText('Removed')).toBeInTheDocument()
     expect(within(meals).getByText('Test tea').closest('li')).toHaveTextContent('Test tea 100 g · 45 kcal')
     expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
   })
@@ -251,7 +251,7 @@ describe('changing and removing foods', () => {
     expect(fake.removed).toHaveBeenCalledWith('2')
     expect(within(meals).queryByText('Test bread')).not.toBeInTheDocument()
     expect(within(ring()).getByText('290')).toBeInTheDocument()
-    expect(screen.getByText('Removed Test bread from breakfast.')).toBeInTheDocument()
+    expect(screen.getByText('Removed')).toBeInTheDocument()
     const undo = screen.getByRole('button', { name: 'Undo' })
     expect(undo).toHaveFocus()
 
@@ -266,7 +266,7 @@ describe('changing and removing foods', () => {
     )
     expect(await within(meals).findByText('Test bread')).toBeInTheDocument()
     expect(within(ring()).getByText('530')).toBeInTheDocument()
-    expect(screen.getByText('Put Test bread back in breakfast.')).toBeInTheDocument()
+    expect(screen.getByText('Put back')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
   })
 

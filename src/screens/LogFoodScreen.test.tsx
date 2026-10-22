@@ -196,7 +196,7 @@ describe('a chosen food', () => {
     })
     expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
-    expect(screen.getByText('Added 1.5 × 1 cup of Test rice, cooked to dinner.')).toBeInTheDocument()
+    expect(screen.getByText('Added to dinner')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Add 1.5 × 1 cup Test rice, cooked' })).toBeInTheDocument()
     expect(localStorage.getItem(RECENT_FOODS_KEY)).toContain('Test rice, cooked')
@@ -278,7 +278,7 @@ describe('recent foods', () => {
     expect(within(recent).getByRole('listitem')).toHaveTextContent('2 × 1 cup · 416 kcal · Ingredient')
     await userEvent.click(within(recent).getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ quantity: 2, kcal: 416, meal: 'dinner' }))
-    expect(screen.getByText('Added 2 × 1 cup of Test rice, cooked to dinner.')).toBeInTheDocument()
+    expect(screen.getByText('Added to dinner')).toBeInTheDocument()
   })
 
   it('opens a recent food on its last amount', async () => {

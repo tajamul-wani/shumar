@@ -106,13 +106,20 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     if (size) await page.setViewportSize(size)
 
     await meals.getByRole('button', { name: 'Remove Test bread' }).click()
-    await expect(page.getByText('Removed Test bread from breakfast.')).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /^Removed/ })).toBeVisible()
     await expect(ring).toContainText('100kcal eaten')
     await expect(page.getByRole('button', { name: 'Undo' })).toBeFocused()
+    // The toast with Undo passes the accessibility checks and fits a 320 px screen too.
+    const withToast = await accessibilityViolations(page)
+    expect(withToast, JSON.stringify(withToast, null, 2)).toEqual([])
+    const wide = page.viewportSize()
+    await page.setViewportSize({ width: 320, height: 640 })
+    expect(await scrollsSideways(page)).toBe(false)
+    if (wide) await page.setViewportSize(wide)
     await expect.poll(names).toEqual([{ food_name: 'Test tea' }])
 
     await page.getByRole('button', { name: 'Undo' }).click()
-    await expect(page.getByText('Put Test bread back in breakfast.')).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /^Put back/ })).toBeVisible()
     await expect(ring).toContainText('300kcal eaten')
     await expect.poll(names).toEqual([{ food_name: 'Test bread' }, { food_name: 'Test tea' }])
 
