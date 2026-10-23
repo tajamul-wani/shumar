@@ -83,6 +83,16 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Supabase starts while the browsers install. "Wait for local Supabase" below waits for
+      # it and fails with its log if it didn't start.
+      - name: Start local Supabase in the background (database, auth and API only)
+        env:
+          SKIP: studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta
+        run: |
+          (
+            npx supabase start -x "$SKIP" > "$RUNNER_TEMP/supabase.log" 2>&1
+            echo $? > "$RUNNER_TEMP/supabase.code" && mv "$RUNNER_TEMP/supabase.code" "$RUNNER_TEMP/supabase.exit"
+          ) > /dev/null 2>&1 &
       - name: Note the Playwright version and the runner image
         id: versions
         run: |
@@ -106,9 +116,12 @@ jobs:
       - name: Install the test browsers
         timeout-minutes: 5
         run: npx playwright install chromium webkit
-      - name: Start local Supabase (database, auth and API only)
+      - name: Wait for local Supabase
         timeout-minutes: 5
-        run: npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta
+        run: |
+          until [ -f "$RUNNER_TEMP/supabase.exit" ]; do sleep 2; done
+          cat "$RUNNER_TEMP/supabase.log"
+          exit "$(cat "$RUNNER_TEMP/supabase.exit")"
       - run: npm run test:e2e
         timeout-minutes: 15
         env:
