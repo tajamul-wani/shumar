@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { Redirect, Route, Switch, useLocation } from 'wouter'
-import { useAuth } from '../auth/context.ts'
-import { signInWithGoogle } from '../lib/auth.ts'
 import {
   FIRST_RUN_STEPS,
   firstUnanswered,
   readAnswers,
   saveAnswers,
+  toProfile,
   type FirstRunAnswers,
   type FirstRunStep,
 } from '../lib/firstRun.ts'
@@ -19,15 +18,17 @@ import {
   WeightQuestion,
   type QuestionProps,
 } from './Questions.tsx'
-import { FIRST_RUN_STEP_PATH, stepPath } from './paths.ts'
+import { FIRST_RUN_STEP_PATH, TARGET_PATH, stepPath } from './paths.ts'
+import { TargetScreen } from './TargetScreen.tsx'
 import { Welcome } from './Welcome.tsx'
 
-const QUESTIONS: Record<Exclude<FirstRunStep, 'goal'>, ComponentType<QuestionProps>> = {
+const QUESTIONS: Record<FirstRunStep, ComponentType<QuestionProps>> = {
   age: AgeQuestion,
   sex: SexQuestion,
   weight: WeightQuestion,
   height: HeightQuestion,
   activity: ActivityQuestion,
+  goal: GoalQuestion,
 }
 
 function isStep(value: string): value is FirstRunStep {
@@ -35,15 +36,13 @@ function isStep(value: string): value is FirstRunStep {
 }
 
 /**
- * Everything a signed-out visitor sees: the welcome screen and the first-run questions.
- * Answers are kept on this device as they are given, so a reload or a step back keeps them.
+ * Everything a signed-out visitor sees: the welcome screen, the first-run questions and the
+ * daily target they lead to. Answers are kept on this device as they are given, so a reload
+ * or a step back keeps them.
  */
 export function FirstRun() {
-  const { client } = useAuth()
   const [answers, setAnswers] = useState<FirstRunAnswers>(() => readAnswers())
   const [location, setLocation] = useLocation()
-  const [signingIn, setSigningIn] = useState(false)
-  const [signInError, setSignInError] = useState<string | null>(null)
 
   // After moving to another screen, put keyboard and screen reader focus on its heading.
   const previousLocation = useRef(location)
@@ -60,22 +59,10 @@ export function FirstRun() {
     return next
   }
 
-  async function signIn() {
-    setSigningIn(true)
-    setSignInError(null)
-    try {
-      await signInWithGoogle(client)
-    } catch {
-      setSignInError("We couldn't start Google sign-in. Check your connection and try again.")
-      setSigningIn(false)
-    }
-  }
-
   function answer(step: FirstRunStep, given: Partial<FirstRunAnswers>) {
     change(given)
     const following = FIRST_RUN_STEPS[FIRST_RUN_STEPS.indexOf(step) + 1]
-    if (following) setLocation(stepPath(following))
-    else void signIn()
+    setLocation(following ? stepPath(following) : TARGET_PATH)
   }
 
   function renderStep(value: string) {
@@ -85,23 +72,21 @@ export function FirstRun() {
     if (missing && FIRST_RUN_STEPS.indexOf(missing) < FIRST_RUN_STEPS.indexOf(value)) {
       return <Redirect to={stepPath(missing)} replace />
     }
-    const props: QuestionProps = {
-      answers,
-      onAnswer: (given) => answer(value, given),
-      onChange: change,
-    }
-    if (value === 'goal') {
-      return (
-        <GoalQuestion
-          {...props}
-          continueLabel={signingIn ? 'Opening Google' : 'Sign in with Google to save'}
-          busy={signingIn}
-          finishError={signInError}
-        />
-      )
-    }
     const QuestionScreen = QUESTIONS[value]
-    return <QuestionScreen key={value} {...props} />
+    return (
+      <QuestionScreen
+        key={value}
+        answers={answers}
+        onAnswer={(given) => answer(value, given)}
+        onChange={change}
+      />
+    )
+  }
+
+  function renderTarget() {
+    const profile = toProfile(answers)
+    if (!profile) return <Redirect to={stepPath(firstUnanswered(answers) ?? 'age')} replace />
+    return <TargetScreen profile={profile} weightUnit={answers.weightUnit} />
   }
 
   return (
@@ -110,6 +95,7 @@ export function FirstRun() {
         <Route path="/">
           <Welcome />
         </Route>
+        <Route path={TARGET_PATH}>{renderTarget}</Route>
         <Route path={FIRST_RUN_STEP_PATH}>{(params) => renderStep(params.step)}</Route>
         <Route>
           <Redirect to="/" replace />

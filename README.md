@@ -185,7 +185,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 <summary><strong>Screens and navigation</strong></summary>
 
 - Each screen has its own address, handled by wouter, so the back button, reloads and shared links all work. Unknown addresses go to Today.
-- Signed-out visitors see `src/firstRun/` instead: a welcome screen at `/` and one question per screen at `/start/age`, `/start/sex`, `/start/weight`, `/start/height`, `/start/activity` and `/start/goal`. An address further on goes back to the first question still to answer, and any other address goes to the welcome screen.
+- Signed-out visitors see `src/firstRun/` instead: a welcome screen at `/` and one question per screen at `/start/age`, `/start/sex`, `/start/weight`, `/start/height`, `/start/activity` and `/start/goal`, then the daily target at `/start/target`. An address further on goes back to the first question still to answer, and any other address goes to the welcome screen.
 - `src/shell/AppShell.tsx` draws the frame around every screen. Phones and tablets get a tab bar (Today, Trends, You) and a round add button. From 1024 px up, a side navigation takes over.
 - After moving to another screen, focus goes to its heading, for keyboard and screen reader users.
 
@@ -196,7 +196,8 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 
 - Google sign-in runs through Supabase Auth with the PKCE flow. The app sends the visitor to Google, Supabase handles the reply, and the session comes back to the app.
 - `src/auth/AuthProvider.tsx` shares the session with every screen and follows Supabase as it refreshes or ends it.
-- The welcome screen offers **Get started** for the first-run questions and **I already have an account** for Google sign-in. The last question hands over to Google sign-in too.
+- The welcome screen offers **Get started** for the first-run questions and **I already have an account** for Google sign-in.
+- After the last question, the daily target screen shows the calories, protein, carbs and fat worked out by `src/lib/targets.ts`, how they are worked out with their sources, and a note when the safety floor slows the loss. **Sign in with Google to save** hands over to Google sign-in.
 - The first-run answers are kept on the device as they are given, under `shumar-cache:first-run`, and checked again whenever they are read. Weight can be entered in kg or lb and is stored in kg.
 - Signing out removes the session and everything stored under the `shumar-cache:` prefix, such as recent foods, the day's searches and the first-run answers. Only the theme choice stays.
 

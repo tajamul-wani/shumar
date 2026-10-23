@@ -59,6 +59,13 @@ for (const theme of ['dark', 'light'] as const) {
     await choose(page, /Lose weight/)
     await expect(page.getByRole('group', { name: 'How fast?' })).toBeVisible()
     await check(page, 'goal, with the speeds')
+    await page.getByRole('button', { name: 'See my daily target' }).click()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Your daily target' })).toBeFocused()
+    await expect(page.getByRole('region', { name: 'Daily target' })).toContainText('kcal')
+    await page.getByRole('button', { name: 'How this is worked out' }).click()
+    await expect(page.getByText(/Mifflin-St Jeor formula \(1990\)/)).toBeVisible()
+    await check(page, 'daily target, with how it is worked out')
     expect(await cspViolations(page)).toEqual([])
   })
 }
@@ -89,6 +96,8 @@ test('the answers survive a reload, Enter goes on, and the last step hands over 
   await choose(page, /Lightly active/)
   await continueButton(page).click()
   await choose(page, /Keep my weight/)
+  await page.getByRole('button', { name: 'See my daily target' }).click()
+  await expect(page.getByRole('region', { name: 'Your answers' })).toContainText('GoalKeep my weight')
 
   const authorize = page.waitForRequest('**/auth/v1/authorize**')
   await page.getByRole('button', { name: 'Sign in with Google to save' }).click()

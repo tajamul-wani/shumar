@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
-import { FIRST_RUN_KEY, KG_PER_LB, readAnswers, saveAnswers } from '../lib/firstRun.ts'
+import { FIRST_RUN_KEY, KG_PER_LB, readAnswers, saveAnswers, type FirstRunAnswers } from '../lib/firstRun.ts'
 import { FirstRun } from './FirstRun.tsx'
 
 function renderFirstRun(path = '/', options: { oauthError?: Error } = {}) {
@@ -93,6 +93,11 @@ describe('the questions', () => {
     expect(screen.getByRole('button', { name: '1.1 lb a week' })).toHaveAttribute('aria-pressed', 'true')
     await user().click(screen.getByRole('button', { name: '0.6 lb a week' }))
     expect(screen.getByText('About 300 kcal a day less than you burn.')).toBeInTheDocument()
+    await user().click(screen.getByRole('button', { name: 'See my daily target' }))
+
+    expect(window.location.pathname).toBe('/start/target')
+    expect(screen.getByRole('heading', { level: 1, name: 'Your daily target' })).toHaveFocus()
+    expect(screen.getByText('Lose 0.6 lb a week')).toBeInTheDocument()
     await user().click(screen.getByRole('button', { name: 'Sign in with Google to save' }))
 
     expect(signInWithOAuth).toHaveBeenCalledWith({
@@ -192,18 +197,118 @@ describe('the questions', () => {
     expect(window.location.pathname).toBe('/')
     expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
   })
+})
 
-  it('explains when Google sign-in cannot start after the last question', async () => {
+// Test answers only, not a real person: the same example as the targets tests.
+const example: FirstRunAnswers = {
+  ageYears: 30,
+  sex: 'male',
+  weightKg: 80,
+  weightUnit: 'kg',
+  heightCm: 175,
+  activity: 'light',
+  goal: { kind: 'lose', kgPerWeek: 0.5 },
+}
+
+describe('the daily target', () => {
+  it('shows the calories, macros and answers worked out by the targets module', () => {
+    saveAnswers(example)
+    renderFirstRun('/start/target')
+    expect(document.title).toBe('Your daily target · Shumār')
+    const target = screen.getByRole('region', { name: 'Daily target' })
+    expect(target).toHaveTextContent('Calories a day2,176kcal')
+    expect(target).toHaveTextContent(
+      'Worked out from your answers to lose about 0.5 kg a week, using the Mifflin-St Jeor formula.',
+    )
+    expect(target).toHaveTextContent('Protein128 g')
+    expect(target).toHaveTextContent('Carbs280 g')
+    expect(target).toHaveTextContent('Fat60 g')
+    expect(screen.queryByText(/To keep this safe/)).not.toBeInTheDocument()
+
+    const answers = screen.getByRole('region', { name: 'Your answers' })
+    for (const row of ['Age30 years', 'SexMale', 'Weight80 kg', 'Height175 cm', 'ActivityLightly active']) {
+      expect(answers).toHaveTextContent(row)
+    }
+    expect(answers).toHaveTextContent('GoalLose 0.5 kg a week')
+    expect(screen.getByRole('link', { name: 'Change your answers' })).toHaveAttribute('href', '/start/age')
+  })
+
+  it('shows weight and speed in pounds when they were given in pounds', () => {
+    saveAnswers({ ...example, weightUnit: 'lb' })
+    renderFirstRun('/start/target')
+    expect(screen.getByRole('region', { name: 'Daily target' })).toHaveTextContent(
+      'to lose about 1.1 lb a week',
+    )
+    expect(screen.getByRole('region', { name: 'Your answers' })).toHaveTextContent('Weight176.4 lb')
+  })
+
+  it.each([
+    [{ kind: 'maintain' } as const, 'to keep your weight'],
+    [{ kind: 'gain' } as const, 'to gain weight slowly'],
+    [{ kind: 'recomp' } as const, 'for body recomposition'],
+  ])('explains the target for %o', (goal, words) => {
+    saveAnswers({ ...example, goal })
+    renderFirstRun('/start/target')
+    expect(screen.getByRole('region', { name: 'Daily target' })).toHaveTextContent(words)
+  })
+
+  it('says when the safety floor slows the loss', () => {
+    // A sedentary woman losing 0.75 kg a week would go under 1,200 kcal.
     saveAnswers({
-      ageYears: 30,
-      sex: 'male',
-      weightKg: 80,
-      weightUnit: 'kg',
-      heightCm: 175,
-      activity: 'light',
-      goal: { kind: 'maintain' },
+      ...example,
+      sex: 'female',
+      heightCm: 160,
+      weightKg: 60,
+      activity: 'sedentary',
+      goal: { kind: 'lose', kgPerWeek: 0.75 },
     })
-    renderFirstRun('/start/goal', { oauthError: new Error('offline') })
+    renderFirstRun('/start/target')
+    const target = screen.getByRole('region', { name: 'Daily target' })
+    expect(target).toHaveTextContent('1,200kcal')
+    expect(target).toHaveTextContent(
+      "To keep this safe, Shumār won't go below 1,200 kcal a day, so you'll lose a little slower than you chose.",
+    )
+  })
+
+  it('says when the floor is above what the body uses, so the target keeps weight steady', () => {
+    saveAnswers({
+      ...example,
+      sex: 'female',
+      ageYears: 80,
+      heightCm: 145,
+      weightKg: 40,
+      activity: 'sedentary',
+      goal: { kind: 'lose', kgPerWeek: 0.25 },
+    })
+    renderFirstRun('/start/target')
+    const target = screen.getByRole('region', { name: 'Daily target' })
+    expect(target).toHaveTextContent('1,043kcal')
+    expect(target).toHaveTextContent('this one keeps your weight steady')
+  })
+
+  it('opens how the target is worked out, with its sources', async () => {
+    saveAnswers(example)
+    renderFirstRun('/start/target')
+    const toggle = screen.getByRole('button', { name: 'How this is worked out' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText(/FAO\/WHO\/UNU/)).not.toBeInTheDocument()
+    await user().click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const panel = document.getElementById(toggle.getAttribute('aria-controls') ?? '')
+    expect(panel).toHaveTextContent('the Mifflin-St Jeor formula (1990)')
+    expect(panel).toHaveTextContent('FAO/WHO/UNU (2004)')
+    expect(panel).toHaveTextContent('Never below 1,200 kcal a day for women or 1,500 for men.')
+  })
+
+  it('needs every answer: otherwise it goes to the first question left', () => {
+    saveAnswers({ ...example, activity: undefined })
+    renderFirstRun('/start/target')
+    expect(window.location.pathname).toBe('/start/activity')
+  })
+
+  it('explains when Google sign-in cannot start, keeping the answers', async () => {
+    saveAnswers(example)
+    renderFirstRun('/start/target', { oauthError: new Error('offline') })
     await user().click(screen.getByRole('button', { name: 'Sign in with Google to save' }))
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent("We couldn't start Google sign-in"),

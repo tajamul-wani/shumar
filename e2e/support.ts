@@ -27,6 +27,7 @@ export const FIRST_RUN_SCREENS = [
   { path: '/start/height', title: 'Height', heading: 'How tall are you?' },
   { path: '/start/activity', title: 'Activity', heading: 'How active are you on most days?' },
   { path: '/start/goal', title: 'Goal', heading: 'What is your goal?' },
+  { path: '/start/target', title: 'Daily target', heading: 'Your daily target' },
 ] as const
 
 export const FIRST_RUN_ANSWERS = {

@@ -262,14 +262,7 @@ export function ActivityQuestion({ answers, onAnswer }: QuestionProps) {
   )
 }
 
-interface GoalQuestionProps extends QuestionProps {
-  continueLabel: string
-  busy?: boolean
-  /** A problem with what comes after the last question, such as sign-in failing to start. */
-  finishError?: string | null
-}
-
-export function GoalQuestion({ answers, onAnswer, continueLabel, busy, finishError }: GoalQuestionProps) {
+export function GoalQuestion({ answers, onAnswer }: QuestionProps) {
   const [kind, setKind] = useState<GoalKind | undefined>(answers.goal?.kind)
   const [rate, setRate] = useState<LossRate>(
     answers.goal?.kind === 'lose' ? answers.goal.kgPerWeek : DEFAULT_LOSS_RATE,
@@ -286,7 +279,7 @@ export function GoalQuestion({ answers, onAnswer, continueLabel, busy, finishErr
   }
 
   return (
-    <StepLayout step="goal" screenName="Goal" continueLabel={continueLabel} busy={busy} onContinue={next}>
+    <StepLayout step="goal" screenName="Goal" continueLabel="See my daily target" onContinue={next}>
       <Question id="goal-title" title="What is your goal?">
         You can change it any time.
       </Question>
@@ -322,7 +315,6 @@ export function GoalQuestion({ answers, onAnswer, continueLabel, busy, finishErr
           </p>
         </fieldset>
       )}
-      {finishError && <Alert>{finishError}</Alert>}
     </StepLayout>
   )
 }
