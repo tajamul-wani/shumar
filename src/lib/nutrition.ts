@@ -60,14 +60,17 @@ export function sumNutrients(items: readonly Nutrients[]): Nutrients {
   )
 }
 
+/** Energy per gram: 4 kcal for protein and carbs, 9 kcal for fat. */
+export const KCAL_PER_GRAM = { protein: 4, carbs: 4, fat: 9 } as const
+
 /** Open Food Facts reports sodium in grams; Shumār stores milligrams. */
 export function sodiumGramsToMg(grams: number): number {
   return grams * 1000
 }
 
-/** Energy implied by the macros (4 kcal/g protein and carbs, 9 kcal/g fat). */
+/** Energy implied by the macros. */
 export function atwaterKcal(n: Pick<Nutrients, 'protein' | 'carbs' | 'fat'>): number {
-  return 4 * n.protein + 4 * n.carbs + 9 * n.fat
+  return KCAL_PER_GRAM.protein * n.protein + KCAL_PER_GRAM.carbs * n.carbs + KCAL_PER_GRAM.fat * n.fat
 }
 
 /**

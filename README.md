@@ -58,6 +58,7 @@ src/
     recentFoods.ts         The foods added most recently, kept on the device
     deviceStorage.ts       Device storage, or nothing when the browser blocks it
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
+    targets.ts             Daily calorie and macro targets from cited formulas
     sources.ts             Names of the USDA releases shown on the Sources screen
     theme.ts               Dark and light theme handling
 public/
@@ -274,6 +275,24 @@ The math lives in `src/lib/nutrition.ts`, apart from the screens, so it can be t
 - Every food value is stored per 100 g. A serving is quantity × grams per unit (piece, cup, katori or grams), then scaled from the per-100 g values.
 - Values keep full precision in calculations and are rounded only for display.
 - Food values are checked by comparing the stated calories with the energy from protein, carbs and fat. Sodium is always in milligrams.
+
+</details>
+
+<details>
+<summary><strong>Daily targets</strong></summary>
+
+`src/lib/targets.ts` turns a person's answers (sex, age, height, weight, activity and goal) into daily calories, protein, carbs and fat. Each number in it has its source in a comment next to it.
+
+| Step           | How it works                                                                                                                                | Source                                                     |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------ | :--------------------------------------------------------- |
+| Resting energy | 10 × kg + 6.25 × cm - 5 × age, then + 5 for men or - 161 for women                                                                          | Mifflin-St Jeor, 1990                                      |
+| Daily energy   | Resting energy × 1.40 (sedentary), 1.53 (lightly active), 1.76 (moderately active) or 2.25 (very active)                                    | ICMR-NIN 2020 for sedentary, FAO/WHO/UNU 2004 for the rest |
+| Goal           | Lose 0.25, 0.5 or 0.75 kg a week with 300, 500 or 750 kcal less a day. Maintain and body recomposition stay at daily energy. Gain adds 10%. | NIH 1998, AHA/ACC/TOS 2013, Iraki et al. 2019              |
+| Safety floor   | Weight-loss targets never go below 1,200 kcal for women or 1,500 for men, and never above daily energy                                      | AHA/ACC/TOS 2013                                           |
+| Protein        | 1.6 g per kg of body weight, or 2.2 g for body recomposition, at most 35% of calories                                                       | Morton et al. 2018, ISSN 2017, Iraki et al. 2019, IOM 2005 |
+| Fat and carbs  | Fat is 25% of calories and carbs get the rest                                                                                               | IOM 2005, WHO                                              |
+
+It accepts ages 18 to 100, heights of 100 to 250 cm and weights of 30 to 300 kg, and refuses anything else, including answers read back from storage that don't match a known option.
 
 </details>
 
