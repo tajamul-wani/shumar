@@ -41,8 +41,9 @@ src/
   theme/                   The theme choice, shared with every screen
   shell/                   The frame around every screen: side navigation, tab bar and add button
   today/                   Parts of the Today screen: the calories card, review card and meals list
-  screens/                 One file per screen: SignIn, Today, Trends, You, Add food, Edit food and Sources
-  components/              Shared building blocks: Button, Chip and Alert
+  screens/                 One file per signed-in screen: Today, Trends, You, Add food, Edit food and Sources
+  firstRun/                What signed-out visitors see: the welcome screen and the first-run questions
+  components/              Shared building blocks: Button, Chip, RadioCard and Alert
   log/                     Parts of the log sheet: search as you type, food rows and the chosen food
   lib/
     supabase.ts            Supabase client setup, which refuses secret keys
@@ -184,6 +185,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 <summary><strong>Screens and navigation</strong></summary>
 
 - Each screen has its own address, handled by wouter, so the back button, reloads and shared links all work. Unknown addresses go to Today.
+- Signed-out visitors see `src/firstRun/` instead: a welcome screen at `/` and one question per screen at `/start/age`, `/start/sex`, `/start/weight`, `/start/height`, `/start/activity` and `/start/goal`. An address further on goes back to the first question still to answer, and any other address goes to the welcome screen.
 - `src/shell/AppShell.tsx` draws the frame around every screen. Phones and tablets get a tab bar (Today, Trends, You) and a round add button. From 1024 px up, a side navigation takes over.
 - After moving to another screen, focus goes to its heading, for keyboard and screen reader users.
 
@@ -194,7 +196,9 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 
 - Google sign-in runs through Supabase Auth with the PKCE flow. The app sends the visitor to Google, Supabase handles the reply, and the session comes back to the app.
 - `src/auth/AuthProvider.tsx` shares the session with every screen and follows Supabase as it refreshes or ends it.
-- Signing out removes the session and everything stored under the `shumar-cache:` prefix, such as recent foods and the day's searches. Only the theme choice stays.
+- The welcome screen offers **Get started** for the first-run questions and **I already have an account** for Google sign-in. The last question hands over to Google sign-in too.
+- The first-run answers are kept on the device as they are given, under `shumar-cache:first-run`, and checked again whenever they are read. Weight can be entered in kg or lb and is stored in kg.
+- Signing out removes the session and everything stored under the `shumar-cache:` prefix, such as recent foods, the day's searches and the first-run answers. Only the theme choice stays.
 
 </details>
 

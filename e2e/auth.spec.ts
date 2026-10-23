@@ -2,14 +2,17 @@ import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { apiClient, createTestUser, readTestUsers, signInAs } from './support.ts'
 
-test('Sign in with Google hands over to Supabase with a PKCE challenge', async ({ page, baseURL }) => {
+test('Signing in to an existing account hands over to Supabase with a PKCE challenge', async ({
+  page,
+  baseURL,
+}) => {
   // Stop at Supabase: Google's own screen can't be automated.
   await page.route('**/auth/v1/authorize**', (route) =>
     route.fulfill({ status: 200, contentType: 'text/plain', body: 'Google sign-in' }),
   )
   await page.goto('/')
   const authorize = page.waitForRequest('**/auth/v1/authorize**')
-  await page.getByRole('button', { name: 'Sign in with Google' }).click()
+  await page.getByRole('button', { name: 'I already have an account' }).click()
 
   const url = new URL((await authorize).url())
   expect(url.searchParams.get('provider')).toBe('google')
@@ -23,7 +26,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
     await page.goto('/?error=access_denied&error_description=The+user+cancelled')
     await expect(page.getByRole('alert')).toHaveText("We couldn't sign you in with Google. Please try again.")
-    await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'I already have an account' })).toBeEnabled()
 
     const results = await new AxeBuilder({ page }).analyze()
     const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
@@ -45,11 +48,12 @@ test('Sign out ends the session and clears the device, keeping only the theme', 
   await page.addInitScript(() => {
     localStorage.setItem('shumar-theme', 'light')
     localStorage.setItem('shumar-cache:today', '[]')
+    localStorage.setItem('shumar-cache:first-run', '{"ageYears":30,"weightUnit":"kg"}')
   })
   await page.goto('/you')
   await page.getByRole('button', { name: 'Sign out' }).click()
 
-  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'I already have an account' })).toBeVisible()
   await expect(page).toHaveURL('/')
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual(['shumar-theme'])
 
