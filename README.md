@@ -59,6 +59,7 @@ src/
     deviceStorage.ts       Device storage, or nothing when the browser blocks it
     nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
     targets.ts             Daily calorie and macro targets from cited formulas
+    firstRun.ts            The first-run answers, kept on the device until sign-in
     sources.ts             Names of the USDA releases shown on the Sources screen
     theme.ts               Dark and light theme handling
 public/
