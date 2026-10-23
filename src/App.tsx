@@ -1,8 +1,8 @@
 import { Redirect, Route, Switch } from 'wouter'
 import { useAuth } from './auth/context.ts'
+import { FirstRun } from './firstRun/FirstRun.tsx'
 import { EditLogScreen } from './screens/EditLogScreen.tsx'
 import { LogFoodScreen } from './screens/LogFoodScreen.tsx'
-import { SignIn } from './screens/SignIn.tsx'
 import { SourcesScreen } from './screens/SourcesScreen.tsx'
 import { TodayScreen } from './screens/TodayScreen.tsx'
 import { TrendsScreen } from './screens/TrendsScreen.tsx'
@@ -20,7 +20,7 @@ export default function App() {
       </main>
     )
   }
-  if (!session) return <SignIn />
+  if (!session) return <FirstRun />
 
   return (
     <AppShell>

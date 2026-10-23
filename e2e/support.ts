@@ -18,6 +18,28 @@ export const SCREENS = [
   { path: '/sources', title: 'Food sources', heading: 'Where food values come from' },
 ] as const
 
+/** The signed-out screens, with the answers that let each question open directly. */
+export const FIRST_RUN_SCREENS = [
+  { path: '/', title: 'Welcome', heading: 'Shumār' },
+  { path: '/start/age', title: 'Age', heading: 'How old are you?' },
+  { path: '/start/sex', title: 'Sex', heading: 'What is your sex?' },
+  { path: '/start/weight', title: 'Weight', heading: 'What do you weigh?' },
+  { path: '/start/height', title: 'Height', heading: 'How tall are you?' },
+  { path: '/start/activity', title: 'Activity', heading: 'How active are you on most days?' },
+  { path: '/start/goal', title: 'Goal', heading: 'What is your goal?' },
+  { path: '/start/target', title: 'Daily target', heading: 'Your daily target' },
+] as const
+
+export const FIRST_RUN_ANSWERS = {
+  ageYears: 30,
+  sex: 'male',
+  weightKg: 80,
+  weightUnit: 'kg',
+  heightCm: 175,
+  activity: 'light',
+  goal: { kind: 'lose', kgPerWeek: 0.5 },
+}
+
 export interface TestUser {
   email: string
   session: Session

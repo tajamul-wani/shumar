@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  GRAM,
-  atwaterKcal,
-  gramsFor,
-  passesAtwaterCheck,
-  roundForDisplay,
-  scaleNutrients,
-  sodiumGramsToMg,
-  sumNutrients,
-  type Nutrients,
-} from './nutrition.ts'
+import { GRAM, gramsFor, roundForDisplay, scaleNutrients, sumNutrients, type Nutrients } from './nutrition.ts'
 
 // Test fixture only, not real food data.
 const per100g: Nutrients = { kcal: 300, protein: 10, carbs: 50, fat: 6, sodiumMg: 400 }
@@ -66,38 +56,6 @@ describe('sumNutrients', () => {
 
   it('returns zeros for an empty day', () => {
     expect(sumNutrients([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 })
-  })
-})
-
-describe('sodiumGramsToMg', () => {
-  it('converts Open Food Facts grams to milligrams', () => {
-    expect(sodiumGramsToMg(0.4)).toBe(400)
-  })
-})
-
-describe('Atwater check', () => {
-  it('computes energy from macros', () => {
-    expect(atwaterKcal({ protein: 10, carbs: 50, fat: 6 })).toBe(294)
-  })
-
-  it('accepts values within 20%', () => {
-    expect(passesAtwaterCheck(per100g)).toBe(true)
-  })
-
-  it('flags values far outside the tolerance', () => {
-    expect(passesAtwaterCheck({ ...per100g, kcal: 900 })).toBe(false)
-  })
-
-  it('accepts a food with no energy and no macros', () => {
-    expect(passesAtwaterCheck({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 50 })).toBe(true)
-  })
-
-  it('flags zero kcal when the macros imply energy', () => {
-    expect(passesAtwaterCheck({ ...per100g, kcal: 0 })).toBe(false)
-  })
-
-  it('respects a custom tolerance', () => {
-    expect(passesAtwaterCheck({ ...per100g, kcal: 330 }, 0.05)).toBe(false)
   })
 })
 

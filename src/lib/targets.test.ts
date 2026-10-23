@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { atwaterKcal } from './nutrition.ts'
+import { KCAL_PER_GRAM } from './nutrition.ts'
 import {
   ACTIVITY_PAL,
   MIN_KCAL,
@@ -24,6 +24,11 @@ const woman: Profile = { ...man, sex: 'female', heightCm: 160, weightKg: 60 }
 
 const withGoal = (profile: Profile, goal: Goal): Profile => ({ ...profile, goal })
 const lose = (kgPerWeek: 0.25 | 0.5 | 0.75): Goal => ({ kind: 'lose', kgPerWeek })
+
+/** The energy in a day's macros, to check the targets add up. */
+function energyFromMacros(t: { protein: number; carbs: number; fat: number }): number {
+  return KCAL_PER_GRAM.protein * t.protein + KCAL_PER_GRAM.carbs * t.carbs + KCAL_PER_GRAM.fat * t.fat
+}
 
 describe('restingKcal', () => {
   // Mifflin-St Jeor by hand: 10 x kg + 6.25 x cm - 5 x age, + 5 for men, - 161 for women.
@@ -171,7 +176,7 @@ describe('dailyTargets: macros', () => {
     const losing = profile.goal.kind === 'lose'
     return (
       // Rounding each macro to whole grams moves the total by a few kcal at most.
-      Math.abs(atwaterKcal(t) - t.kcal) <= 10 &&
+      Math.abs(energyFromMacros(t) - t.kcal) <= 10 &&
       (t.protein * 4) / t.kcal <= 0.35 + 0.005 &&
       Math.abs((t.fat * 9) / t.kcal - 0.25) < 0.005 &&
       t.carbs > 0 &&

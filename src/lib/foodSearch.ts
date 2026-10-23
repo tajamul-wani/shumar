@@ -33,9 +33,9 @@ export interface FoodResult {
 
 export const MIN_QUERY_LENGTH = 2
 export const MAX_QUERY_LENGTH = 64
-export const MAX_RESULTS = 20
+const MAX_RESULTS = 20
 /** How many different searches a day are kept. Each takes a few kilobytes on the device. */
-export const MAX_KEPT_SEARCHES = 100
+const MAX_KEPT_SEARCHES = 100
 /** Stored under the user cache prefix, so signing out clears it with everything else. */
 export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
 /** Raise this when the stored shape changes, so copies in the old shape are ignored. */
@@ -134,13 +134,13 @@ export function parseResults(rows: unknown): FoodResult[] {
   return results
 }
 
-export interface FoodSearch {
+interface FoodSearch {
   search(query: string, signal?: AbortSignal): Promise<FoodResult[]>
 }
 
 type SearchStorage = Pick<Storage, 'getItem' | 'setItem'>
 
-export interface FoodSearchOptions {
+interface FoodSearchOptions {
   /** How many different searches to keep. */
   cacheSize?: number
   /** Where the day's searches are kept between visits. Nothing is kept on the device without it. */

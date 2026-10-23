@@ -185,7 +185,7 @@ export function foodFromLog(log: LoggedFood): { food: FoodResult; unit: FoodUnit
   return { food, unit, quantity: log.quantity }
 }
 
-export interface LogChange {
+interface LogChange {
   meal: Meal
   quantity: number
   unit: FoodUnit
