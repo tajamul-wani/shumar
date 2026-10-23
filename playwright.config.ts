@@ -31,6 +31,8 @@ export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
+  // GitHub's runners have 4 cores, and Playwright would use only 2 by default.
+  workers: process.env.CI ? 4 : undefined,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
