@@ -169,6 +169,8 @@ Six checks must pass before a pull request can merge into `main`:
 
 Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
 
+Every job and every slow step has a time limit, so a stuck step fails in minutes instead of running for hours.
+
 </details>
 
 ## Architecture
