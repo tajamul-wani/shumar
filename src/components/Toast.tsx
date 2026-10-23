@@ -12,7 +12,7 @@ export interface ToastMessage {
   tone: 'added' | 'removed'
 }
 
-export interface ToastAction {
+interface ToastAction {
   label: string
   onClick: () => void
   /** While the action works, it can't be pressed again. */

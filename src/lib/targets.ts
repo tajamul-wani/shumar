@@ -78,7 +78,7 @@ export const MIN_KCAL: Record<Sex, number> = { female: 1200, male: 1500 }
  * 20% over maintenance for about 0.25 to 0.5% of body weight a week. Shumār
  * uses the low end.
  */
-export const GAIN_SURPLUS = 0.1
+const GAIN_SURPLUS = 0.1
 
 /**
  * Protein in g per kg of body weight.
@@ -87,8 +87,8 @@ export const GAIN_SURPLUS = 0.1
  *   (Jäger et al., J Int Soc Sports Nutr 14:20).
  * - Body recomposition: 2.2, the top of the 1.6 to 2.2 in Iraki et al. 2019.
  */
-export const PROTEIN_G_PER_KG = 1.6
-export const RECOMP_PROTEIN_G_PER_KG = 2.2
+const PROTEIN_G_PER_KG = 1.6
+const RECOMP_PROTEIN_G_PER_KG = 2.2
 
 /**
  * Shares of daily energy. IOM 2005, "Dietary Reference Intakes for Energy,
@@ -96,8 +96,8 @@ export const RECOMP_PROTEIN_G_PER_KG = 2.2
  * protein 10 to 35% and fat 20 to 35% for adults. WHO healthy diet fact sheet:
  * total fat 30% or less. Carbs get the rest.
  */
-export const PROTEIN_MAX_SHARE = 0.35
-export const FAT_SHARE = 0.25
+const PROTEIN_MAX_SHARE = 0.35
+const FAT_SHARE = 0.25
 
 /**
  * Accepted answers. Every source above is for adults, and Mifflin-St Jeor was

@@ -3,7 +3,7 @@ import { useAuth } from '../auth/context.ts'
 import { fetchDayLogs, fetchDaysLogged, type LoggedFood } from '../lib/dayLogs.ts'
 import { LogError } from '../lib/logs.ts'
 
-export interface DayLogs {
+interface DayLogs {
   /** null until the day has loaded. */
   logs: LoggedFood[] | null
   /** Why the day couldn't load, if it couldn't. */

@@ -7,7 +7,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
  * start if one is configured by mistake.
  */
 
-export interface SupabaseConfig {
+interface SupabaseConfig {
   url: string
   key: string
 }

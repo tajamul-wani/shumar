@@ -63,28 +63,6 @@ export function sumNutrients(items: readonly Nutrients[]): Nutrients {
 /** Energy per gram: 4 kcal for protein and carbs, 9 kcal for fat. */
 export const KCAL_PER_GRAM = { protein: 4, carbs: 4, fat: 9 } as const
 
-/** Open Food Facts reports sodium in grams; Shumār stores milligrams. */
-export function sodiumGramsToMg(grams: number): number {
-  return grams * 1000
-}
-
-/** Energy implied by the macros. */
-export function atwaterKcal(n: Pick<Nutrients, 'protein' | 'carbs' | 'fat'>): number {
-  return KCAL_PER_GRAM.protein * n.protein + KCAL_PER_GRAM.carbs * n.carbs + KCAL_PER_GRAM.fat * n.fat
-}
-
-/**
- * Sanity check for incoming food data: the stated kcal should be within
- * the tolerance of the energy implied by the macros. Fibre and alcohol
- * explain some gaps, so the default tolerance is 20%.
- */
-export function passesAtwaterCheck(n: Nutrients, tolerance = 0.2): boolean {
-  const implied = atwaterKcal(n)
-  if (n.kcal === 0 && implied === 0) return true
-  if (n.kcal <= 0) return false
-  return Math.abs(implied - n.kcal) / n.kcal <= tolerance
-}
-
 /** Display rounding: whole kcal and mg, macros to one decimal place. */
 export function roundForDisplay(n: Nutrients): Nutrients {
   const oneDecimal = (v: number) => Math.round(v * 10) / 10

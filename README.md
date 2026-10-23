@@ -58,7 +58,7 @@ src/
     today.ts               The day's totals, meals, sodium alert and calorie ring
     recentFoods.ts         The foods added most recently, kept on the device
     deviceStorage.ts       Device storage, or nothing when the browser blocks it
-    nutrition.ts           Nutrition math: unit conversion, scaling, totals and data checks
+    nutrition.ts           Nutrition math: unit conversion, scaling and totals
     targets.ts             Daily calorie and macro targets from cited formulas
     firstRun.ts            The first-run answers, kept on the device until sign-in
     sources.ts             Names of the USDA releases shown on the Sources screen
@@ -283,7 +283,7 @@ The math lives in `src/lib/nutrition.ts`, apart from the screens, so it can be t
 
 - Every food value is stored per 100 g. A serving is quantity × grams per unit (piece, cup, katori or grams), then scaled from the per-100 g values.
 - Values keep full precision in calculations and are rounded only for display.
-- Food values are checked by comparing the stated calories with the energy from protein, carbs and fat. Sodium is always in milligrams.
+- Sodium is always in milligrams. Food values are checked against their protein, carbs and fat when they are imported (see Food data and search).
 
 </details>
 

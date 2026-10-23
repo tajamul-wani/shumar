@@ -12,7 +12,7 @@ export interface MealGroup {
   firstLoggedAt: string
 }
 
-export interface DaySummary {
+interface DaySummary {
   totals: Nutrients
   /** Only meals with food in them, in the order of the day. */
   meals: MealGroup[]

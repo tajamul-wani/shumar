@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js'
 
 export type AccountUser = Pick<User, 'email' | 'user_metadata' | 'app_metadata'>
 
-export interface AccountSummary {
+interface AccountSummary {
   /** The person's name from Google, or their email when there is no name. */
   name: string
   /** A second line under the name, or null when it would only repeat it. */

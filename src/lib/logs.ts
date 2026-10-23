@@ -6,7 +6,7 @@ import { gramsFor, scaleNutrients } from './nutrition.ts'
 
 /** The limits user_logs enforces, checked here first so people get a clear message. */
 export const MAX_QUANTITY = 10000
-export const MAX_LOG_GRAMS = 20000
+const MAX_LOG_GRAMS = 20000
 
 export interface NewLog {
   meal: Meal
@@ -18,7 +18,7 @@ export interface NewLog {
 }
 
 /** One user_logs row, with a snapshot of the nutrients so later catalog fixes never rewrite history. */
-export interface LogRow {
+interface LogRow {
   log_date: string
   meal: Meal
   food_name: string
