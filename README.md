@@ -67,6 +67,7 @@ scripts/
   check-design-tokens.mjs  Blocks off-token colors, fonts and sizes
   security-headers.ts      HTTP security headers, including the Content Security Policy
   bundle-secrets.ts        Finds anything that looks like a secret in the build output
+  browser-deps.sh          Installs the test browsers' Ubuntu packages in CI, from GitHub's cache when it has them
 supabase/
   config.toml              Local Supabase settings
   migrations/              Database changes, applied in order
@@ -169,7 +170,7 @@ Six checks must pass before a pull request can merge into `main`:
 
 Every action in the workflows is pinned to an exact commit, with its version in a comment, so a moved tag can't change what runs.
 
-Every job and every slow step has a time limit, so a stuck step fails in minutes instead of running for hours.
+Every job and every slow step has a time limit, so a stuck step fails in minutes instead of running for hours. The end-to-end job installs the browsers' Ubuntu packages from GitHub's cache, so a slow download server can't hold up a pull request.
 
 </details>
 

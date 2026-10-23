@@ -83,13 +83,29 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Note the Playwright version and the runner image
+        id: versions
+        run: |
+          echo "playwright=$(npx playwright --version | awk '{ print $2 }')" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:?}-${ImageVersion:?}" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install --with-deps chromium webkit
+          key: playwright-browsers-${{ runner.os }}-${{ steps.versions.outputs.playwright }}
+      # Ubuntu's download servers are sometimes very slow, so the browsers' system packages
+      # come from GitHub's cache. It refills when the runner image or Playwright changes.
+      - name: Cache the browsers' Ubuntu packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-deps
+          key: playwright-deps-${{ steps.versions.outputs.image }}-${{ steps.versions.outputs.playwright }}
+      - name: Install the browsers' Ubuntu packages
         timeout-minutes: 10
+        run: bash scripts/browser-deps.sh ~/.cache/playwright-deps
+      - name: Install the test browsers
+        timeout-minutes: 5
+        run: npx playwright install chromium webkit
       - name: Start local Supabase (database, auth and API only)
         timeout-minutes: 5
         run: npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta
