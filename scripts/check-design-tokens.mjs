@@ -22,7 +22,7 @@ const RULES = [
   },
   {
     pattern: /\bfont-(serif|mono)\b/,
-    message: 'font outside the approved set: use font-sans or font-wordmark',
+    message: 'font outside the approved set: use font-sans',
   },
   {
     pattern: /font-family\s*:|@font-face|fonts\.googleapis/,

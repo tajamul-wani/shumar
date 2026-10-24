@@ -3,13 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta
-      name="description"
-      content="Shumār is a calorie and macro tracker built for Kashmiri and everyday food."
-    />
+    <!-- The build fills each %SITE_...% from src/shell/site.ts and SITE_URL. -->
+    <title>%SITE_TITLE%</title>
+    <meta name="description" content="%SITE_DESCRIPTION%" />
+    <link rel="canonical" href="%SITE_URL%/" />
     <meta name="theme-color" content="#0C0B0A" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="%SITE_NAME%" />
+    <meta property="og:title" content="%SITE_TITLE%" />
+    <meta property="og:description" content="%SITE_DESCRIPTION%" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/brand/share-image.png" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
+    <meta property="og:image:alt" content="%SITE_IMAGE_ALT%" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "%SITE_NAME%",
+            "alternateName": ["Shumar", "شُمار"],
+            "url": "%SITE_URL%/"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "%SITE_NAME%",
+            "url": "%SITE_URL%/",
+            "description": "%SITE_DESCRIPTION%",
+            "applicationCategory": "HealthApplication",
+            "operatingSystem": "Any",
+            "inLanguage": "en"
+          }
+        ]
+      }
+    </script>
     <script src="/theme-init.js"></script>
-    <title>Shumār</title>
   </head>
   <body>
     <div id="root"></div>

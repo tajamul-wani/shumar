@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
+import { Logo } from '../components/Logo.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
@@ -215,13 +216,9 @@ export function TodayScreen() {
     <>
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <span
-            lang="ks"
-            aria-hidden="true"
-            className="font-wordmark text-heading text-deficit-ring lg:hidden"
-          >
-            شُمار
-          </span>
+          <div className="mb-2 lg:hidden">
+            <Logo decorative className="h-8 w-auto" />
+          </div>
           <p className="m-0 text-body text-koshur-muted lg:text-body-sm">{formatDayHeading(today)}</p>
           <h1
             tabIndex={-1}

@@ -4,7 +4,7 @@ import { findThemeColorDrift, findViolations } from './check-design-tokens.mjs'
 
 describe('design token check', () => {
   it('accepts token classes', () => {
-    const ok = '<p className="m-0 text-body font-semibold text-koshur-muted bg-koshur-surface font-wordmark">'
+    const ok = '<p className="m-0 text-body font-semibold text-koshur-muted bg-koshur-surface font-sans">'
     expect(findViolations(ok)).toEqual([])
   })
 

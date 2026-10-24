@@ -96,8 +96,8 @@ describe('setting a target after sign-in', () => {
     renderApp(fake, '/')
     await user().click(await screen.findByRole('link', { name: 'Set my target' }))
     expect(window.location.pathname).toBe('/start/age')
-    // Signed in, the app's own frame shows the wordmark, so the questions leave it out.
-    expect(screen.queryByText('Shumār')).not.toBeInTheDocument()
+    // Signed in, the app's own frame shows the logo, so the questions leave theirs out.
+    expect(screen.queryByRole('img', { name: 'Shumār' })).not.toBeInTheDocument()
 
     await user().type(screen.getByLabelText('Age'), '30')
     await continueOn()

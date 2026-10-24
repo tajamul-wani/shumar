@@ -1,6 +1,7 @@
 // The HTTP security headers every page is served with. The build writes them to
 // dist/_headers for Cloudflare, and `vite preview` sends the same ones, so the
-// end-to-end tests run under the real policy.
+// end-to-end tests run under the real policy. Other rules, such as keeping the app's
+// screens out of search results, go into the same file.
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost'])
 
@@ -41,8 +42,26 @@ export function securityHeaders(supabaseUrl: string | undefined): Record<string,
   }
 }
 
-/** Cloudflare's _headers format: a path pattern, then indented `Name: value` lines. */
-export function headersFile(headers: Record<string, string>): string {
-  const lines = Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`)
-  return `/*\n${lines.join('\n')}\n`
+/** One rule in Cloudflare's _headers file: a path pattern and the headers it adds. */
+export interface HeaderRule {
+  path: string
+  headers: Record<string, string>
+}
+
+/** Cloudflare's _headers format: each path pattern, then its indented `Name: value` lines. */
+export function headersFile(rules: HeaderRule[]): string {
+  const blocks = rules.map(({ path, headers }) =>
+    [path, ...Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`)].join('\n'),
+  )
+  return `${blocks.join('\n')}\n`
+}
+
+/**
+ * The headers Cloudflare sends for a path: those of every rule that matches it. A pattern ending
+ * in /* matches everything below it, so /* matches every path.
+ */
+export function headersFor(pathname: string, rules: HeaderRule[]): Record<string, string> {
+  const matches = (pattern: string) =>
+    pattern.endsWith('/*') ? pathname.startsWith(pattern.slice(0, -1)) : pathname === pattern
+  return Object.assign({}, ...rules.filter((rule) => matches(rule.path)).map((rule) => rule.headers))
 }
