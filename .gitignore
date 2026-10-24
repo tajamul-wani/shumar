@@ -7,7 +7,6 @@
 *.key
 
 # Internal planning (never public)
-blueprint/
 
 # Claude and chat files
 .claude/
