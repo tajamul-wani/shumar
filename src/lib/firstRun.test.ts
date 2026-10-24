@@ -9,6 +9,7 @@ import {
   checkAge,
   checkHeight,
   checkWeight,
+  clearAnswers,
   firstUnanswered,
   goalSummary,
   parseAnswers,
@@ -186,7 +187,15 @@ describe('keeping answers on the device', () => {
     expect(readAnswers(memoryStorage({ [FIRST_RUN_KEY]: '{not json' }))).toEqual(NO_ANSWERS)
   })
 
+  it('clears them', () => {
+    const storage = memoryStorage()
+    saveAnswers(complete, storage)
+    clearAnswers(storage)
+    expect(storage.data.has(FIRST_RUN_KEY)).toBe(false)
+  })
+
   it('carries on when storage is blocked', () => {
+    expect(() => clearAnswers(throwing)).not.toThrow()
     expect(readAnswers(throwing)).toEqual(NO_ANSWERS)
     expect(() => saveAnswers(complete, throwing)).not.toThrow()
     expect(readAnswers(undefined)).toEqual(NO_ANSWERS)

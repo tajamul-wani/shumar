@@ -209,6 +209,7 @@ export function parseAnswers(raw: unknown): FirstRunAnswers {
 
 type ReadStorage = Pick<Storage, 'getItem'>
 type WriteStorage = Pick<Storage, 'setItem'>
+type RemoveStorage = Pick<Storage, 'removeItem'>
 
 export function readAnswers(storage: ReadStorage | undefined = deviceStorage()): FirstRunAnswers {
   try {
@@ -226,6 +227,15 @@ export function saveAnswers(
     storage?.setItem(FIRST_RUN_KEY, JSON.stringify(answers))
   } catch {
     // Storage is full or blocked: the answers last only until the page closes.
+  }
+}
+
+/** Clears the answers from the device, once they are saved to the person's profile. */
+export function clearAnswers(storage: RemoveStorage | undefined = deviceStorage()): void {
+  try {
+    storage?.removeItem(FIRST_RUN_KEY)
+  } catch {
+    // Blocked storage holds nothing to clear.
   }
 }
 

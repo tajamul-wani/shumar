@@ -33,7 +33,8 @@ src/
   shell/        Navigation and the frame around every screen
   components/   Shared building blocks
   lib/          Logic kept apart from the screens: nutrition math, targets, food search, logging
-  auth/, theme/ The session and the theme, shared with every screen
+  auth/, theme/, profile/
+                The session, the theme and the first-run answers, shared with every screen
 scripts/        USDA importer, design-token check, security headers, CI helpers
 supabase/       Migrations and database tests
 e2e/            End-to-end tests
