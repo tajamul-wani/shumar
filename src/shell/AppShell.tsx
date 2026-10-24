@@ -1,9 +1,8 @@
-import { Moon, Plus, Sun } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 import { Logo } from '../components/Logo.tsx'
-import { PREFERENCE_LABELS, nextPreference } from '../lib/theme.ts'
-import { useTheme } from '../theme/context.ts'
+import { ThemeButton } from '../components/ThemeButton.tsx'
 import { EDIT_LOG_PATH, LOG_FOOD_PATH, NAV_ITEMS, type NavItem } from './nav.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
@@ -50,23 +49,6 @@ function TabLink({ item }: { item: NavItem }) {
 }
 
 /** On desktop, one button steps through System, Light and Dark. */
-function ThemeButton() {
-  const { preference, setPreference } = useTheme()
-  const next = nextPreference(preference)
-  const Icon = preference === 'light' ? Sun : Moon
-  return (
-    <button
-      type="button"
-      onClick={() => setPreference(next)}
-      aria-label={`Theme: ${PREFERENCE_LABELS[preference]}. Switch to ${PREFERENCE_LABELS[next]}`}
-      className={`mt-auto flex min-h-11 items-center gap-2.5 rounded-xl border border-koshur-border px-3 text-left text-body-sm text-koshur-silk ${FOCUS_RING}`}
-    >
-      <Icon aria-hidden="true" size={20} strokeWidth={2} />
-      Theme: {PREFERENCE_LABELS[preference]}
-    </button>
-  )
-}
-
 /**
  * The frame every signed-in screen sits in: side navigation from 1024 px up, and a tab bar
  * with a floating add button below that.
@@ -104,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SideLink key={item.href} item={item} />
           ))}
         </nav>
-        <ThemeButton />
+        <ThemeButton className="mt-auto" />
       </aside>
 
       <main id="main" className="min-w-0 flex-1 px-4 pt-6 pb-clear-add-button lg:px-8 lg:pt-7 lg:pb-12">

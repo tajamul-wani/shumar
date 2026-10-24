@@ -6,6 +6,7 @@ import { SetTargetQuestion, SetTargetReview } from './firstRun/SetTarget.tsx'
 import { ProfileProvider } from './profile/ProfileProvider.tsx'
 import { EditLogScreen } from './screens/EditLogScreen.tsx'
 import { LogFoodScreen } from './screens/LogFoodScreen.tsx'
+import { PrivacyScreen } from './screens/PrivacyScreen.tsx'
 import { SourcesScreen } from './screens/SourcesScreen.tsx'
 import { TodayScreen } from './screens/TodayScreen.tsx'
 import { TrendsScreen } from './screens/TrendsScreen.tsx'
@@ -44,6 +45,9 @@ export default function App() {
           <Route path={EDIT_LOG_PATH}>{(params) => <EditLogScreen key={params.id} id={params.id} />}</Route>
           <Route path="/sources">
             <SourcesScreen />
+          </Route>
+          <Route path="/privacy">
+            <PrivacyScreen />
           </Route>
           <Route path={TARGET_PATH}>
             <SetTargetReview />

@@ -56,7 +56,11 @@ describe('robots.txt and the sitemap', () => {
   it('lists only the public pages', () => {
     const xml = sitemapXml('https://shumar.example')
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
-    expect([...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1])).toEqual(['https://shumar.example/'])
+    expect([...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1])).toEqual([
+      'https://shumar.example/',
+      'https://shumar.example/privacy',
+      'https://shumar.example/sources',
+    ])
   })
 })
 
@@ -65,7 +69,7 @@ describe('noindexRules', () => {
     const rules = noindexRules()
     const robots = (paths: string[]) =>
       Object.fromEntries(paths.map((path) => [path, headersFor(path, rules)['X-Robots-Tag']]))
-    const screens = ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/42', '/sources']
+    const screens = ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/42']
     expect(robots(screens)).toEqual(Object.fromEntries(screens.map((path) => [path, 'noindex'])))
     expect(robots(PUBLIC_PAGES)).toEqual(Object.fromEntries(PUBLIC_PAGES.map((path) => [path, undefined])))
   })

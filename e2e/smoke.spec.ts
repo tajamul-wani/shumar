@@ -13,12 +13,14 @@ for (const theme of ['dark', 'light'] as const) {
       await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
       await watchCsp(page)
       await page.goto('/')
-      await expect(page.getByRole('button', { name: 'I already have an account' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     })
 
     test('loads with the app name and title', async ({ page }) => {
       await expect(page).toHaveTitle(SITE_TITLE)
-      await expect(page.getByRole('heading', { level: 1, name: 'Shumār' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
+      ).toBeVisible()
     })
 
     test('applies the theme and its base color token', async ({ page }) => {

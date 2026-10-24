@@ -7,11 +7,15 @@ for (const theme of ['dark', 'light'] as const) {
   test(`every first-run screen passes accessibility checks and fits 320 px, ${theme} theme`, async ({
     page,
   }) => {
+    // One walk through all eight screens, with an accessibility scan on each: about 20 s in WebKit.
+    test.slow()
     await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
     await watchCsp(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1, name: 'Shumār' })).toBeVisible()
-    await checkScreen(page, 'welcome')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
+    ).toBeVisible()
+    await checkScreen(page, 'home')
 
     await page.getByRole('link', { name: 'Get started' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'How old are you?' })).toBeFocused()

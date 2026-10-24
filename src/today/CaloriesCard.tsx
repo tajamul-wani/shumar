@@ -77,12 +77,17 @@ export function CaloriesCard({ totals, target = null, macroTargets = null }: Cal
             return (
               <p key={key} className="m-0 flex min-w-0 flex-col gap-1.5">
                 <span className="text-caption text-koshur-muted">{label}</span>
-                <span className="text-body font-semibold text-koshur-silk">
-                  {formatNumber(shown[key])}
+                <span className="flex flex-col text-body font-semibold text-koshur-silk sm:flex-row sm:items-baseline sm:gap-1">
                   {goal ? (
-                    <span className="font-normal text-koshur-muted"> / {formatNumber(goal)} g</span>
+                    <>
+                      <span>{formatNumber(shown[key])}</span>
+                      {/* Reads "of 128 g" under the number on phones and "/ 128 g" beside it from tablets up (index.css). */}
+                      <span className="macro-target text-caption font-normal text-koshur-muted sm:text-body">
+                        {formatNumber(goal)} g
+                      </span>
+                    </>
                   ) : (
-                    ' g'
+                    <span>{formatNumber(shown[key])} g</span>
                   )}
                 </span>
                 {goal ? (

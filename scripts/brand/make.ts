@@ -39,9 +39,9 @@ async function png(page: Page, svg: string, size: number): Promise<Buffer> {
 }
 
 /**
- * A favicon drawn to the pixel grid: the tile, the track and its saffron part are drawn 16 times
- * larger, each pixel takes the color that covers most of it, and the drops go in as exact blocks.
- * Edges come out hard instead of blended, so the icon stays sharp in a browser tab.
+ * A favicon drawn to the pixel grid: the track and its saffron part are drawn 16 times larger, each
+ * pixel takes the color that covers most of it, and the drops go in as exact blocks. Edges come out
+ * hard instead of blended, so the icon stays sharp in a browser tab. The background stays clear.
  */
 async function pixelFavicon(page: Page, size: 16 | 32, p: Palette): Promise<Buffer> {
   const spec = PIXEL_FAVICONS[size]
@@ -82,17 +82,12 @@ async function pixelFavicon(page: Page, size: 16 | 32, p: Palette): Promise<Buff
         g.stroke(shape)
         g.setLineDash([])
       })
-      const tile = cover(() => {
-        g.beginPath()
-        g.roundRect(0, 0, edge, edge, edge * 0.22)
-        g.fill()
-      })
       const out = document.createElement('canvas')
       out.width = out.height = edge
       const o = out.getContext('2d')!
-      tile.forEach((covered, i) => {
+      track.forEach((covered, i) => {
         if (covered < 0.5) return
-        o.fillStyle = day[i] >= 0.5 ? colors.saffron : track[i] >= 0.5 ? colors.border : colors.base
+        o.fillStyle = day[i] >= 0.5 ? colors.saffron : colors.border
         o.fillRect(i % edge, Math.floor(i / edge), 1, 1)
       })
       grid.drops.forEach((blocks, m) => {

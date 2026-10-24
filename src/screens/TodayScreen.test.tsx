@@ -205,9 +205,9 @@ describe('with a daily target', () => {
     expect(within(ring()).getByText('1,646')).toBeInTheDocument()
     expect(within(ring()).getByText('kcal left')).toBeInTheDocument()
     expect(ring()).toHaveTextContent('530 eaten of 2,176 kcal')
-    expect(ring()).toHaveTextContent('Protein4 / 128 g')
-    expect(ring()).toHaveTextContent('Carbs8 / 280 g')
-    expect(ring()).toHaveTextContent('Fat12 / 60 g')
+    expect(ring()).toHaveTextContent('Protein4128 g')
+    expect(ring()).toHaveTextContent('Carbs8280 g')
+    expect(ring()).toHaveTextContent('Fat1260 g')
   })
 
   it('reviews the day: calories left and the macro furthest behind', async () => {

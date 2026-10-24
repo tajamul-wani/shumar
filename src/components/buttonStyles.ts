@@ -2,14 +2,16 @@ export type ButtonVariant = 'primary' | 'secondary' | 'inset'
 export type ButtonSize = 'large' | 'small'
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-offset-2 focus-visible:ring-offset-koshur-base disabled:opacity-60'
+  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-offset-2 focus-visible:ring-offset-koshur-base disabled:opacity-60'
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // Text on saffron is the base color in dark mode and the surface color in light mode, as designed.
-  primary: 'bg-deficit-ring text-koshur-surface dark:text-koshur-base',
-  secondary: 'border border-koshur-border bg-transparent text-koshur-silk',
+  primary: 'bg-deficit-ring text-koshur-surface hover:brightness-110 dark:text-koshur-base',
+  secondary:
+    'border border-koshur-border bg-transparent text-koshur-silk hover:border-deficit-ring hover:text-deficit-ring',
   // A secondary button set into a card, on the page color, as the You design's phone Adjust button.
-  inset: 'border border-koshur-border bg-koshur-base text-koshur-silk',
+  inset:
+    'border border-koshur-border bg-koshur-base text-koshur-silk hover:border-deficit-ring hover:text-deficit-ring',
 }
 
 const SIZES: Record<ButtonSize, string> = {

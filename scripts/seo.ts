@@ -4,9 +4,9 @@
 import type { HeaderRule } from './security-headers.ts'
 
 /** Pages search engines may list. */
-export const PUBLIC_PAGES = ['/']
+export const PUBLIC_PAGES = ['/', '/privacy', '/sources']
 /** The app's own screens, kept out of search results: the first-run questions and every signed-in screen. */
-export const APP_PATHS = ['/start/*', '/trends', '/you', '/log', '/log/*', '/sources']
+export const APP_PATHS = ['/start/*', '/trends', '/you', '/log', '/log/*']
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost'])
 

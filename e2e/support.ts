@@ -16,11 +16,14 @@ export const SCREENS = [
   { path: '/you', title: 'You', heading: 'You' },
   { path: '/log', title: 'Add food', heading: 'Add food' },
   { path: '/sources', title: 'Food sources', heading: 'Where food values come from' },
+  { path: '/privacy', title: 'Privacy policy', heading: 'Privacy policy' },
 ] as const
 
 /** The signed-out screens, with the answers that let each question open directly. */
 export const FIRST_RUN_SCREENS = [
-  { path: '/', title: 'Welcome', heading: 'Shumār' },
+  { path: '/', title: 'Home', heading: 'Your daily tally, built for Kashmiri food.' },
+  { path: '/sources', title: 'Food sources', heading: 'Where food values come from' },
+  { path: '/privacy', title: 'Privacy policy', heading: 'Privacy policy' },
   { path: '/start/age', title: 'Age', heading: 'How old are you?' },
   { path: '/start/sex', title: 'Sex', heading: 'What is your sex?' },
   { path: '/start/weight', title: 'Weight', heading: 'What do you weigh?' },

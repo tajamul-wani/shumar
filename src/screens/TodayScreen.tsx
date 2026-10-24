@@ -216,7 +216,7 @@ export function TodayScreen() {
     <>
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <div className="mb-2 lg:hidden">
+          <div className="mb-4 lg:hidden">
             <Logo decorative className="h-8 w-auto" />
           </div>
           <p className="m-0 text-body text-koshur-muted lg:text-body-sm">{formatDayHeading(today)}</p>

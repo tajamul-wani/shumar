@@ -87,23 +87,30 @@ function Appearance() {
   )
 }
 
+const ABOUT_LINK =
+  'flex min-h-13 items-start justify-between gap-3 border-t border-koshur-border px-5 py-3.5 text-body text-koshur-silk transition-colors hover:bg-koshur-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm'
+
 function About() {
+  const chevron = (
+    <ChevronRight
+      aria-hidden="true"
+      size={20}
+      strokeWidth={2}
+      className="mt-1 size-4 shrink-0 text-koshur-muted sm:mt-0.5 sm:size-5 lg:hidden"
+    />
+  )
   return (
     <section aria-labelledby="about-heading" className={`${CARD} min-w-0 overflow-hidden`}>
       <h2 id="about-heading" className="m-0 px-5 pt-4 pb-2 text-body font-semibold">
         About
       </h2>
-      <Link
-        href="/sources"
-        className="flex min-h-13 items-start justify-between gap-3 border-t border-koshur-border px-5 py-3.5 text-body text-koshur-silk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
-      >
+      <Link href="/sources" className={ABOUT_LINK}>
         Where food values come from
-        <ChevronRight
-          aria-hidden="true"
-          size={20}
-          strokeWidth={2}
-          className="mt-1 size-4 shrink-0 text-koshur-muted sm:mt-0.5 sm:size-5 lg:hidden"
-        />
+        {chevron}
+      </Link>
+      <Link href="/privacy" className={ABOUT_LINK}>
+        Privacy policy
+        {chevron}
       </Link>
       <p className="m-0 border-t border-koshur-border px-5 pt-3 pb-4 text-caption text-koshur-muted">
         Ingredient values from USDA FoodData Central, in the public domain. Shumār 0.1
@@ -204,7 +211,7 @@ function DetailsCard() {
           key={row.label}
           href={stepPath(row.step)}
           onClick={() => edit(answers)}
-          className="flex min-h-13 items-start justify-between gap-3 border-t border-koshur-border px-5 py-3.5 text-body text-koshur-silk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
+          className="flex min-h-13 items-start justify-between gap-3 border-t border-koshur-border px-5 py-3.5 text-body text-koshur-silk transition-colors hover:bg-koshur-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring focus-visible:ring-inset lg:min-h-12 lg:text-body-sm"
         >
           <span>{row.label}</span>{' '}
           <span className="mt-0.5 flex items-start gap-1.5 text-right text-body-sm text-koshur-muted lg:mt-0">

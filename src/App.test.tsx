@@ -132,10 +132,12 @@ describe('signed out', () => {
     const fake = fakeClient(null)
     renderApp(fake)
     await fake.load()
-    expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
+    ).toBeInTheDocument()
     expect(document.title).toBe(SITE_TITLE)
 
-    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(fake.auth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: { redirectTo: window.location.origin },
@@ -147,9 +149,9 @@ describe('signed out', () => {
     const fake = fakeClient(null, { oauthError: new Error('offline') })
     renderApp(fake)
     await fake.load()
-    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(screen.getByRole('alert')).toHaveTextContent("We couldn't start Google sign-in")
-    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled()
   })
 
   it('explains when Google sends the visitor back with an error', async () => {
@@ -294,7 +296,7 @@ describe('the You screen', () => {
     const fake = await signedIn('/you')
     await userEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0])
     expect(fake.auth.signOut).toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
     expect(window.location.pathname).toBe('/')
   })
 
