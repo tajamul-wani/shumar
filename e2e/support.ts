@@ -110,6 +110,75 @@ export async function accessibilityViolations(page: Page) {
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
 }
 
+// Every width the UI skill asks for, plus 1023 and 1024 px on each side of the side navigation,
+// and a phone held sideways.
+export const WIDTHS = [
+  { width: 320, height: 640 },
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+  { width: 1023, height: 768 },
+  { width: 1024, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+  { width: 844, height: 390 },
+] as const
+
+export const THEMES = ['dark', 'light'] as const
+
+/** Starts the page in a theme, the way the You screen's Appearance choice is remembered. */
+export async function useTheme(page: Page, theme: (typeof THEMES)[number]): Promise<void> {
+  await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
+}
+
+/**
+ * Text blocks whose last line holds a single word, although the text wraps (shumar-no-orphans).
+ * Headings, buttons, links shown as blocks, labels and paragraphs count; text that runs inline
+ * inside a paragraph is judged with the paragraph. A non-breaking space keeps two words as one.
+ */
+export function loneWords(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const found = new Set<string>()
+    const blocks = document.querySelectorAll<HTMLElement>(
+      'h1, h2, h3, h4, button, a, label, summary, p, li, dt, dd, th, td',
+    )
+    for (const block of blocks) {
+      const style = getComputedStyle(block)
+      if (style.display === 'inline' || style.visibility === 'hidden') continue
+      const box = block.getBoundingClientRect()
+      if (box.width <= 1 || box.height <= 1) continue
+      const words: { top: number; bottom: number }[] = []
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent ?? ''
+        const pattern = /[^ \t\n\r]+/g
+        for (let match = pattern.exec(text); match; match = pattern.exec(text)) {
+          const range = document.createRange()
+          range.setStart(node, match.index)
+          range.setEnd(node, match.index + match[0].length)
+          const rect = range.getClientRects()[0]
+          if (rect && rect.width > 0) words.push({ top: rect.top, bottom: rect.bottom })
+        }
+      }
+      if (words.length < 3) continue
+      // Words on one line overlap vertically, whatever their size; the next line starts below them.
+      const lines: { top: number; bottom: number; count: number }[] = []
+      for (const word of words.sort((a, b) => a.top - b.top)) {
+        const line = lines.at(-1)
+        if (line && word.top < line.bottom && word.bottom > line.top) {
+          line.count += 1
+          line.top = Math.min(line.top, word.top)
+          line.bottom = Math.max(line.bottom, word.bottom)
+        } else lines.push({ top: word.top, bottom: word.bottom, count: 1 })
+      }
+      if (lines.length > 1 && lines[lines.length - 1].count === 1) {
+        found.add((block.textContent ?? '').replace(/\s+/g, ' ').trim())
+      }
+    }
+    return [...found]
+  })
+}
+
 export function scrollsSideways(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
 }

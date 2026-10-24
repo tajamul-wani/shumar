@@ -3,24 +3,11 @@ import {
   FIRST_RUN_ANSWERS,
   FIRST_RUN_SCREENS,
   SCREENS,
+  WIDTHS,
   readTestUsers,
   scrollsSideways,
   signInAs,
 } from './support.ts'
-
-// Every width the UI skill asks for, plus 1023 and 1024 px on each side of the side navigation,
-// and a phone held sideways.
-const WIDTHS = [
-  { width: 320, height: 640 },
-  { width: 360, height: 740 },
-  { width: 390, height: 844 },
-  { width: 768, height: 1024 },
-  { width: 1023, height: 768 },
-  { width: 1024, height: 768 },
-  { width: 1440, height: 900 },
-  { width: 1920, height: 1080 },
-  { width: 844, height: 390 },
-] as const
 
 const SIDE_NAV_FROM = 1024
 

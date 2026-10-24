@@ -28,16 +28,18 @@ if (!process.env.E2E_SUPABASE_URL || !process.env.E2E_SUPABASE_KEY) {
   process.env.E2E_SUPABASE_KEY = status.PUBLISHABLE_KEY
 }
 
-// The layout sweep resizes one page through every width, and the page's head and site files are the
-// same in every browser, so both only need one browser.
-const browserTests = { testIgnore: /(api|head|layout)\.spec\.ts/ }
+// The layout and lone-word sweeps resize one page through every width, and the page's head and site
+// files are the same in every browser, so these only need one browser.
+const browserTests = { testIgnore: /(api|head|layout|orphans)\.spec\.ts/ }
 
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   // GitHub's runners have 4 cores, and Playwright would use only 2 by default.
-  workers: process.env.CI ? 4 : undefined,
+  // Four everywhere: more Chromium and WebKit pages at once than this starves an 8 GB machine, and
+  // tests then time out for lack of memory, not for a fault of their own.
+  workers: 4,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
