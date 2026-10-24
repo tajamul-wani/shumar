@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
+import { NO_ANSWERS, type FirstRunAnswers } from '../lib/firstRun.ts'
+import { ProfileContext, type ProfileState } from '../profile/context.ts'
 import { parseResults } from '../lib/foodSearch.ts'
 import { rememberFood } from '../lib/recentFoods.ts'
 import { TodayScreen } from './TodayScreen.tsx'
@@ -95,15 +97,38 @@ function fakeClient(options: FakeOptions = {}) {
   return { client: { auth: {}, from, rpc } as unknown as AppClient, state, from, rpc, eq, removed, inserted }
 }
 
-function renderToday(fake = fakeClient()) {
+function renderToday(fake = fakeClient(), profile: Partial<ProfileState> = {}) {
+  const value: ProfileState = {
+    answers: null,
+    status: 'ready',
+    error: null,
+    reload: vi.fn<() => void>(),
+    editing: null,
+    edit: vi.fn<(answers: FirstRunAnswers | null) => void>(),
+    save: vi.fn<(answers: FirstRunAnswers) => Promise<void>>(),
+    ...profile,
+  }
   render(
     <AuthContext.Provider value={{ client: fake.client, session: null, loading: false }}>
-      <main id="main">
-        <TodayScreen />
-      </main>
+      <ProfileContext.Provider value={value}>
+        <main id="main">
+          <TodayScreen />
+        </main>
+      </ProfileContext.Provider>
     </AuthContext.Provider>,
   )
-  return fake
+  return { ...fake, profile: value }
+}
+
+// Test answers only, not a real person: a target of 2,176 kcal, 128 g protein, 280 g carbs, 60 g fat.
+const answers: FirstRunAnswers = {
+  ageYears: 30,
+  sex: 'male',
+  weightKg: 80,
+  weightUnit: 'kg',
+  heightCm: 175,
+  activity: 'light',
+  goal: { kind: 'lose', kgPerWeek: 0.5 },
 }
 
 const ring = () => screen.getByRole('region', { name: 'Calories and macros' })
@@ -170,6 +195,81 @@ describe('the day at a glance', () => {
     await screen.findByRole('region', { name: 'Calories and macros' })
     await fake.rpc.mock.results[0].value
     expect(screen.queryByText(/logged$/)).not.toBeInTheDocument()
+  })
+})
+
+describe('with a daily target', () => {
+  it('shows the calories left, and each macro against its target', async () => {
+    renderToday(fakeClient(), { answers })
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(within(ring()).getByText('1,646')).toBeInTheDocument()
+    expect(within(ring()).getByText('kcal left')).toBeInTheDocument()
+    expect(ring()).toHaveTextContent('530 eaten of 2,176 kcal')
+    expect(ring()).toHaveTextContent('Protein4 / 128 g')
+    expect(ring()).toHaveTextContent('Carbs8 / 280 g')
+    expect(ring()).toHaveTextContent('Fat12 / 60 g')
+  })
+
+  it('reviews the day: calories left and the macro furthest behind', async () => {
+    renderToday(fakeClient(), { answers })
+    const review = await screen.findByRole('region', { name: 'Evening review' })
+    expect(review).toHaveTextContent('A steady day. You have 1,646 kcal left.')
+    expect(review).toHaveTextContent('Carbs are furthest behind8 of 280 g')
+    expect(review).not.toHaveTextContent('Sodium')
+  })
+
+  it('says when the day went over, and turns the ring red', async () => {
+    renderToday(fakeClient({ logs: [log('1', 'lunch', 'Test feast', '13:00', 2500)] }), { answers })
+    const review = await screen.findByRole('region', { name: 'Evening review' })
+    expect(review).toHaveTextContent('You went 324 kcal over today. One day does not undo a good week.')
+    expect(within(ring()).getByText('kcal over')).toBeInTheDocument()
+    expect(ring().querySelector('circle.stroke-alert-surplus')).not.toBeNull()
+  })
+
+  it('shows the sodium line too when the day is high in sodium', async () => {
+    renderToday(fakeClient({ logs: [log('1', 'lunch', 'Test soup', '13:00', 300, 2400)] }), { answers })
+    const review = await screen.findByRole('region', { name: 'Evening review' })
+    expect(review).toHaveTextContent('A steady day. You have 1,876 kcal left.')
+    expect(review).toHaveTextContent('Sodium is high, mostly from Test soup')
+  })
+
+  it('waits for something to be eaten before reviewing', async () => {
+    renderToday(fakeClient({ logs: [] }), { answers })
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(within(ring()).getByText('2,176')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Evening review' })).not.toBeInTheDocument()
+  })
+
+  it('explains when the target cannot load, and tries again on request', async () => {
+    const { profile } = renderToday(fakeClient(), {
+      status: 'error',
+      error: "We couldn't load your target. Check your connection and try again.",
+    })
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't load your target.")
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(profile.reload).toHaveBeenCalled()
+    // The day itself still shows, without the target.
+    expect(within(ring()).getByText('kcal eaten')).toBeInTheDocument()
+  })
+  it('offers to set a target when there is none, starting from empty answers', async () => {
+    const { profile } = renderToday()
+    const card = await screen.findByRole('region', { name: 'Set your daily target' })
+    const link = within(card).getByRole('link', { name: 'Set my target' })
+    expect(link).toHaveAttribute('href', '/start/age')
+    await userEvent.click(link)
+    expect(profile.edit).toHaveBeenCalledWith(NO_ANSWERS)
+    window.history.replaceState(null, '', '/')
+  })
+
+  it.each([
+    ['there is a target', { answers }],
+    ['the target is still loading', { status: 'loading' as const }],
+    ['the target failed to load', { status: 'error' as const, error: 'offline' }],
+  ])('offers no target card when %s', async (_, profile) => {
+    renderToday(fakeClient(), profile)
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(screen.queryByRole('region', { name: 'Set your daily target' })).not.toBeInTheDocument()
   })
 })
 

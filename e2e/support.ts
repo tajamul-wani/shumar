@@ -1,5 +1,5 @@
 import { AxeBuilder } from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { createClient, type Session } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
@@ -112,4 +112,37 @@ export async function accessibilityViolations(page: Page) {
 
 export function scrollsSideways(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)
+}
+
+/** Saves FIRST_RUN_ANSWERS as the user's profile: a target of 2,176 kcal, 128 g protein, 280 g carbs, 60 g fat. */
+export async function saveTestProfile(accessToken: string): Promise<void> {
+  const answers = FIRST_RUN_ANSWERS
+  const { error } = await apiClient(accessToken).from('profiles').insert({
+    age_years: answers.ageYears,
+    sex: answers.sex,
+    weight_kg: answers.weightKg,
+    weight_unit: answers.weightUnit,
+    height_cm: answers.heightCm,
+    activity: answers.activity,
+    goal: answers.goal.kind,
+    loss_kg_per_week: answers.goal.kgPerWeek,
+  })
+  if (error) throw new Error(`Could not save the test profile: ${error.message}`)
+}
+
+/** Fails on any serious accessibility problem, or on sideways scrolling at 320 px. */
+export async function checkScreen(page: Page, step: string): Promise<void> {
+  const blocking = await accessibilityViolations(page)
+  expect(blocking, `${step}: ${JSON.stringify(blocking, null, 2)}`).toEqual([])
+  const size = page.viewportSize()
+  await page.setViewportSize({ width: 320, height: 640 })
+  expect(await scrollsSideways(page), `${step}: sideways scroll at 320 px`).toBe(false)
+  if (size) await page.setViewportSize(size)
+}
+
+/** Taps a choice's card, as a person does, and checks its radio button is now chosen. */
+export async function choose(page: Page, name: string | RegExp): Promise<void> {
+  const radio = page.getByRole('radio', typeof name === 'string' ? { name, exact: true } : { name })
+  await page.locator('label').filter({ has: radio }).click()
+  await expect(radio).toBeChecked()
 }

@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 
 const PORT = 4173
+// An address, not "localhost": the runners map that name to both IPv4 and IPv6, so each page
+// load would first resolve it and pick one. A WebKit page once waited 30 seconds there without
+// any response, and with a fixed address there is nothing to resolve.
+const ORIGIN = `http://127.0.0.1:${PORT}`
 
 // The app is built against the local Supabase stack, never the hosted project.
 // Vite prefers these over the values in .env.local. Workers inherit them, so this runs once.
@@ -37,7 +41,7 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: ORIGIN,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -54,8 +58,8 @@ export default defineConfig({
   ],
   webServer: {
     // Its own output folder, so a test run never replaces the real build in dist/.
-    command: `npx vite build --outDir dist-e2e && npx vite preview --outDir dist-e2e --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
+    command: `npx vite build --outDir dist-e2e && npx vite preview --outDir dist-e2e --host 127.0.0.1 --port ${PORT} --strictPort`,
+    url: ORIGIN,
     // Never reuse a server: one left running could be built against the hosted project.
     reuseExistingServer: false,
     timeout: 120_000,

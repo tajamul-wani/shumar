@@ -6,10 +6,13 @@ import {
   LOSS_RATES,
   NO_ANSWERS,
   WEIGHT_LIMITS_LB,
+  answerValues,
   checkAge,
   checkHeight,
   checkWeight,
+  clearAnswers,
   firstUnanswered,
+  goalAim,
   goalSummary,
   parseAnswers,
   readAnswers,
@@ -134,6 +137,34 @@ describe('weights and speeds in either unit', () => {
     expect(speedLabel(rate, 'lb')).toBe(lb)
   })
 
+  it('says what each goal is worked out for', () => {
+    expect(goalAim({ kind: 'lose', kgPerWeek: 0.5 }, 'kg')).toBe('to lose about 0.5 kg a week')
+    expect(goalAim({ kind: 'lose', kgPerWeek: 0.5 }, 'lb')).toBe('to lose about 1.1 lb a week')
+    expect(goalAim({ kind: 'maintain' }, 'kg')).toBe('to keep your weight')
+    expect(goalAim({ kind: 'gain' }, 'kg')).toBe('to gain weight slowly')
+    expect(goalAim({ kind: 'recomp' }, 'kg')).toBe('for body recomposition')
+  })
+
+  it('shows each answer as it reads, in either weight unit', () => {
+    const profile = {
+      ageYears: 30,
+      sex: 'female',
+      weightKg: 80,
+      heightCm: 175.5,
+      activity: 'light',
+      goal: { kind: 'maintain' },
+    } as const
+    expect(answerValues(profile, 'kg')).toEqual({
+      age: '30 years',
+      sex: 'Female',
+      weight: '80 kg',
+      height: '175.5 cm',
+      activity: 'Lightly active',
+      goal: 'Keep my weight',
+    })
+    expect(answerValues(profile, 'lb').weight).toBe('176.4 lb')
+  })
+
   it('sums up each goal', () => {
     expect(goalSummary({ kind: 'lose', kgPerWeek: 0.5 }, 'kg')).toBe('Lose 0.5 kg a week')
     expect(goalSummary({ kind: 'lose', kgPerWeek: 0.25 }, 'lb')).toBe('Lose 0.6 lb a week')
@@ -186,7 +217,15 @@ describe('keeping answers on the device', () => {
     expect(readAnswers(memoryStorage({ [FIRST_RUN_KEY]: '{not json' }))).toEqual(NO_ANSWERS)
   })
 
+  it('clears them', () => {
+    const storage = memoryStorage()
+    saveAnswers(complete, storage)
+    clearAnswers(storage)
+    expect(storage.data.has(FIRST_RUN_KEY)).toBe(false)
+  })
+
   it('carries on when storage is blocked', () => {
+    expect(() => clearAnswers(throwing)).not.toThrow()
     expect(readAnswers(throwing)).toEqual(NO_ANSWERS)
     expect(() => saveAnswers(complete, throwing)).not.toThrow()
     expect(readAnswers(undefined)).toEqual(NO_ANSWERS)

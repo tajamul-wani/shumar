@@ -33,7 +33,8 @@ src/
   shell/        Navigation and the frame around every screen
   components/   Shared building blocks
   lib/          Logic kept apart from the screens: nutrition math, targets, food search, logging
-  auth/, theme/ The session and the theme, shared with every screen
+  auth/, theme/, profile/
+                The session, the theme and the first-run answers, shared with every screen
 scripts/        USDA importer, design-token check, security headers, CI helpers
 supabase/       Migrations and database tests
 e2e/            End-to-end tests
@@ -101,6 +102,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 | `kashmiri_foods`  | Our own food catalog, per 100 g, with a source for each food | Anyone can read; nobody can write via the API |
 | `food_units`      | Grams in one piece, cup or katori of a catalog food          | Anyone can read; nobody can write via the API |
 | `user_logs`       | One row per food logged, with the nutrients at that moment   | Only the person who logged it                 |
+| `profiles`        | Each person's first-run answers                              | Only that person                              |
 | `usda_releases`   | Which USDA files are loaded, with each file's SHA-256        | Signed-in people can read                     |
 | `usda_foods`      | About 7,100 USDA foods, per 100 g                            | Signed-in people can read                     |
 | `usda_portions`   | USDA household portions in grams                             | Signed-in people can read                     |
@@ -167,7 +169,7 @@ Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text
 
 2. Keep each commit to one change that builds and passes its tests on its own. Write the message in the Conventional Commits style, saying what was done: `feat: added food search with household units`.
 3. Before opening a pull request into `main`, run `npm run check`, `npm run test:db` and `npm run test:e2e`.
-4. Title the pull request with the branch's prefix and what it did, in about 70 characters: `feat: added food search with household units`. Its description has exactly three sections: **What we did**, **What this solves** and **Tests run**, listing only the tests that were really run, with their results.
+4. Title the pull request with the branch's prefix and what it did, in about 70 characters: `feat: added food search with household units`. Its description has exactly three sections: **What we did** (the work and how it was built), **Why** and **What this solves**, with no commit lists or test results.
 5. All six checks must pass before a maintainer merges it. Small fixes go into related work rather than their own pull request, unless they are urgent (`hotfix/` or `security/`).
 
 ## License

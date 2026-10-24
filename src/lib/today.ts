@@ -102,6 +102,33 @@ export function ringState(eatenKcal: number, target?: number | null): RingState 
   return { kind: 'left', eaten, target, left: target - eaten, progress: eaten / target }
 }
 
+export type MacroKey = 'protein' | 'carbs' | 'fat'
+
+export interface MacroBehind {
+  key: MacroKey
+  eaten: number
+  target: number
+}
+
+/** The macro with the smallest share of its target eaten, or null once every target is met. */
+export function furthestBehind(
+  totals: Pick<Nutrients, MacroKey>,
+  targets: Pick<Nutrients, MacroKey>,
+): MacroBehind | null {
+  let behind: MacroBehind | null = null
+  let lowest = 1
+  for (const key of ['protein', 'carbs', 'fat'] as const) {
+    const target = targets[key]
+    if (target <= 0) continue
+    const share = totals[key] / target
+    if (share < lowest) {
+      lowest = share
+      behind = { key, eaten: totals[key], target }
+    }
+  }
+  return behind
+}
+
 /** The review card's title for the time of day. */
 export function reviewTitle(now: Date): { title: string; evening: boolean } {
   const hour = now.getHours()

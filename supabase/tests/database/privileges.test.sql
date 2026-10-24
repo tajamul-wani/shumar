@@ -3,12 +3,13 @@
 -- fails a test just like a missing one.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(18);
 
 -- Signed-out visitors (anon)
 select table_privs_are('public', 'kashmiri_foods', 'anon', array['SELECT'], 'visitors can only read the catalog');
 select table_privs_are('public', 'food_units', 'anon', array['SELECT'], 'visitors can only read unit weights');
 select table_privs_are('public', 'user_logs', 'anon', array[]::text[], 'visitors have no access to food logs');
+select table_privs_are('public', 'profiles', 'anon', array[]::text[], 'visitors have no access to profiles');
 select table_privs_are('public', 'usda_releases', 'anon', array[]::text[], 'visitors have no access to USDA releases');
 select table_privs_are('public', 'usda_foods', 'anon', array[]::text[], 'visitors have no access to USDA foods');
 select table_privs_are('public', 'usda_portions', 'anon', array[]::text[], 'visitors have no access to USDA portions');
@@ -20,6 +21,9 @@ select table_privs_are('public', 'food_units', 'authenticated', array['SELECT'],
 select table_privs_are(
   'public', 'user_logs', 'authenticated', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   'signed-in users can read, add, change and delete logs (row-level security limits them to their own), and cannot truncate');
+select table_privs_are(
+  'public', 'profiles', 'authenticated', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  'signed-in users can read, add, change and delete a profile (row-level security limits them to their own), and cannot truncate');
 select table_privs_are('public', 'usda_releases', 'authenticated', array['SELECT'], 'signed-in users can only read USDA releases');
 select table_privs_are('public', 'usda_foods', 'authenticated', array['SELECT'], 'signed-in users can only read USDA foods');
 select table_privs_are('public', 'usda_portions', 'authenticated', array['SELECT'], 'signed-in users can only read USDA portions');

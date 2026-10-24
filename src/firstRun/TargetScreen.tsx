@@ -1,53 +1,16 @@
 import { ChevronDown, Info, Lock } from 'lucide-react'
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'wouter'
-import { useAuth } from '../auth/context.ts'
-import { Alert } from '../components/Alert.tsx'
-import { Button } from '../components/Button.tsx'
-import { signInWithGoogle } from '../lib/auth.ts'
+import { MacroTargets } from '../components/MacroTargets.tsx'
 import { formatNumber } from '../lib/foodDisplay.ts'
-import {
-  ACTIVITY_CHOICES,
-  SEX_CHOICES,
-  goalSummary,
-  speedLabel,
-  weightInUnit,
-  type WeightUnit,
-} from '../lib/firstRun.ts'
-import { MIN_KCAL, dailyTargets, type DailyTargets, type Goal, type Profile } from '../lib/targets.ts'
+import { floorNote, goalAim, type WeightUnit } from '../lib/firstRun.ts'
+import { dailyTargets, type Profile } from '../lib/targets.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
+import { AnswerList } from './AnswerList.tsx'
 import { BackLink } from './BackLink.tsx'
 import { stepPath } from './paths.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
-
-const MACROS = [
-  { key: 'protein', label: 'Protein', bar: 'bg-macro-protein' },
-  { key: 'carbs', label: 'Carbs', bar: 'bg-macro-carb' },
-  { key: 'fat', label: 'Fat', bar: 'bg-macro-fat' },
-] as const
-
-function aim(goal: Goal, unit: WeightUnit): string {
-  switch (goal.kind) {
-    case 'lose':
-      return `to lose about ${speedLabel(goal.kgPerWeek, unit)}`
-    case 'maintain':
-      return 'to keep your weight'
-    case 'gain':
-      return 'to gain weight slowly'
-    case 'recomp':
-      return 'for body recomposition'
-  }
-}
-
-/** Why a weight-loss target is higher than the speed chosen, when the safety floor raised it. */
-function floorNote(targets: DailyTargets, profile: Profile): string | null {
-  if (!targets.atFloor) return null
-  if (targets.kcal >= targets.maintenanceKcal) {
-    return "To keep this safe, Shumār won't set a target below what your body uses in a day, so this one keeps your weight steady. Your doctor can help you plan a safe loss."
-  }
-  return `To keep this safe, Shumār won't go below ${formatNumber(MIN_KCAL[profile.sex])} kcal a day, so you'll lose a little slower than you chose.`
-}
 
 function HowItWorks() {
   const [open, setOpen] = useState(false)
@@ -98,36 +61,15 @@ function HowItWorks() {
 interface TargetScreenProps {
   profile: Profile
   weightUnit: WeightUnit
+  /** What saves the target: signing in before sign-in, or saving to the profile after. */
+  action: ReactNode
 }
 
-/** The daily target worked out from the first-run answers, with a way to sign in and keep it. */
-export function TargetScreen({ profile, weightUnit }: TargetScreenProps) {
+/** The daily target worked out from the first-run answers, with a way to keep it. */
+export function TargetScreen({ profile, weightUnit, action }: TargetScreenProps) {
   useDocumentTitle('Your daily target')
-  const { client } = useAuth()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const targets = dailyTargets(profile)
-  const note = floorNote(targets, profile)
-
-  const answers = [
-    { label: 'Age', value: `${profile.ageYears} years` },
-    { label: 'Sex', value: SEX_CHOICES.find((c) => c.id === profile.sex)?.label },
-    { label: 'Weight', value: `${weightInUnit(profile.weightKg, weightUnit)} ${weightUnit}` },
-    { label: 'Height', value: `${formatNumber(profile.heightCm)} cm` },
-    { label: 'Activity', value: ACTIVITY_CHOICES.find((c) => c.id === profile.activity)?.label },
-    { label: 'Goal', value: goalSummary(profile.goal, weightUnit) },
-  ]
-
-  async function handleSignIn() {
-    setBusy(true)
-    setError(null)
-    try {
-      await signInWithGoogle(client)
-    } catch {
-      setError("We couldn't start Google sign-in. Check your connection and try again.")
-      setBusy(false)
-    }
-  }
+  const note = floorNote(targets, profile.sex)
 
   return (
     <div className="flex flex-1 flex-col justify-between gap-6 lg:flex-none lg:justify-start">
@@ -151,7 +93,8 @@ export function TargetScreen({ profile, weightUnit }: TargetScreenProps) {
             </span>
           </p>
           <p className="m-0 text-body-sm text-koshur-muted">
-            Worked out from your answers {aim(profile.goal, weightUnit)}, using the Mifflin-St Jeor formula.
+            Worked out from your answers {goalAim(profile.goal, weightUnit)}, using the Mifflin-St Jeor
+            formula.
           </p>
           {note && (
             <p className="m-0 flex items-start gap-2 text-body-sm text-koshur-silk">
@@ -165,15 +108,7 @@ export function TargetScreen({ profile, weightUnit }: TargetScreenProps) {
             </p>
           )}
           <HowItWorks />
-          <div className="grid grid-cols-3 gap-4 border-t border-koshur-border pt-4">
-            {MACROS.map((macro) => (
-              <p key={macro.key} className="m-0 flex flex-col gap-2">
-                <span aria-hidden="true" className={`h-1 rounded-full ${macro.bar}`} />
-                <span className="text-body-sm text-koshur-muted">{macro.label}</span>
-                <span className="text-body font-semibold text-koshur-silk">{targets[macro.key]} g</span>
-              </p>
-            ))}
-          </div>
+          <MacroTargets targets={targets} />
         </section>
 
         <section
@@ -191,25 +126,12 @@ export function TargetScreen({ profile, weightUnit }: TargetScreenProps) {
               Change <span className="sr-only">your answers</span>
             </Link>
           </div>
-          <dl className="m-0">
-            {answers.map((answer) => (
-              <div
-                key={answer.label}
-                className="flex justify-between gap-4 border-t border-koshur-border px-5 py-3 text-body-sm"
-              >
-                <dt className="text-koshur-muted">{answer.label}</dt>
-                <dd className="m-0 text-right text-koshur-silk">{answer.value}</dd>
-              </div>
-            ))}
-          </dl>
+          <AnswerList profile={profile} weightUnit={weightUnit} />
         </section>
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button onClick={handleSignIn} disabled={busy} className="w-full">
-          {busy ? 'Opening Google' : 'Sign in with Google to save'}
-        </Button>
-        {error && <Alert>{error}</Alert>}
+        {action}
         <p className="m-0 flex items-start justify-center gap-1.5 text-caption text-koshur-muted">
           <Lock aria-hidden="true" size={12} strokeWidth={2} className="mt-0.5 size-3 shrink-0" />
           Your targets and food logs are private. Only you can see them.

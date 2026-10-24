@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from 'react'
 
-/** From this width the side navigation takes over and Today shows Add food beside the day. */
+/** From this width the side navigation takes over, Today shows Add food beside the day and You uses two columns. */
 export const DESKTOP_QUERY = '(min-width: 1024px)'
 
 /** Whether a media query matches, kept up to date as the window changes. False where matchMedia is missing. */

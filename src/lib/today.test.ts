@@ -7,6 +7,7 @@ import {
   ringState,
   sodiumAlert,
   summarizeDay,
+  furthestBehind,
 } from './today.ts'
 
 // Made-up logs with easy numbers for checking the maths, not nutrition data.
@@ -122,5 +123,29 @@ describe('reviewTitle', () => {
     expect(reviewTitle(new Date(2026, 9, 21, 9))).toEqual({ title: 'Morning review', evening: false })
     expect(reviewTitle(new Date(2026, 9, 21, 13))).toEqual({ title: 'Afternoon review', evening: false })
     expect(reviewTitle(new Date(2026, 9, 21, 20))).toEqual({ title: 'Evening review', evening: true })
+  })
+})
+
+describe('furthestBehind', () => {
+  const targets = { protein: 100, carbs: 200, fat: 50 }
+
+  it('finds the macro with the smallest share of its target eaten', () => {
+    expect(furthestBehind({ protein: 50, carbs: 40, fat: 40 }, targets)).toEqual({
+      key: 'carbs',
+      eaten: 40,
+      target: 200,
+    })
+  })
+
+  it('picks protein, then carbs, when shares are equal', () => {
+    expect(furthestBehind({ protein: 10, carbs: 20, fat: 5 }, targets)?.key).toBe('protein')
+  })
+
+  it('gives nothing once every target is met', () => {
+    expect(furthestBehind({ protein: 100, carbs: 250, fat: 50 }, targets)).toBeNull()
+  })
+
+  it('skips a macro with no target', () => {
+    expect(furthestBehind({ protein: 0, carbs: 10, fat: 10 }, { ...targets, protein: 0 })?.key).toBe('carbs')
   })
 })

@@ -11,7 +11,11 @@ import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { LogError } from '../lib/logs.ts'
 import { MEAL_LABELS } from '../lib/meals.ts'
-import { sodiumAlert, summarizeDay } from '../lib/today.ts'
+import { toProfile } from '../lib/firstRun.ts'
+import { dailyTargets } from '../lib/targets.ts'
+import { furthestBehind, ringState, sodiumAlert, summarizeDay } from '../lib/today.ts'
+import { useProfile } from '../profile/context.ts'
+import { SetTargetCard } from '../firstRun/SetTargetCard.tsx'
 import { LOG_FOOD_PATH } from '../shell/nav.ts'
 import { LogSheet } from '../log/LogSheet.tsx'
 import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
@@ -79,6 +83,9 @@ export function TodayScreen() {
   const { client } = useAuth()
   const desktop = useMediaQuery(DESKTOP_QUERY)
   const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
+  const profile = useProfile()
+  const answered = profile.answers && toProfile(profile.answers)
+  const targets = answered ? dailyTargets(answered) : null
   // The food just removed, kept so Undo can put it back exactly as it was.
   const [removed, setRemoved] = useState<LoggedFood | null>(null)
   const [removing, setRemoving] = useState(false)
@@ -154,10 +161,29 @@ export function TodayScreen() {
   if (logs) {
     const { totals, meals } = summarizeDay(logs)
     const alert = sodiumAlert(logs)
+    const macroTargets = targets && { protein: targets.protein, carbs: targets.carbs, fat: targets.fat }
+    // The review needs a target and something eaten, or a sodium alert.
+    const reviewing = targets && logs.length > 0
     content = (
       <>
-        {alert && <ReviewCard alert={alert} now={today} />}
-        <CaloriesCard totals={totals} />
+        {(reviewing || alert) && (
+          <ReviewCard
+            now={today}
+            ring={reviewing ? ringState(totals.kcal, targets.kcal) : null}
+            behind={reviewing && macroTargets ? furthestBehind(totals, macroTargets) : null}
+            alert={alert}
+          />
+        )}
+        {profile.status === 'error' && (
+          <div className="flex flex-col items-start gap-3">
+            <Alert>{profile.error}</Alert>
+            <Button variant="secondary" size="small" onClick={profile.reload}>
+              Try again
+            </Button>
+          </div>
+        )}
+        {profile.status === 'ready' && !targets && <SetTargetCard />}
+        <CaloriesCard totals={totals} target={targets?.kcal} macroTargets={macroTargets} />
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (
           <MealList

@@ -52,6 +52,8 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
       auth,
       from: () => ({
         select: () => ({
+          // No first-run answers saved yet, for the profile.
+          maybeSingle: () => Promise.resolve({ data: null, error: null }),
           eq: () => ({
             // A changed food that isn't there, for the edit screen.
             maybeSingle: () => Promise.resolve({ data: null, error: null }),

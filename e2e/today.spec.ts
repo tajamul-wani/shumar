@@ -4,6 +4,7 @@ import {
   apiClient,
   createTestUser,
   cspViolations,
+  saveTestProfile,
   scrollsSideways,
   signInAs,
   watchCsp,
@@ -218,4 +219,36 @@ test('the same food in the same amount shows once with its count, and Remove tak
   } finally {
     await api.from('user_logs').delete().eq('user_id', user.session.user.id)
   }
+})
+
+test('with a daily target, Today shows the calories left, the macro targets and the review', async ({
+  page,
+}) => {
+  const user = await createTestUser('today-target')
+  const api = apiClient(user.session.access_token)
+  await saveTestProfile(user.session.access_token)
+  const logs = await api
+    .from('user_logs')
+    .insert([
+      placeholder('breakfast', 'Test tea', 8, 100, 1500),
+      placeholder('breakfast', 'Test bread', 8, 200, 300),
+      placeholder('dinner', 'Test rice', 20, 300, 400),
+    ])
+  expect(logs.error).toBeNull()
+
+  await watchCsp(page)
+  await signInAs(page, user.session)
+  await page.goto('/')
+
+  const ring = page.getByRole('region', { name: 'Calories and macros' })
+  await expect(ring).toContainText('1,576kcal left')
+  await expect(ring).toContainText('600 eaten of 2,176 kcal')
+  await expect(ring).toContainText('Protein30 / 128 g')
+  const review = page.getByRole('region', { name: /review$/ })
+  await expect(review).toContainText('A steady day. You have 1,576 kcal left.')
+  await expect(review).toContainText('Carbs are furthest behind60 of 280 g')
+  await expect(review).toContainText('Sodium is high, mostly from Test tea')
+  expect(await accessibilityViolations(page)).toEqual([])
+  expect(await scrollsSideways(page)).toBe(false)
+  expect(await cspViolations(page)).toEqual([])
 })

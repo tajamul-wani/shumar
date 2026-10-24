@@ -74,6 +74,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation()
   const [onLogFood] = useRoute(LOG_FOOD_PATH)
   const [onEditLog] = useRoute(EDIT_LOG_PATH)
+  // The questions that set the daily target end in their own button, so the add button steps aside.
+  const [onQuestions] = useRoute('/start/*?')
   const previousLocation = useRef(location)
 
   // After moving to another screen, put keyboard and screen reader focus on its heading.
@@ -111,7 +113,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-260 flex-col gap-6">{children}</div>
       </main>
 
-      {!onLogFood && !onEditLog && (
+      {!onLogFood && !onEditLog && !onQuestions && (
         <Link
           href={LOG_FOOD_PATH}
           aria-label="Log food"
