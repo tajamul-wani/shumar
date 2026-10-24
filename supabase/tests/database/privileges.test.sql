@@ -10,7 +10,7 @@ select table_privs_are('public', 'kashmiri_foods', 'anon', array['SELECT'], 'vis
 select table_privs_are('public', 'food_units', 'anon', array['SELECT'], 'visitors can only read unit weights');
 select table_privs_are('public', 'user_logs', 'anon', array[]::text[], 'visitors have no access to food logs');
 select table_privs_are('public', 'profiles', 'anon', array[]::text[], 'visitors have no access to profiles');
-select table_privs_are('public', 'usda_releases', 'anon', array[]::text[], 'visitors have no access to USDA releases');
+select table_privs_are('public', 'usda_releases', 'anon', array['SELECT'], 'visitors can only read which USDA files are loaded');
 select table_privs_are('public', 'usda_foods', 'anon', array[]::text[], 'visitors have no access to USDA foods');
 select table_privs_are('public', 'usda_portions', 'anon', array[]::text[], 'visitors have no access to USDA portions');
 select table_privs_are('public', 'search_synonyms', 'anon', array[]::text[], 'visitors have no access to search synonyms');
