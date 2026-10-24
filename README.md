@@ -1,6 +1,34 @@
-# Shumār (شُمار)
+<div align="center">
 
-A calorie and macro tracker for Kashmiri and everyday food. It runs in the browser and installs on a phone like an app.
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/logo-on-dark.svg" />
+    <img src="public/brand/logo-on-light.svg" alt="Shumār (شُمار)" width="320" />
+  </picture>
+</h1>
+
+A calorie and macro tracker for Kashmiri and everyday food.<br />
+It runs in the browser and installs on a phone like an app.
+
+[![React](https://img.shields.io/badge/React-2C2823?style=flat-square&logo=react&logoColor=F5F3EF)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-2C2823?style=flat-square&logo=typescript&logoColor=F5F3EF)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-2C2823?style=flat-square&logo=vite&logoColor=F5F3EF)](https://vite.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-2C2823?style=flat-square&logo=tailwindcss&logoColor=F5F3EF)](https://tailwindcss.com)
+[![Supabase](https://img.shields.io/badge/Supabase-2C2823?style=flat-square&logo=supabase&logoColor=F5F3EF)](https://supabase.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-2C2823?style=flat-square&logo=postgresql&logoColor=F5F3EF)](https://www.postgresql.org)
+[![Vitest](https://img.shields.io/badge/Vitest-2C2823?style=flat-square&logo=vitest&logoColor=F5F3EF)](https://vitest.dev)
+[![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2C2823?style=flat-square&logo=githubactions&logoColor=F5F3EF)](https://github.com/features/actions)
+
+[Getting started](#getting-started) · [How the numbers are worked out](#how-the-numbers-are-worked-out) · [Sources](#sources) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/start-dark.png" />
+  <img src="docs/images/start-light.png" alt="Shumār on a phone: the welcome screen, one of the six first-run questions, and the daily target they work out" width="760" />
+</picture>
+
+<sub>The welcome screen, one of the six first-run questions, and the daily target they work out.</sub>
+
+</div>
 
 ## Overview
 
@@ -15,7 +43,7 @@ A calorie and macro tracker for Kashmiri and everyday food. It runs in the brows
 | :-------------- | :---------------------------------------------------------- |
 | App             | React 19, TypeScript, Vite, wouter                          |
 | Styling         | Tailwind CSS v4, Lucide React icons                         |
-| Fonts           | Manrope, Noto Nastaliq Urdu (self-hosted with Fontsource)   |
+| Fonts           | Manrope (self-hosted with Fontsource)                       |
 | Database        | Supabase (PostgreSQL) with row-level security               |
 | Sign-in         | Supabase Auth with Google                                   |
 | Food data       | USDA FoodData Central (public domain), imported with Python |
@@ -30,14 +58,17 @@ src/
   firstRun/     What signed-out visitors see: the welcome screen and the first-run questions
   screens/      The signed-in screens
   today/, log/  Parts of the Today screen and the log sheet
-  shell/        Navigation and the frame around every screen
+  shell/        Navigation, the frame around every screen, and how the site names itself
   components/   Shared building blocks
   lib/          Logic kept apart from the screens: nutrition math, targets, food search, logging
   auth/, theme/, profile/
                 The session, the theme and the first-run answers, shared with every screen
-scripts/        USDA importer, design-token check, security headers, CI helpers
+public/         The favicon, app icons, logo and share image
+scripts/        USDA importer, design-token check, security headers, search files, CI helpers
+  brand/        Draws the logo, icons and share image from the color tokens
 supabase/       Migrations and database tests
 e2e/            End-to-end tests
+docs/images/    Screenshots for this page
 ```
 
 ## Getting started
@@ -53,12 +84,13 @@ npm install
 
 Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). Never commit `.env.local`.
 
-| Variable                        | Used for                                                     |
-| :------------------------------ | :----------------------------------------------------------- |
-| `VITE_SUPABASE_URL`             | The Supabase project address                                 |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here. |
-| `LINEAR_API_KEY`                | Task tracking (maintainers only)                             |
-| `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                             |
+| Variable                        | Used for                                                                            |
+| :------------------------------ | :---------------------------------------------------------------------------------- |
+| `VITE_SUPABASE_URL`             | The Supabase project address                                                        |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here.                        |
+| `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:4173` locally |
+| `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
+| `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
 
 Start the local Supabase stack (the first run downloads its images), then the app at http://localhost:5173:
 
@@ -69,18 +101,19 @@ npm run dev
 
 ### Scripts
 
-| Command             | What it does                                                |
-| :------------------ | :---------------------------------------------------------- |
-| `npm run dev`       | Start the development server                                |
-| `npm run build`     | Type check and build for production, with security headers  |
-| `npm run preview`   | Serve the production build locally                          |
-| `npm run lint`      | Check design tokens, run oxlint and check formatting        |
-| `npm run format`    | Format all files with Prettier                              |
-| `npm run typecheck` | Run the TypeScript compiler                                 |
-| `npm run test`      | Run the unit tests with coverage, then the importer's tests |
-| `npm run test:db`   | Run the database security tests                             |
-| `npm run test:e2e`  | Run the end-to-end tests                                    |
-| `npm run check`     | Lint, type check, unit tests and build                      |
+| Command             | What it does                                                       |
+| :------------------ | :----------------------------------------------------------------- |
+| `npm run dev`       | Start the development server                                       |
+| `npm run build`     | Type check and build for production, with security headers         |
+| `npm run preview`   | Serve the production build locally                                 |
+| `npm run brand`     | Draw the logo, icons, favicon and share image into `public/` again |
+| `npm run lint`      | Check design tokens, run oxlint and check formatting               |
+| `npm run format`    | Format all files with Prettier                                     |
+| `npm run typecheck` | Run the TypeScript compiler                                        |
+| `npm run test`      | Run the unit tests with coverage, then the importer's tests        |
+| `npm run test:db`   | Run the database security tests                                    |
+| `npm run test:e2e`  | Run the end-to-end tests                                           |
+| `npm run check`     | Lint, type check, unit tests and build                             |
 
 ## Testing
 
@@ -96,6 +129,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
 - **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
+- **Search:** only the welcome page belongs in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
 | Table             | Holds                                                        | Who can access it                             |
 | :---------------- | :----------------------------------------------------------- | :-------------------------------------------- |
@@ -114,7 +148,24 @@ To import a new USDA release: update the file name and SHA-256 in `DATASETS` in 
 
 ### Food values
 
-- Every food is stored per 100 g of the food as eaten. A serving is amount × the grams in one unit (piece, cup, katori, or 1 for grams), and each nutrient is its per-100 g value × grams ÷ 100.
+Every food is stored per 100 g of the food as eaten. A serving works out as:
+
+```math
+\text{grams} = \text{amount} \times \text{grams in one unit}
+\qquad
+\text{nutrient} = \text{value per 100 g} \times \frac{\text{grams}}{100}
+```
+
+<details>
+<summary>The same as plain text</summary>
+
+```text
+grams    = amount × grams in one unit (piece, cup, katori, or 1 for grams)
+nutrient = value per 100 g × grams ÷ 100
+```
+
+</details>
+
 - A log keeps the values worked out when it was saved, so a later change to a food never rewrites anyone's history.
 - Values keep full precision and are rounded only for display: whole kcal and mg, macros to one decimal place.
 - The day's totals add up its logs. The sodium alert shows past 2,000 mg a day, the World Health Organization's limit for adults.
@@ -122,16 +173,71 @@ To import a new USDA release: update the file name and SHA-256 in `DATASETS` in 
 
 ### Daily targets
 
-`src/lib/targets.ts` turns the first-run answers into daily targets, for adults 18 and over. Each number has its source in a comment next to it.
+`src/lib/targets.ts` turns the first-run answers into daily targets, for adults 18 and over:
 
-| Step           | How it works                                                                                      | Source                                                     |
-| :------------- | :------------------------------------------------------------------------------------------------ | :--------------------------------------------------------- |
-| Resting energy | 10 × kg + 6.25 × cm - 5 × age, then + 5 for men or - 161 for women                                | Mifflin-St Jeor, 1990                                      |
-| Daily energy   | Resting energy × 1.40, 1.53, 1.76 or 2.25, from sedentary to very active                          | ICMR-NIN 2020 for sedentary, FAO/WHO/UNU 2004 for the rest |
-| Goal           | 300, 500 or 750 kcal less to lose 0.25, 0.5 or 0.75 kg a week; 10% more to gain; the same to keep | NIH 1998, AHA/ACC/TOS 2013, Iraki et al. 2019              |
-| Safety floor   | Never below 1,200 kcal for women or 1,500 for men, and never above daily energy                   | AHA/ACC/TOS 2013                                           |
-| Protein        | 1.6 g per kg of body weight, or 2.2 g for body recomposition, at most 35% of calories             | Morton et al. 2018, ISSN 2017, Iraki et al. 2019, IOM 2005 |
-| Fat and carbs  | Fat is 25% of calories, and carbs get the rest                                                    | IOM 2005, WHO                                              |
+```math
+\begin{aligned}
+\text{resting energy} &= 10w + 6.25h - 5a + s \\
+\text{daily energy} &= \text{resting energy} \times \text{PAL} \\
+\text{calories} &= \text{daily energy} - \text{gap}, \text{ or daily energy} \times 1.10 \text{ to gain} \\
+\text{protein} &= \min\left(p\,w,\ \frac{0.35 \times \text{calories}}{4}\right) \\
+\text{fat} &= \frac{0.25 \times \text{calories}}{9} \\
+\text{carbs} &= \frac{\text{calories} - 4 \times \text{protein} - 9 \times \text{fat}}{4}
+\end{aligned}
+```
+
+Here w is weight in kg, h is height in cm and a is age in years. Protein, fat and carbs come out in grams.
+
+<details>
+<summary>The same as plain text</summary>
+
+```text
+resting energy = 10 × weight in kg + 6.25 × height in cm - 5 × age + s   (s = +5 for men, -161 for women)
+daily energy   = resting energy × PAL
+calories       = daily energy - gap, or daily energy × 1.10 to gain
+protein (g)    = the smaller of p × weight in kg and 0.35 × calories ÷ 4
+fat (g)        = 0.25 × calories ÷ 9
+carbs (g)      = (calories - 4 × protein - 9 × fat) ÷ 4
+```
+
+</details>
+
+| Part          | Numbers                                                                                        | Source                                                                                                                                                                                                                             |
+| :------------ | :--------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| s             | +5 for men, -161 for women                                                                     | [Mifflin-St Jeor, 1990](https://doi.org/10.1093/ajcn/51.2.241)                                                                                                                                                                     |
+| PAL           | 1.40, 1.53, 1.76 or 2.25, from sedentary to very active                                        | [ICMR-NIN 2020](https://www.nin.res.in/rdabook/brief_note.pdf) for sedentary, [FAO/WHO/UNU 2004](https://www.fao.org/4/y5686e/y5686e00.htm) for the rest                                                                           |
+| Gap           | 300, 500 or 750 kcal less to lose 0.25, 0.5 or 0.75 kg a week; none to keep your weight        | [NIH 1998](https://www.nhlbi.nih.gov/files/docs/guidelines/ob_gdlns.pdf), [AHA/ACC/TOS 2013](https://doi.org/10.1161/01.cir.0000437739.71477.ee)                                                                                   |
+| Gaining       | 10% over daily energy                                                                          | [Iraki et al. 2019](https://doi.org/10.3390/sports7070154)                                                                                                                                                                         |
+| Safety floor  | Losing weight never goes below 1,200 kcal for women or 1,500 for men, or daily energy if lower | [AHA/ACC/TOS 2013](https://doi.org/10.1161/01.cir.0000437739.71477.ee)                                                                                                                                                             |
+| p             | 1.6 g per kg of body weight, or 2.2 g for body recomposition, at most 35% of calories          | [Morton et al. 2018](https://doi.org/10.1136/bjsports-2017-097608), [ISSN 2017](https://doi.org/10.1186/s12970-017-0177-8), [Iraki et al. 2019](https://doi.org/10.3390/sports7070154), [IOM 2005](https://doi.org/10.17226/10490) |
+| Fat and carbs | Fat is 25% of calories, and carbs get the rest                                                 | [IOM 2005](https://doi.org/10.17226/10490), [WHO](https://www.who.int/news-room/fact-sheets/detail/healthy-diet)                                                                                                                   |
+
+## Sources
+
+Shumār's food values and daily targets come from these sources. Thank you to the people and organisations behind them.
+
+**Food values**
+
+- [USDA FoodData Central](https://fdc.nal.usda.gov/), U.S. Department of Agriculture, Agricultural Research Service. Foundation Foods and SR Legacy, in the public domain.
+
+**Daily targets and alerts**
+
+- Mifflin et al. 1990. [A new predictive equation for resting energy expenditure in healthy individuals](https://doi.org/10.1093/ajcn/51.2.241). Am J Clin Nutr 51(2):241-7.
+- ICMR-NIN 2020. [A Brief Note on Nutrient Requirements for Indians, the Recommended Dietary Allowances (RDA) and the Estimated Average Requirements (EAR)](https://www.nin.res.in/rdabook/brief_note.pdf).
+- FAO/WHO/UNU 2004. [Human energy requirements](https://www.fao.org/4/y5686e/y5686e00.htm).
+- NIH NHLBI 1998. [Clinical Guidelines on the Identification, Evaluation, and Treatment of Overweight and Obesity in Adults: The Evidence Report](https://www.nhlbi.nih.gov/files/docs/guidelines/ob_gdlns.pdf).
+- AHA/ACC/TOS 2013. [Guideline for the Management of Overweight and Obesity in Adults](https://doi.org/10.1161/01.cir.0000437739.71477.ee). Circulation 2014;129 suppl 2:S102-38.
+- Iraki et al. 2019. [Nutrition Recommendations for Bodybuilders in the Off-Season: A Narrative Review](https://doi.org/10.3390/sports7070154). Sports 7(7):154.
+- Morton et al. 2018. [A systematic review, meta-analysis and meta-regression of the effect of protein supplementation on resistance training-induced gains in muscle mass and strength in healthy adults](https://doi.org/10.1136/bjsports-2017-097608). Br J Sports Med 52(6):376-84.
+- Jäger et al. 2017. [International Society of Sports Nutrition Position Stand: protein and exercise](https://doi.org/10.1186/s12970-017-0177-8). J Int Soc Sports Nutr 14:20.
+- IOM 2005. [Dietary Reference Intakes for Energy, Carbohydrate, Fiber, Fat, Fatty Acids, Cholesterol, Protein, and Amino Acids](https://doi.org/10.17226/10490).
+- World Health Organization. [Healthy diet](https://www.who.int/news-room/fact-sheets/detail/healthy-diet) fact sheet.
+- World Health Organization 2012. [Guideline: Sodium intake for adults and children](https://www.who.int/publications/i/item/9789241504836).
+
+**Fonts and icons**
+
+- [Manrope](https://fonts.google.com/specimen/Manrope), under the SIL Open Font License 1.1, served with [Fontsource](https://fontsource.org).
+- [Lucide](https://lucide.dev) icons, under the ISC License.
 
 ## Design system
 
@@ -145,33 +251,14 @@ Colors, fonts, type sizes and weights are tokens in `src/index.css`, used throug
 | `macro-protein`, `macro-carb`, `macro-fat`       | Protein, carbs and fat        |
 | `alert-surplus`                                  | Over-target states and alerts |
 
-Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text-title` (20), `text-heading` (24) and `text-display` (32, or 40 from tablets). Weights: 400, 500 and 600. Text uses Manrope; Noto Nastaliq Urdu is only for the شُمار wordmark.
+Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text-title` (20), `text-heading` (24) and `text-display` (32, or 40 from tablets). Weights: 400, 500 and 600. All text uses Manrope.
+
+The logo, app icons, favicon and share image are drawn from these tokens by `npm run brand` (`scripts/brand/`). The mark is the day as a saffron hexagon that fills up, around the protein, carbs and fat drops, with the name beside it. The name's outline comes from Manrope, shaped once with HarfBuzz by `scripts/brand/outline-text.mjs`.
 
 ## Contributing
 
-1. Branch from `main`, named `<prefix>/<short-description>`, such as `feat/food-search`:
-
-   | Prefix      | For                                        |
-   | :---------- | :----------------------------------------- |
-   | `feat/`     | A new feature                              |
-   | `fix/`      | A bug fix                                  |
-   | `hotfix/`   | An urgent fix to the live app              |
-   | `security/` | Row-level security, sign-in, keys, headers |
-   | `refactor/` | Restructuring with no change in behaviour  |
-   | `perf/`     | Speed                                      |
-   | `style/`    | Visual styling only                        |
-   | `docs/`     | Documentation                              |
-   | `test/`     | Tests                                      |
-   | `chore/`    | Tooling, dependencies and config           |
-   | `build/`    | The build and the installable app setup    |
-   | `ci/`       | GitHub Actions                             |
-   | `data/`     | Food values in `kashmiri_foods`            |
-
-2. Keep each commit to one change that builds and passes its tests on its own. Write the message in the Conventional Commits style, saying what was done: `feat: added food search with household units`.
-3. Before opening a pull request into `main`, run `npm run check`, `npm run test:db` and `npm run test:e2e`.
-4. Title the pull request with the branch's prefix and what it did, in about 70 characters: `feat: added food search with household units`. Its description has exactly three sections: **What we did** (the work and how it was built), **Why** and **What this solves**, with no commit lists or test results.
-5. All six checks must pass before a maintainer merges it. Small fixes go into related work rather than their own pull request, unless they are urgent (`hotfix/` or `security/`).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branches, commits, checks and pull requests. To report a security problem, see [SECURITY.md](SECURITY.md).
 
 ## License
 
-Copyright © 2026 Tajamul Wani. All rights reserved.
+Copyright © 2026 Tajamul Wani. All rights reserved. See [LICENSE](LICENSE). The fonts and icons keep their own licenses, listed under Sources.
