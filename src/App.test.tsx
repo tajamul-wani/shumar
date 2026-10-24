@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { useAuth } from './auth/context.ts'
 import { THEME_STORAGE_KEY } from './lib/theme.ts'
+import { SITE_TITLE } from './shell/site.ts'
 import { useTheme } from './theme/context.ts'
 import { ThemeProvider } from './theme/ThemeProvider.tsx'
 
@@ -132,7 +133,7 @@ describe('signed out', () => {
     renderApp(fake)
     await fake.load()
     expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
-    expect(document.title).toBe('Shumār')
+    expect(document.title).toBe(SITE_TITLE)
 
     await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }))
     expect(fake.auth.signInWithOAuth).toHaveBeenCalledWith({

@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { SITE_TITLE } from '../src/shell/site.ts'
 import { cspViolations, watchCsp } from './support.ts'
 
 async function hasHorizontalScroll(page: Page): Promise<boolean> {
@@ -16,7 +17,7 @@ for (const theme of ['dark', 'light'] as const) {
     })
 
     test('loads with the app name and title', async ({ page }) => {
-      await expect(page).toHaveTitle('Shumār')
+      await expect(page).toHaveTitle(SITE_TITLE)
       await expect(page.getByRole('heading', { level: 1, name: 'Shumār' })).toBeVisible()
     })
 

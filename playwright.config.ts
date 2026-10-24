@@ -67,6 +67,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: process.env.E2E_SUPABASE_URL,
       VITE_SUPABASE_PUBLISHABLE_KEY: process.env.E2E_SUPABASE_KEY,
+      SITE_URL: ORIGIN,
     },
   },
 })

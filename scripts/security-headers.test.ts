@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { headersFile, securityHeaders, supabaseOrigin } from './security-headers.ts'
+import {
+  headersFile,
+  headersFor,
+  securityHeaders,
+  supabaseOrigin,
+  type HeaderRule,
+} from './security-headers.ts'
 
 const hosted = 'https://abcd1234.supabase.co'
 
@@ -57,9 +63,27 @@ describe('securityHeaders', () => {
   })
 })
 
+const rules: HeaderRule[] = [
+  { path: '/*', headers: { 'X-One': '1', 'X-Two': '2' } },
+  { path: '/you', headers: { 'X-Robots-Tag': 'noindex' } },
+  { path: '/start/*', headers: { 'X-Robots-Tag': 'noindex' } },
+]
+
 describe('headersFile', () => {
-  it('writes every header under one rule for all paths', () => {
-    const text = headersFile({ 'X-One': '1', 'X-Two': '2' })
-    expect(text).toBe('/*\n  X-One: 1\n  X-Two: 2\n')
+  it('writes each rule as its path followed by its headers', () => {
+    expect(headersFile(rules.slice(0, 2))).toBe('/*\n  X-One: 1\n  X-Two: 2\n/you\n  X-Robots-Tag: noindex\n')
+  })
+})
+
+describe('headersFor', () => {
+  it('sends the headers of every rule that matches, as Cloudflare does', () => {
+    expect(headersFor('/', rules)).toEqual({ 'X-One': '1', 'X-Two': '2' })
+    expect(headersFor('/you', rules)).toEqual({ 'X-One': '1', 'X-Two': '2', 'X-Robots-Tag': 'noindex' })
+    expect(headersFor('/start/age', rules)['X-Robots-Tag']).toBe('noindex')
+  })
+
+  it('matches a path exactly, and a pattern ending in /* only below it', () => {
+    expect(headersFor('/your-data', rules)['X-Robots-Tag']).toBeUndefined()
+    expect(headersFor('/start', rules)['X-Robots-Tag']).toBeUndefined()
   })
 })
