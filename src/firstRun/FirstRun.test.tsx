@@ -59,6 +59,8 @@ describe('the welcome screen', () => {
         (_, element) => element?.tagName === 'SPAN' && element.textContent === 'Question 1 of 6',
       ),
     ).toBeInTheDocument()
+    // Before sign-in there is no app frame, so the question carries the logo for wide screens.
+    expect(screen.getByRole('img', { name: 'Shumār' })).toBeInTheDocument()
     expect(document.title).toBe('Age · Shumār')
   })
 })

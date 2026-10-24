@@ -28,8 +28,9 @@ if (!process.env.E2E_SUPABASE_URL || !process.env.E2E_SUPABASE_KEY) {
   process.env.E2E_SUPABASE_KEY = status.PUBLISHABLE_KEY
 }
 
-// The layout sweep resizes one page through every width, so it only needs one browser.
-const browserTests = { testIgnore: /(api|layout)\.spec\.ts/ }
+// The layout sweep resizes one page through every width, and the page's head and site files are the
+// same in every browser, so both only need one browser.
+const browserTests = { testIgnore: /(api|head|layout)\.spec\.ts/ }
 
 export default defineConfig({
   testDir: './e2e',

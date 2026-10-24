@@ -1,4 +1,5 @@
 import { useContext, type ReactNode } from 'react'
+import { Logo } from '../components/Logo.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { FIRST_RUN_STEPS, type FirstRunStep } from '../lib/firstRun.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
@@ -45,12 +46,9 @@ export function StepLayout({
     >
       <div className="flex flex-col gap-6">
         {standalone && (
-          <p className="m-0 hidden items-center gap-3 lg:flex">
-            <span lang="ks" className="font-wordmark text-title text-deficit-ring">
-              شُمار
-            </span>
-            <span className="text-body font-semibold">Shumār</span>
-          </p>
+          <div className="hidden lg:block">
+            <Logo className="h-9 w-auto" />
+          </div>
         )}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">

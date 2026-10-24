@@ -1,6 +1,7 @@
 import { Moon, Plus, Sun } from 'lucide-react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
+import { Logo } from '../components/Logo.tsx'
 import { PREFERENCE_LABELS, nextPreference } from '../lib/theme.ts'
 import { useTheme } from '../theme/context.ts'
 import { EDIT_LOG_PATH, LOG_FOOD_PATH, NAV_ITEMS, type NavItem } from './nav.ts'
@@ -95,11 +96,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       <aside className="hidden border-r border-koshur-border bg-koshur-surface px-3 py-6 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-50 lg:shrink-0 lg:flex-col lg:gap-7">
-        <div className="flex items-center gap-2.5 px-3">
-          <span lang="ks" className="font-wordmark text-heading text-deficit-ring">
-            شُمار
-          </span>
-          <span className="text-body font-semibold">Shumār</span>
+        <div className="px-3">
+          <Logo className="h-9 w-auto" />
         </div>
         <nav aria-label="Main" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => (

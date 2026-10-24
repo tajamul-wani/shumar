@@ -4,6 +4,7 @@ import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
+import { Logo } from '../components/Logo.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { signInWithGoogle } from '../lib/auth.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
@@ -35,12 +36,9 @@ export function Welcome() {
   return (
     <div className="flex flex-1 flex-col justify-between gap-6 pt-9 lg:flex-none lg:justify-start lg:gap-10">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <span lang="ks" className="font-wordmark text-heading text-deficit-ring">
-            شُمار
-          </span>
-          <h1 tabIndex={-1} className="m-0 text-heading font-semibold focus:outline-none">
-            Shumār
+        <div className="flex flex-col gap-4">
+          <h1 tabIndex={-1} className="m-0 focus:outline-none">
+            <Logo className="h-14 w-auto" />
           </h1>
           <p className="m-0 text-body text-koshur-muted">Your daily tally, built for Kashmiri food.</p>
         </div>
