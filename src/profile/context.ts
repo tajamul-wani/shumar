@@ -7,6 +7,11 @@ export interface ProfileState {
   status: 'loading' | 'ready' | 'error'
   error: string | null
   reload: () => void
+  /** The answers being set or changed in the questions while signed in, or null. */
+  editing: FirstRunAnswers | null
+  edit: (answers: FirstRunAnswers | null) => void
+  /** Saves a full set of answers, replacing the saved ones, and shows them at once. */
+  save: (answers: FirstRunAnswers) => Promise<void>
 }
 
 export const ProfileContext = createContext<ProfileState | null>(null)

@@ -14,6 +14,7 @@ type Loaded = Pick<ProfileState, 'answers' | 'status' | 'error'>
 export function ProfileProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const { client } = useAuth()
   const [loaded, setLoaded] = useState<Loaded>({ answers: null, status: 'loading', error: null })
+  const [editing, setEditing] = useState<FirstRunAnswers | null>(null)
   // Only the newest request may update the screen, so a slow older answer never wins.
   const latest = useRef(0)
 
@@ -53,6 +54,16 @@ export function ProfileProvider({ userId, children }: { userId: string; children
     }
   }, [load])
 
+  const save = useCallback(
+    async (answers: FirstRunAnswers) => {
+      await saveProfile(client, userId, answers)
+      // Anything still loading is older than what was just saved.
+      latest.current += 1
+      setLoaded({ answers, status: 'ready', error: null })
+    },
+    [client, userId],
+  )
+
   const value = useMemo<ProfileState>(
     () => ({
       ...loaded,
@@ -60,8 +71,11 @@ export function ProfileProvider({ userId, children }: { userId: string; children
         setLoaded((current) => ({ ...current, status: 'loading', error: null }))
         load()
       },
+      editing,
+      edit: setEditing,
+      save,
     }),
-    [loaded, load],
+    [loaded, load, editing, save],
   )
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
 }

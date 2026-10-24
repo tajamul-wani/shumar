@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
-import type { FirstRunAnswers } from '../lib/firstRun.ts'
+import { NO_ANSWERS, type FirstRunAnswers } from '../lib/firstRun.ts'
 import { ProfileContext, type ProfileState } from '../profile/context.ts'
 import { parseResults } from '../lib/foodSearch.ts'
 import { rememberFood } from '../lib/recentFoods.ts'
@@ -103,6 +103,9 @@ function renderToday(fake = fakeClient(), profile: Partial<ProfileState> = {}) {
     status: 'ready',
     error: null,
     reload: vi.fn<() => void>(),
+    editing: null,
+    edit: vi.fn<(answers: FirstRunAnswers | null) => void>(),
+    save: vi.fn<(answers: FirstRunAnswers) => Promise<void>>(),
     ...profile,
   }
   render(
@@ -248,6 +251,25 @@ describe('with a daily target', () => {
     expect(profile.reload).toHaveBeenCalled()
     // The day itself still shows, without the target.
     expect(within(ring()).getByText('kcal eaten')).toBeInTheDocument()
+  })
+  it('offers to set a target when there is none, starting from empty answers', async () => {
+    const { profile } = renderToday()
+    const card = await screen.findByRole('region', { name: 'Set your daily target' })
+    const link = within(card).getByRole('link', { name: 'Set my target' })
+    expect(link).toHaveAttribute('href', '/start/age')
+    await userEvent.click(link)
+    expect(profile.edit).toHaveBeenCalledWith(NO_ANSWERS)
+    window.history.replaceState(null, '', '/')
+  })
+
+  it.each([
+    ['there is a target', { answers }],
+    ['the target is still loading', { status: 'loading' as const }],
+    ['the target failed to load', { status: 'error' as const, error: 'offline' }],
+  ])('offers no target card when %s', async (_, profile) => {
+    renderToday(fakeClient(), profile)
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    expect(screen.queryByRole('region', { name: 'Set your daily target' })).not.toBeInTheDocument()
   })
 })
 

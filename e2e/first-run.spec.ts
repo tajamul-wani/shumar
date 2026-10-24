@@ -1,23 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
-import { accessibilityViolations, cspViolations, scrollsSideways, watchCsp } from './support.ts'
-
-async function check(page: Page, step: string) {
-  const blocking = await accessibilityViolations(page)
-  expect(blocking, `${step}: ${JSON.stringify(blocking, null, 2)}`).toEqual([])
-  const size = page.viewportSize()
-  await page.setViewportSize({ width: 320, height: 640 })
-  expect(await scrollsSideways(page), `${step}: sideways scroll at 320 px`).toBe(false)
-  if (size) await page.setViewportSize(size)
-}
+import { checkScreen, choose, cspViolations, watchCsp } from './support.ts'
 
 const continueButton = (page: Page) => page.getByRole('button', { name: 'Continue' })
-
-/** Taps a choice's card, as a person does, and checks its radio button is now chosen. */
-async function choose(page: Page, name: string | RegExp) {
-  const radio = page.getByRole('radio', typeof name === 'string' ? { name, exact: true } : { name })
-  await page.locator('label').filter({ has: radio }).click()
-  await expect(radio).toBeChecked()
-}
 
 for (const theme of ['dark', 'light'] as const) {
   test(`every first-run screen passes accessibility checks and fits 320 px, ${theme} theme`, async ({
@@ -27,45 +11,45 @@ for (const theme of ['dark', 'light'] as const) {
     await watchCsp(page)
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1, name: 'Shumār' })).toBeVisible()
-    await check(page, 'welcome')
+    await checkScreen(page, 'welcome')
 
     await page.getByRole('link', { name: 'Get started' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'How old are you?' })).toBeFocused()
     await continueButton(page).click()
     await expect(page.getByRole('alert')).toHaveText('Enter your age in whole years, from 18 to 100.')
-    await check(page, 'age, with an error')
+    await checkScreen(page, 'age, with an error')
     await page.getByLabel('Age').fill('34')
     await continueButton(page).click()
 
     await expect(page.getByRole('heading', { level: 1, name: 'What is your sex?' })).toBeVisible()
-    await check(page, 'sex')
+    await checkScreen(page, 'sex')
     await choose(page, 'Female')
     await continueButton(page).click()
 
     await page.getByLabel('Weight').fill('62')
     await page.getByRole('button', { name: 'lb' }).click()
     await expect(page.getByLabel('Weight')).toHaveValue('136.7')
-    await check(page, 'weight, in pounds')
+    await checkScreen(page, 'weight, in pounds')
     await continueButton(page).click()
 
     await page.getByLabel('Height').fill('160')
-    await check(page, 'height')
+    await checkScreen(page, 'height')
     await continueButton(page).click()
 
     await choose(page, /Moderately active/)
-    await check(page, 'activity')
+    await checkScreen(page, 'activity')
     await continueButton(page).click()
 
     await choose(page, /Lose weight/)
     await expect(page.getByRole('group', { name: 'How fast?' })).toBeVisible()
-    await check(page, 'goal, with the speeds')
+    await checkScreen(page, 'goal, with the speeds')
     await page.getByRole('button', { name: 'See my daily target' }).click()
 
     await expect(page.getByRole('heading', { level: 1, name: 'Your daily target' })).toBeFocused()
     await expect(page.getByRole('region', { name: 'Daily target' })).toContainText('kcal')
     await page.getByRole('button', { name: 'How this is worked out' }).click()
     await expect(page.getByText(/Mifflin-St Jeor formula \(1990\)/)).toBeVisible()
-    await check(page, 'daily target, with how it is worked out')
+    await checkScreen(page, 'daily target, with how it is worked out')
     expect(await cspViolations(page)).toEqual([])
   })
 }

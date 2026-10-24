@@ -1,6 +1,8 @@
 import { Redirect, Route, Switch } from 'wouter'
 import { useAuth } from './auth/context.ts'
 import { FirstRun } from './firstRun/FirstRun.tsx'
+import { FIRST_RUN_STEP_PATH, TARGET_PATH } from './firstRun/paths.ts'
+import { SetTargetQuestion, SetTargetReview } from './firstRun/SetTarget.tsx'
 import { ProfileProvider } from './profile/ProfileProvider.tsx'
 import { EditLogScreen } from './screens/EditLogScreen.tsx'
 import { LogFoodScreen } from './screens/LogFoodScreen.tsx'
@@ -43,6 +45,10 @@ export default function App() {
           <Route path="/sources">
             <SourcesScreen />
           </Route>
+          <Route path={TARGET_PATH}>
+            <SetTargetReview />
+          </Route>
+          <Route path={FIRST_RUN_STEP_PATH}>{(params) => <SetTargetQuestion step={params.step} />}</Route>
           <Route>
             <Redirect to="/" replace />
           </Route>

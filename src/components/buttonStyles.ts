@@ -1,4 +1,4 @@
-export type ButtonVariant = 'primary' | 'secondary'
+export type ButtonVariant = 'primary' | 'secondary' | 'inset'
 export type ButtonSize = 'large' | 'small'
 
 const BASE =
@@ -8,6 +8,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   // Text on saffron is the base color in dark mode and the surface color in light mode, as designed.
   primary: 'bg-deficit-ring text-koshur-surface dark:text-koshur-base',
   secondary: 'border border-koshur-border bg-transparent text-koshur-silk',
+  // A secondary button set into a card, on the page color, as the You design's phone Adjust button.
+  inset: 'border border-koshur-border bg-koshur-base text-koshur-silk',
 }
 
 const SIZES: Record<ButtonSize, string> = {

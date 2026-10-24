@@ -15,6 +15,7 @@ import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
 import { furthestBehind, ringState, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
+import { SetTargetCard } from '../firstRun/SetTargetCard.tsx'
 import { LOG_FOOD_PATH } from '../shell/nav.ts'
 import { LogSheet } from '../log/LogSheet.tsx'
 import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
@@ -181,6 +182,7 @@ export function TodayScreen() {
             </Button>
           </div>
         )}
+        {profile.status === 'ready' && !targets && <SetTargetCard />}
         <CaloriesCard totals={totals} target={targets?.kcal} macroTargets={macroTargets} />
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (

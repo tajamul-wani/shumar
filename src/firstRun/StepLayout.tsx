@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { FIRST_RUN_STEPS, type FirstRunStep } from '../lib/firstRun.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { BackLink } from './BackLink.tsx'
 import { stepPath } from './paths.ts'
+import { StandaloneContext } from './standalone.ts'
 
 interface StepLayoutProps {
   step: FirstRunStep
@@ -28,6 +29,7 @@ export function StepLayout({
   children,
 }: StepLayoutProps) {
   useDocumentTitle(screenName)
+  const standalone = useContext(StandaloneContext)
   const index = FIRST_RUN_STEPS.indexOf(step)
   const back = index === 0 ? '/' : stepPath(FIRST_RUN_STEPS[index - 1])
   const total = FIRST_RUN_STEPS.length
@@ -42,12 +44,14 @@ export function StepLayout({
       className="flex flex-1 flex-col justify-between gap-6 lg:flex-none lg:justify-start"
     >
       <div className="flex flex-col gap-6">
-        <p className="m-0 hidden items-center gap-3 lg:flex">
-          <span lang="ks" className="font-wordmark text-title text-deficit-ring">
-            شُمار
-          </span>
-          <span className="text-body font-semibold">Shumār</span>
-        </p>
+        {standalone && (
+          <p className="m-0 hidden items-center gap-3 lg:flex">
+            <span lang="ks" className="font-wordmark text-title text-deficit-ring">
+              شُمار
+            </span>
+            <span className="text-body font-semibold">Shumār</span>
+          </p>
+        )}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <BackLink href={back} />

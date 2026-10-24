@@ -5,12 +5,14 @@
 
 import { USER_CACHE_PREFIX } from './auth.ts'
 import { deviceStorage } from './deviceStorage.ts'
+import { formatNumber } from './foodDisplay.ts'
 import {
   ACTIVITY_PAL,
   LOSS_DEFICIT_KCAL,
   MIN_KCAL,
   PROFILE_LIMITS,
   type ActivityLevel,
+  type DailyTargets,
   type Goal,
   type LossRate,
   type Profile,
@@ -132,6 +134,51 @@ export function speedLabel(kgPerWeek: LossRate, unit: WeightUnit): string {
 export function goalSummary(goal: Goal, unit: WeightUnit): string {
   if (goal.kind === 'lose') return `Lose ${speedLabel(goal.kgPerWeek, unit)}`
   return GOAL_CHOICES.find((choice) => choice.id === goal.kind)?.label ?? ''
+}
+
+/** Why a weight-loss target is higher than the speed chosen, when the safety floor raised it. */
+export function floorNote(targets: DailyTargets, sex: Sex): string | null {
+  if (!targets.atFloor) return null
+  if (targets.kcal >= targets.maintenanceKcal) {
+    return "To keep this safe, Shumār won't set a target below what your body uses in a day, so this one keeps your weight steady. Your doctor can help you plan a safe loss."
+  }
+  return `To keep this safe, Shumār won't go below ${formatNumber(MIN_KCAL[sex])} kcal a day, so you'll lose a little slower than you chose.`
+}
+
+/** Each answer's name, as the answer lists show it. */
+export const ANSWER_LABELS: Record<FirstRunStep, string> = {
+  age: 'Age',
+  sex: 'Sex',
+  weight: 'Weight',
+  height: 'Height',
+  activity: 'Activity',
+  goal: 'Goal',
+}
+
+/** Each answer as the person reads it, by question: "30 years", "80 kg", "Lightly active". */
+export function answerValues(profile: Profile, unit: WeightUnit): Record<FirstRunStep, string> {
+  return {
+    age: `${profile.ageYears} years`,
+    sex: SEX_CHOICES.find((choice) => choice.id === profile.sex)?.label ?? '',
+    weight: `${weightInUnit(profile.weightKg, unit)} ${unit}`,
+    height: `${formatNumber(profile.heightCm)} cm`,
+    activity: ACTIVITY_CHOICES.find((choice) => choice.id === profile.activity)?.label ?? '',
+    goal: goalSummary(profile.goal, unit),
+  }
+}
+
+/** What a target is worked out for, as a phrase: "to lose about 0.5 kg a week". */
+export function goalAim(goal: Goal, unit: WeightUnit): string {
+  switch (goal.kind) {
+    case 'lose':
+      return `to lose about ${speedLabel(goal.kgPerWeek, unit)}`
+    case 'maintain':
+      return 'to keep your weight'
+    case 'gain':
+      return 'to gain weight slowly'
+    case 'recomp':
+      return 'for body recomposition'
+  }
 }
 
 type Checked = { ok: true; value: number } | { ok: false; message: string }

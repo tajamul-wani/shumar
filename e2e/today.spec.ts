@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 import {
-  FIRST_RUN_ANSWERS,
   accessibilityViolations,
   apiClient,
   createTestUser,
   cspViolations,
+  saveTestProfile,
   scrollsSideways,
   signInAs,
   watchCsp,
@@ -226,19 +226,7 @@ test('with a daily target, Today shows the calories left, the macro targets and 
 }) => {
   const user = await createTestUser('today-target')
   const api = apiClient(user.session.access_token)
-  // The same answers as the first-run tests: a target of 2,176 kcal, 128 g protein, 280 g carbs, 60 g fat.
-  const answers = FIRST_RUN_ANSWERS
-  const profile = await api.from('profiles').insert({
-    age_years: answers.ageYears,
-    sex: answers.sex,
-    weight_kg: answers.weightKg,
-    weight_unit: answers.weightUnit,
-    height_cm: answers.heightCm,
-    activity: answers.activity,
-    goal: answers.goal.kind,
-    loss_kg_per_week: answers.goal.kgPerWeek,
-  })
-  expect(profile.error).toBeNull()
+  await saveTestProfile(user.session.access_token)
   const logs = await api
     .from('user_logs')
     .insert([
