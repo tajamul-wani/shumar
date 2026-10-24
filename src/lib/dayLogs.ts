@@ -216,3 +216,14 @@ export async function changeLog(client: LogsClient, log: LoggedFood, change: Log
   if (!changed) throw new LogError("We couldn't save your changes. Check your connection and try again.")
   return changed
 }
+
+/** Every log this person has, oldest first, for the data download. */
+export async function fetchAllLogs(client: LogsClient): Promise<LoggedFood[]> {
+  const { data, error } = await client
+    .from('user_logs')
+    .select(LOG_COLUMNS)
+    .order('log_date')
+    .order('logged_at')
+  if (error) throw new LogError("We couldn't load your logs. Check your connection and try again.")
+  return parseRows(data)
+}

@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
@@ -9,7 +9,9 @@ import { MacroTargets } from '../components/MacroTargets.tsx'
 import { stepPath } from '../firstRun/paths.ts'
 import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
 import { summarizeAccount, type AccountUser } from '../lib/account.ts'
+import { buildExport, deleteAccount, exportFileName, saveFile } from '../lib/accountData.ts'
 import { signOut } from '../lib/auth.ts'
+import { fetchAllLogs } from '../lib/dayLogs.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import {
   ANSWER_LABELS,
@@ -115,6 +117,95 @@ function About() {
       <p className="m-0 border-t border-koshur-border px-5 pt-3 pb-4 text-caption text-koshur-muted">
         Ingredient values from USDA FoodData Central, in the public domain. Shumār 0.1
       </p>
+    </section>
+  )
+}
+
+/** The two things the privacy policy promises: a file of everything, and the end of the account. */
+function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () => void }) {
+  const { client } = useAuth()
+  const { answers } = useProfile()
+  const [busy, setBusy] = useState<'download' | 'delete' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  async function handleDownload() {
+    setBusy('download')
+    setError(null)
+    try {
+      const logs = await fetchAllLogs(client)
+      const now = new Date()
+      saveFile(exportFileName(now), JSON.stringify(buildExport(user, answers, logs, now), null, 2))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "We couldn't prepare your file. Try again.")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleDelete() {
+    setBusy('delete')
+    setError(null)
+    try {
+      await deleteAccount(client)
+      onDeleted()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "We couldn't delete your account. Try again.")
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section aria-labelledby="your-data-heading" className={`${CARD} flex min-w-0 flex-col gap-3 p-5`}>
+      <h2 id="your-data-heading" className="m-0 text-body font-semibold">
+        Your data
+      </h2>
+      <p className="m-0 text-body-sm text-koshur-muted">
+        Your answers, your target and every log, as one file you can keep or move elsewhere.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <Button variant="secondary" size="small" onClick={handleDownload} disabled={busy !== null}>
+          {busy === 'download' ? 'Preparing your file' : 'Download my data'}
+        </Button>
+        {!confirming && (
+          <Button
+            variant="secondary"
+            size="small"
+            onClick={() => setConfirming(true)}
+            disabled={busy !== null}
+          >
+            Delete my account
+          </Button>
+        )}
+      </div>
+      {confirming && (
+        <section
+          aria-labelledby="delete-heading"
+          className="flex flex-col gap-3 rounded-xl border border-koshur-border bg-koshur-base p-4"
+        >
+          <p id="delete-heading" className="m-0 text-body font-semibold">
+            Delete your account and every log?
+          </p>
+          <p className="m-0 text-body-sm text-koshur-muted">
+            Your account, your answers and all your food logs go straight away. There is no undo. Download
+            your data first if you want to keep it.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="inset" size="small" onClick={handleDelete} disabled={busy !== null}>
+              {busy === 'delete' ? 'Deleting' : 'Yes, delete everything'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={() => setConfirming(false)}
+              disabled={busy !== null}
+            >
+              Keep my account
+            </Button>
+          </div>
+        </section>
+      )}
+      {error && <Alert>{error}</Alert>}
     </section>
   )
 }
@@ -242,6 +333,8 @@ export function YouScreen({ user }: { user: AccountUser }) {
     navigate('/', { replace: true })
   }
 
+  const yourData = <YourDataCard user={user} onDeleted={handleSignOut} />
+
   const account = (
     <section aria-label="Account" className={`${CARD} flex min-w-0 items-start gap-3.5 px-5 py-4`}>
       <span
@@ -278,6 +371,7 @@ export function YouScreen({ user }: { user: AccountUser }) {
           </div>
           <div className="flex min-w-0 flex-col gap-4">
             <Appearance />
+            {yourData}
             <About />
           </div>
         </div>
@@ -287,6 +381,7 @@ export function YouScreen({ user }: { user: AccountUser }) {
           <TargetCard wide={false} />
           <Appearance />
           <DetailsCard />
+          {yourData}
           <About />
         </div>
       )}
