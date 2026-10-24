@@ -89,7 +89,7 @@ test.describe('what search engines and link previews read', () => {
 test('shows the full title in the tab, with nothing blocked by the security policy', async ({ page }) => {
   await watchCsp(page)
   await page.goto('/')
-  await expect(page.getByRole('button', { name: 'I already have an account' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
   await expect(page).toHaveTitle(SITE_TITLE)
   expect(await cspViolations(page)).toEqual([])
 })
@@ -114,12 +114,18 @@ test('lets search engines find the home page through robots.txt and the sitemap'
   const sitemap = await request.get('/sitemap.xml')
   expect(sitemap.status()).toBe(200)
   expect(sitemap.headers()['content-type']).toMatch(/xml/)
-  expect([...(await sitemap.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1])).toEqual([`${baseURL}/`])
+  expect([...(await sitemap.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1])).toEqual([
+    `${baseURL}/`,
+    `${baseURL}/privacy`,
+    `${baseURL}/sources`,
+  ])
 })
 
 test("keeps the app's own screens out of search results", async ({ request }) => {
-  expect((await request.get('/')).headers()['x-robots-tag']).toBeUndefined()
-  for (const path of ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/1', '/sources']) {
+  for (const path of ['/', '/privacy', '/sources']) {
+    expect((await request.get(path)).headers()['x-robots-tag'], path).toBeUndefined()
+  }
+  for (const path of ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/1']) {
     expect((await request.get(path)).headers()['x-robots-tag'], path).toBe('noindex')
   }
 })

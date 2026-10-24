@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
 import { FIRST_RUN_KEY, KG_PER_LB, readAnswers, saveAnswers, type FirstRunAnswers } from '../lib/firstRun.ts'
+import { ThemeProvider } from '../theme/ThemeProvider.tsx'
 import { FirstRun } from './FirstRun.tsx'
 
 function renderFirstRun(path = '/', options: { oauthError?: Error } = {}) {
@@ -12,9 +13,11 @@ function renderFirstRun(path = '/', options: { oauthError?: Error } = {}) {
     .mockResolvedValue({ data: {}, error: options.oauthError ?? null })
   const client = { auth: { signInWithOAuth } } as unknown as AppClient
   render(
-    <AuthContext.Provider value={{ client, session: null, loading: false }}>
-      <FirstRun />
-    </AuthContext.Provider>,
+    <ThemeProvider>
+      <AuthContext.Provider value={{ client, session: null, loading: false }}>
+        <FirstRun />
+      </AuthContext.Provider>
+    </ThemeProvider>,
   )
   return { signInWithOAuth }
 }
@@ -40,12 +43,12 @@ afterEach(() => {
 describe('the welcome screen', () => {
   it('offers the questions or signing in to an account', () => {
     renderFirstRun()
-    expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Find your daily target' })).toHaveTextContent(
-      'Your answers stay on this device until you sign in.',
-    )
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Your answers stay on this device until you sign in.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/start/age')
-    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled()
   })
 
   it('opens the first question and puts focus on it', async () => {
@@ -197,7 +200,9 @@ describe('the questions', () => {
   it.each(['/start/shoe-size', '/trends', '/log'])('sends %s to the welcome screen', (path) => {
     renderFirstRun(path)
     expect(window.location.pathname).toBe('/')
-    expect(screen.getByRole('heading', { level: 1, name: 'Shumār' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
+    ).toBeInTheDocument()
   })
 })
 

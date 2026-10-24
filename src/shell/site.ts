@@ -8,3 +8,9 @@ export const SITE_DESCRIPTION =
 /** The share image, in words, for people who can't see it. */
 export const SITE_IMAGE_ALT =
   'The Shumār logo, a saffron hexagon around drops for protein, carbs and fat, beside شُمار and the line A calorie and macro tracker made for Kashmiri food.'
+
+/** Who made it, for the copyright line and the privacy policy. */
+export const SITE_OWNER = 'Tajamul Wani'
+export const SITE_REPO = 'https://github.com/tajamul-wani/shumar'
+export const DEVELOPER_GITHUB = 'https://github.com/tajamul-wani'
+export const DEVELOPER_LINKEDIN = 'https://www.linkedin.com/in/tajamul-wani/'

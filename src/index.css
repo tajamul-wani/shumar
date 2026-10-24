@@ -41,11 +41,15 @@
 :root {
   --display-size: 2rem;
   --display-line: 2.5rem;
+  --hero-size: 2.25rem;
+  --hero-line: 2.75rem;
 }
 @media (min-width: 48rem) {
   :root {
     --display-size: 2.5rem;
     --display-line: 3rem;
+    --hero-size: 3rem;
+    --hero-line: 3.5rem;
   }
 }
 
@@ -80,6 +84,9 @@
   --text-heading--line-height: 2rem;
   --text-display: var(--display-size);
   --text-display--line-height: var(--display-line);
+  /* The home page heading only (Tajamul Wani, 24 October 2026). */
+  --text-hero: var(--hero-size);
+  --text-hero--line-height: var(--hero-line);
 
   --font-weight-*: initial;
   --font-weight-normal: 400;
@@ -96,6 +103,36 @@ body {
   line-height: var(--text-body--line-height);
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+}
+
+/* A macro's target reads "of 128 g" under the number on phones, and "/ 128 g" beside it from tablets up. */
+.macro-target::before {
+  content: 'of ';
+}
+@media (min-width: 640px) {
+  .macro-target::before {
+    content: '/ ';
+  }
+}
+
+/* No word is left alone on the last line (shumar-no-orphans). e2e/orphans.spec.ts checks every screen. */
+h1,
+h2,
+h3,
+h4,
+button,
+a,
+label,
+summary {
+  text-wrap: balance;
+}
+p,
+li,
+dt,
+dd,
+th,
+td {
+  text-wrap: pretty;
 }
 
 /* Search boxes have their own clear button in the app's colors, so the browser's blue one is hidden. */

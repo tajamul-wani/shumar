@@ -243,7 +243,7 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   const ring = page.getByRole('region', { name: 'Calories and macros' })
   await expect(ring).toContainText('1,576kcal left')
   await expect(ring).toContainText('600 eaten of 2,176 kcal')
-  await expect(ring).toContainText('Protein30 / 128 g')
+  await expect(ring).toContainText('Protein30128 g')
   const review = page.getByRole('region', { name: /review$/ })
   await expect(review).toContainText('A steady day. You have 1,576 kcal left.')
   await expect(review).toContainText('Carbs are furthest behind60 of 280 g')

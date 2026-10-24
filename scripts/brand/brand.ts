@@ -127,9 +127,8 @@ export const maskableIcon = (p: Palette) => {
     `<rect width="512" height="512" fill="${p.base}"/><g transform="translate(${offset} ${offset}) scale(${MASKABLE_SCALE})">${mark(p)}</g>`,
   )
 }
-/** The 48 px favicon keeps a thicker track so the hexagon reads at that size. */
-export const favicon = (p: Palette) =>
-  svg('0 0 512 512', `<rect width="512" height="512" rx="112" fill="${p.base}"/>${mark(p, 70)}`)
+/** The 48 px favicon: the mark alone on a clear background, with a thicker track so the hexagon reads at that size. */
+export const favicon = (p: Palette) => svg('0 0 512 512', mark(p, 70))
 
 /**
  * The 16 and 32 px favicons are drawn to the pixel grid, so they stay sharp in a browser tab: the

@@ -23,10 +23,10 @@ It runs in the browser and installs on a phone like an app.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/start-dark.png" />
-  <img src="docs/images/start-light.png" alt="Shumār on a phone: the welcome screen, one of the six first-run questions, and the daily target they work out" width="760" />
+  <img src="docs/images/start-light.png" alt="Shumār on a phone: two of the six first-run questions, and the daily target they work out" width="760" />
 </picture>
 
-<sub>The welcome screen, one of the six first-run questions, and the daily target they work out.</sub>
+<sub>Two of the six first-run questions, and the daily target they work out.</sub>
 
 </div>
 
@@ -125,11 +125,12 @@ npm run dev
 
 Shumār is a single-page React app. The data lives in Supabase, and row-level security keeps each person's data private.
 
-- **Signed out**, `src/firstRun/` asks the first-run questions and shows the daily target. The answers stay on the device until sign-in and are wiped at sign-out.
+- **Signed out**, `src/firstRun/` shows the home page and the public sources and privacy pages, asks the first-run questions and shows the daily target. The answers stay on the device until sign-in and are wiped at sign-out.
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
 - **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
-- **Search:** only the welcome page belongs in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
+- **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
+- **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
 | Table             | Holds                                                        | Who can access it                             |
 | :---------------- | :----------------------------------------------------------- | :-------------------------------------------- |
@@ -137,7 +138,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 | `food_units`      | Grams in one piece, cup or katori of a catalog food          | Anyone can read; nobody can write via the API |
 | `user_logs`       | One row per food logged, with the nutrients at that moment   | Only the person who logged it                 |
 | `profiles`        | Each person's first-run answers                              | Only that person                              |
-| `usda_releases`   | Which USDA files are loaded, with each file's SHA-256        | Signed-in people can read                     |
+| `usda_releases`   | Which USDA files are loaded, with each file's SHA-256        | Anyone can read                               |
 | `usda_foods`      | About 7,100 USDA foods, per 100 g                            | Signed-in people can read                     |
 | `usda_portions`   | USDA household portions in grams                             | Signed-in people can read                     |
 | `search_synonyms` | Local food words mapped to USDA wording                      | Signed-in people can read                     |
@@ -251,7 +252,7 @@ Colors, fonts, type sizes and weights are tokens in `src/index.css`, used throug
 | `macro-protein`, `macro-carb`, `macro-fat`       | Protein, carbs and fat        |
 | `alert-surplus`                                  | Over-target states and alerts |
 
-Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text-title` (20), `text-heading` (24) and `text-display` (32, or 40 from tablets). Weights: 400, 500 and 600. All text uses Manrope.
+Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text-title` (20), `text-heading` (24), `text-display` (32, or 40 from tablets) and `text-hero` (36, or 48 from tablets, for the home page heading only). Weights: 400, 500 and 600. All text uses Manrope.
 
 The logo, app icons, favicon and share image are drawn from these tokens by `npm run brand` (`scripts/brand/`). The mark is the day as a saffron hexagon that fills up, around the protein, carbs and fat drops, with the name beside it. The name's outline comes from Manrope, shaped once with HarfBuzz by `scripts/brand/outline-text.mjs`.
 

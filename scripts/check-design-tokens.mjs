@@ -14,7 +14,7 @@ const RULES = [
   {
     pattern: /\btext-(xs|sm|base|lg|xl|[2-9]xl)\b/,
     message:
-      'default Tailwind text size: use text-caption, text-body-sm, text-body, text-title, text-heading or text-display',
+      'default Tailwind text size: use text-caption, text-body-sm, text-body, text-title, text-heading, text-display or text-hero',
   },
   {
     pattern: /\bfont-(thin|extralight|light|bold|extrabold|black)\b/,

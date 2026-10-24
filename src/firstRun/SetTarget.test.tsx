@@ -250,7 +250,14 @@ describe('the You screen', () => {
   it('puts Appearance between the target and the details on phones, as designed', async () => {
     renderApp(fakeClient({ row: savedRow }), '/you')
     await screen.findByRole('region', { name: 'Your details' })
-    expect(cardNames()).toEqual(['Account', 'Daily target', 'Appearance', 'Your details', 'About'])
+    expect(cardNames()).toEqual([
+      'Account',
+      'Daily target',
+      'Appearance',
+      'Your details',
+      'Your data',
+      'About',
+    ])
   })
 
   describe('on wide screens', () => {
@@ -269,7 +276,14 @@ describe('the You screen', () => {
     it('keeps the target and details in the first column and the settings in the second', async () => {
       renderApp(fakeClient({ row: savedRow }), '/you')
       await screen.findByRole('region', { name: 'Your details' })
-      expect(cardNames()).toEqual(['Account', 'Daily target', 'Your details', 'Appearance', 'About'])
+      expect(cardNames()).toEqual([
+        'Account',
+        'Daily target',
+        'Your details',
+        'Appearance',
+        'Your data',
+        'About',
+      ])
       expect(screen.getByRole('link', { name: 'Adjust target' })).toHaveTextContent(/^Adjust target$/)
     })
   })

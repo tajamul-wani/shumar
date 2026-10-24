@@ -87,7 +87,7 @@ const GAIN_SURPLUS = 0.1
  *   (Jäger et al., J Int Soc Sports Nutr 14:20).
  * - Body recomposition: 2.2, the top of the 1.6 to 2.2 in Iraki et al. 2019.
  */
-const PROTEIN_G_PER_KG = 1.6
+export const PROTEIN_G_PER_KG = 1.6
 const RECOMP_PROTEIN_G_PER_KG = 2.2
 
 /**
@@ -97,7 +97,7 @@ const RECOMP_PROTEIN_G_PER_KG = 2.2
  * total fat 30% or less. Carbs get the rest.
  */
 const PROTEIN_MAX_SHARE = 0.35
-const FAT_SHARE = 0.25
+export const FAT_SHARE = 0.25
 
 /**
  * Accepted answers. Every source above is for adults, and Mifflin-St Jeor was
