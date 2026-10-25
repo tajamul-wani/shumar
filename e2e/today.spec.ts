@@ -172,6 +172,17 @@ test('on a wide screen, a food added beside Today shows in the day at once', asy
     await expect(meals.getByRole('link', { name: 'Edit Eggs, Grade A, Large, egg whole' })).toBeVisible()
     await expect(page.getByText('1 day logged')).toBeVisible()
 
+    // The meals and Add food share a row, with Add food to the right, and the calories sit above them.
+    const addFood = page.getByRole('heading', { level: 2, name: 'Add food' })
+    const [ringBox, mealsBox, addBox] = await Promise.all([
+      ring.boundingBox(),
+      meals.boundingBox(),
+      addFood.boundingBox(),
+    ])
+    expect(addBox!.x).toBeGreaterThan(mealsBox!.x + mealsBox!.width)
+    expect(Math.abs(addBox!.y - mealsBox!.y)).toBeLessThan(40)
+    expect(ringBox!.y + ringBox!.height).toBeLessThanOrEqual(mealsBox!.y)
+
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
     // Where Add food and the day no longer fit side by side, they stack without sideways scroll.
@@ -248,6 +259,12 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   await expect(review).toContainText('A steady day. You have 1,576 kcal left.')
   await expect(review).toContainText('Carbs are furthest behind60 of 280 g')
   await expect(review).toContainText('Sodium is high, mostly from Test tea')
+  // On a wide screen the review sits beside the calories, in the same row.
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    const [ringBox, reviewBox] = await Promise.all([ring.boundingBox(), review.boundingBox()])
+    expect(Math.abs(ringBox!.y - reviewBox!.y)).toBeLessThan(2)
+    expect(reviewBox!.x).toBeGreaterThan(ringBox!.x + ringBox!.width)
+  }
   expect(await accessibilityViolations(page)).toEqual([])
   expect(await scrollsSideways(page)).toBe(false)
   expect(await cspViolations(page)).toEqual([])

@@ -35,7 +35,8 @@ const STORED = [
 export function PrivacyScreen() {
   useDocumentTitle('Privacy policy')
   return (
-    <>
+    // A reading width: the page keeps the 1040 px column it was approved in, inside the wider shell.
+    <div className="flex max-w-260 flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 tabIndex={-1} className="m-0 text-heading font-semibold focus:outline-none lg:text-display">
           Privacy policy
@@ -169,6 +170,6 @@ export function PrivacyScreen() {
           than it does today is shown in the app before it applies.
         </p>
       </section>
-    </>
+    </div>
   )
 }
