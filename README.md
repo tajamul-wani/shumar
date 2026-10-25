@@ -39,17 +39,18 @@ It runs in the browser and installs on a phone like an app.
 
 ## Tech stack
 
-| Area            | Tools                                                       |
-| :-------------- | :---------------------------------------------------------- |
-| App             | React 19, TypeScript, Vite, wouter                          |
-| Styling         | Tailwind CSS v4, Lucide React icons                         |
-| Fonts           | Manrope (self-hosted with Fontsource)                       |
-| Database        | Supabase (PostgreSQL) with row-level security               |
-| Sign-in         | Supabase Auth with Google                                   |
-| Food data       | USDA FoodData Central (public domain), imported with Python |
-| Tests           | Vitest, React Testing Library, pgTAP, Playwright, axe-core  |
-| Lint and format | oxlint, Prettier                                            |
-| CI              | GitHub Actions                                              |
+| Area            | Tools                                                        |
+| :-------------- | :----------------------------------------------------------- |
+| App             | React 19, TypeScript, Vite, wouter                           |
+| Styling         | Tailwind CSS v4, Lucide React icons                          |
+| Fonts           | Manrope (self-hosted with Fontsource)                        |
+| Database        | Supabase (PostgreSQL) with row-level security                |
+| Sign-in         | Supabase Auth with Google                                    |
+| Food data       | USDA FoodData Central (public domain), imported with Python  |
+| Tests           | Vitest, React Testing Library, pgTAP, Playwright, axe-core   |
+| Lint and format | oxlint, Prettier                                             |
+| CI              | GitHub Actions                                               |
+| Hosting         | Cloudflare Workers, serving the built files as static assets |
 
 ## Project structure
 
@@ -114,6 +115,12 @@ npm run dev
 | `npm run test:db`   | Run the database security tests                                    |
 | `npm run test:e2e`  | Run the end-to-end tests                                           |
 | `npm run check`     | Lint, type check, unit tests and build                             |
+
+### Deploying
+
+The site is served by Cloudflare Workers as static assets, with no server code. `wrangler.jsonc` points at `dist/` and serves `index.html` for any address that is not a file, so the app's own screens open on a refresh or from a shared link. The build writes `dist/_headers` (the security policy and the `noindex` rules) from `scripts/security-headers.ts` and `scripts/seo.ts`, and Cloudflare applies it to every response.
+
+Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler deploy`. `main` only moves through merged pull requests, which need CI to pass first. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables in the Cloudflare dashboard; none of them is a secret. The Supabase project's redirect list names the live address, so Google sign-in works there and on this machine only.
 
 ## Testing
 
