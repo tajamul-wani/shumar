@@ -24,10 +24,12 @@ interface ReviewCardProps {
   ring: RingState | null
   behind: MacroBehind | null
   alert: SodiumAlert | null
+  /** The day's sodium so far. Shown on wide screens even when it is under the limit. */
+  sodiumMg?: number
 }
 
 /** The review card from the V2 design: calories left or over, the macro furthest behind, and sodium. */
-export function ReviewCard({ now, ring, behind, alert }: ReviewCardProps) {
+export function ReviewCard({ now, ring, behind, alert, sodiumMg }: ReviewCardProps) {
   const headingId = useId()
   const { title, evening } = reviewTitle(now)
   const Icon = evening ? Moon : Sun
@@ -45,8 +47,10 @@ export function ReviewCard({ now, ring, behind, alert }: ReviewCardProps) {
         {title}
       </h2>
       {line && <p className="m-0 text-body text-koshur-silk">{line}</p>}
-      {(behind || alert) && (
-        <div className={`flex flex-col gap-2.5 ${line ? 'border-t border-koshur-border pt-3.5' : ''}`}>
+      {(behind || alert || sodiumMg !== undefined) && (
+        <div
+          className={`flex-col gap-2.5 ${behind || alert ? 'flex' : 'hidden lg:flex'} ${line ? 'border-t border-koshur-border pt-3.5' : ''}`}
+        >
           {behind && (
             <p className="m-0 flex items-start justify-between gap-3 text-body-sm">
               <span className="text-koshur-muted">{BEHIND[behind.key]}</span>
@@ -68,6 +72,14 @@ export function ReviewCard({ now, ring, behind, alert }: ReviewCardProps) {
               </span>
               <span className="shrink-0 font-semibold text-koshur-silk">
                 {formatNumber(Math.round(alert.totalMg))} mg
+              </span>
+            </p>
+          )}
+          {!alert && sodiumMg !== undefined && (
+            <p className="m-0 hidden items-start justify-between gap-3 text-body-sm lg:flex">
+              <span className="text-koshur-muted">Sodium so far</span>
+              <span className="shrink-0 font-semibold text-koshur-silk">
+                {formatNumber(Math.round(sodiumMg))} mg
               </span>
             </p>
           )}

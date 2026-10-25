@@ -32,7 +32,8 @@ export function SourcesScreen() {
   }, [client])
 
   return (
-    <>
+    // A reading width: the page keeps the 1040 px column it was approved in, inside the wider shell.
+    <div className="flex max-w-260 flex-col gap-6">
       <h1 tabIndex={-1} className="m-0 text-heading font-semibold focus:outline-none">
         Where food values come from
       </h1>
@@ -86,6 +87,6 @@ export function SourcesScreen() {
         </h2>
         <p className="m-0 text-body-sm text-koshur-muted">Copied from the nutrition label on the pack.</p>
       </section>
-    </>
+    </div>
   )
 }

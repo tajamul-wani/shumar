@@ -215,7 +215,8 @@ describe('with a daily target', () => {
     const review = await screen.findByRole('region', { name: 'Evening review' })
     expect(review).toHaveTextContent('A steady day. You have 1,646 kcal left.')
     expect(review).toHaveTextContent('Carbs are furthest behind8 of 280 g')
-    expect(review).not.toHaveTextContent('Sodium')
+    expect(review).not.toHaveTextContent('Sodium is high')
+    expect(review).toHaveTextContent('Sodium so far')
   })
 
   it('says when the day went over, and turns the ring red', async () => {
