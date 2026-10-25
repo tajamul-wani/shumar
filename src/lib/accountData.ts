@@ -59,6 +59,13 @@ export function saveFile(name: string, text: string, type = 'application/json'):
 }
 
 /** Deletes the signed-in person's account, answers and every log, in the database. */
+/** The word a person types before the account can go. Case and spaces around it do not matter. */
+export const DELETE_WORD = 'delete'
+
+export function confirmsDeletion(typed: string): boolean {
+  return typed.trim().toLowerCase() === DELETE_WORD
+}
+
 export async function deleteAccount(client: Pick<SupabaseClient, 'rpc'>): Promise<void> {
   const { error } = await client.rpc('delete_my_account')
   if (error) throw new AccountError("We couldn't delete your account. Check your connection and try again.")

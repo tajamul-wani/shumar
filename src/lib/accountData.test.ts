@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AccountError, buildExport, deleteAccount, exportFileName } from './accountData.ts'
+import { AccountError, buildExport, confirmsDeletion, deleteAccount, exportFileName } from './accountData.ts'
 import type { LoggedFood } from './dayLogs.ts'
 
 const user = { email: 'a@example.com', user_metadata: { full_name: 'A Person' }, app_metadata: {} }
@@ -64,6 +64,17 @@ describe('the data download', () => {
   it('names the file for the day it was made', () => {
     expect(exportFileName(new Date(2026, 9, 24, 23, 30))).toBe('shumar-data-2026-10-24.json')
     expect(exportFileName(new Date(2026, 0, 5))).toBe('shumar-data-2026-01-05.json')
+  })
+})
+
+describe('the typed confirmation', () => {
+  it('accepts the word whatever the case or spacing, and nothing else', () => {
+    expect(confirmsDeletion('delete')).toBe(true)
+    expect(confirmsDeletion('  Delete ')).toBe(true)
+    expect(confirmsDeletion('DELETE')).toBe(true)
+    expect(confirmsDeletion('')).toBe(false)
+    expect(confirmsDeletion('delet')).toBe(false)
+    expect(confirmsDeletion('delete me')).toBe(false)
   })
 })
 
