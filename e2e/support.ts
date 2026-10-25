@@ -139,7 +139,14 @@ export async function useTheme(page: Page, theme: (typeof THEMES)[number]): Prom
  * Headings, buttons, links shown as blocks, labels and paragraphs count; text that runs inline
  * inside a paragraph is judged with the paragraph. A non-breaking space keeps two words as one.
  */
-export function loneWords(page: Page): Promise<string[]> {
+export async function loneWords(page: Page): Promise<string[]> {
+  // Measure with the real typeface. Until Manrope has loaded the page is drawn in a wider fallback
+  // font, where lines break in different places, and a CI runner can still be loading it when the
+  // first screen is measured.
+  await page.evaluate(() => document.fonts.ready)
+  if (!(await page.evaluate(() => document.fonts.check('16px Manrope')))) {
+    throw new Error('Manrope has not loaded, so the lines cannot be measured')
+  }
   return page.evaluate(() => {
     const found = new Set<string>()
     const blocks = document.querySelectorAll<HTMLElement>(

@@ -19,3 +19,16 @@ export function localDateKey(date: Date): string {
 export function formatMealTime(date: Date): string {
   return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`
 }
+
+/** The local midnight of a YYYY-MM-DD key, the reverse of localDateKey. */
+export function parseDateKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+/** The same time of day, `days` later (or earlier when negative), across month ends and clock changes. */
+export function addDays(date: Date, days: number): Date {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}

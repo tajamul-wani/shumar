@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, TriangleAlert } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../auth/context.ts'
@@ -9,7 +9,7 @@ import { MacroTargets } from '../components/MacroTargets.tsx'
 import { stepPath } from '../firstRun/paths.ts'
 import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
 import { summarizeAccount, type AccountUser } from '../lib/account.ts'
-import { buildExport, deleteAccount, exportFileName, saveFile } from '../lib/accountData.ts'
+import { buildExport, confirmsDeletion, deleteAccount, exportFileName, saveFile } from '../lib/accountData.ts'
 import { signOut } from '../lib/auth.ts'
 import { fetchAllLogs } from '../lib/dayLogs.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
@@ -128,6 +128,14 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
   const [busy, setBusy] = useState<'download' | 'delete' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
+  const [typed, setTyped] = useState('')
+  const confirmId = useId()
+  const ready = confirmsDeletion(typed)
+
+  function open(next: boolean) {
+    setTyped('')
+    setConfirming(next)
+  }
 
   async function handleDownload() {
     setBusy('download')
@@ -144,6 +152,7 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
   }
 
   async function handleDelete() {
+    if (!ready) return
     setBusy('delete')
     setError(null)
     try {
@@ -168,12 +177,7 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
           {busy === 'download' ? 'Preparing your file' : 'Download my data'}
         </Button>
         {!confirming && (
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={() => setConfirming(true)}
-            disabled={busy !== null}
-          >
+          <Button variant="secondary" size="small" onClick={() => open(true)} disabled={busy !== null}>
             Delete my account
           </Button>
         )}
@@ -181,25 +185,42 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
       {confirming && (
         <section
           aria-labelledby="delete-heading"
-          className="flex flex-col gap-3 rounded-xl border border-koshur-border bg-koshur-base p-4"
+          className="flex flex-col gap-3 rounded-xl border border-alert-surplus bg-koshur-base p-4"
         >
-          <p id="delete-heading" className="m-0 text-body font-semibold">
+          <p id="delete-heading" className="m-0 flex items-start gap-2 text-body font-semibold">
+            <TriangleAlert
+              aria-hidden="true"
+              size={20}
+              strokeWidth={2}
+              className="mt-0.5 shrink-0 text-alert-surplus"
+            />
             Delete your account and every log?
           </p>
           <p className="m-0 text-body-sm text-koshur-muted">
-            Your account, your answers and all your food logs go straight away. There is no undo. Download
-            your data first if you want to keep it.
+            This cannot be undone. Your account, your answers and all your food logs go straight away, and
+            nothing is kept. Download your data first if you want it.
           </p>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={confirmId} className="text-body-sm font-medium text-koshur-silk">
+              Type <span className="font-semibold">delete</span> to confirm
+            </label>
+            <input
+              id={confirmId}
+              type="text"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy !== null}
+              className="h-11 w-full max-w-xs rounded-xl border border-koshur-border bg-koshur-surface px-4 text-body text-koshur-silk focus:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring"
+            />
+          </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="inset" size="small" onClick={handleDelete} disabled={busy !== null}>
+            <Button variant="inset" size="small" onClick={handleDelete} disabled={!ready || busy !== null}>
               {busy === 'delete' ? 'Deleting' : 'Yes, delete everything'}
             </Button>
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={() => setConfirming(false)}
-              disabled={busy !== null}
-            >
+            <Button variant="secondary" size="small" onClick={() => open(false)} disabled={busy !== null}>
               Keep my account
             </Button>
           </div>

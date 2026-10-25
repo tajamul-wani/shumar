@@ -9,10 +9,11 @@ import { LogFoodScreen } from './screens/LogFoodScreen.tsx'
 import { PrivacyScreen } from './screens/PrivacyScreen.tsx'
 import { SourcesScreen } from './screens/SourcesScreen.tsx'
 import { TodayScreen } from './screens/TodayScreen.tsx'
+import { TrendsDayScreen } from './screens/TrendsDayScreen.tsx'
 import { TrendsScreen } from './screens/TrendsScreen.tsx'
 import { YouScreen } from './screens/YouScreen.tsx'
 import { AppShell } from './shell/AppShell.tsx'
-import { EDIT_LOG_PATH, LOG_FOOD_PATH } from './shell/nav.ts'
+import { EDIT_LOG_PATH, LOG_FOOD_PATH, TRENDS_DAY_PATH } from './shell/nav.ts'
 
 export default function App() {
   const { session, loading } = useAuth()
@@ -35,6 +36,9 @@ export default function App() {
           </Route>
           <Route path="/trends">
             <TrendsScreen />
+          </Route>
+          <Route path={TRENDS_DAY_PATH}>
+            {(params) => <TrendsDayScreen key={params.date} date={params.date} />}
           </Route>
           <Route path="/you">
             <YouScreen user={session.user} />

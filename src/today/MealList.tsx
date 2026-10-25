@@ -87,7 +87,8 @@ function Amounts({ nutrients, withSodium = false }: { nutrients: Nutrients; with
 interface EntryItemProps {
   entry: FoodEntry
   busy: boolean
-  onRemove: (food: LoggedFood) => void
+  /** Without it the list is read only, as on a past day opened from Trends. */
+  onRemove?: (food: LoggedFood) => void
 }
 
 /**
@@ -124,30 +125,32 @@ function EntryItem({ entry, busy, onRemove }: EntryItemProps) {
         </p>
         <Amounts nutrients={entry.totals} withSodium />
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
-        <Link
-          href={editLogPath(food.id)}
-          aria-label={`Edit ${one}${food.foodName}`}
-          className={ACTION_BUTTON}
-        >
-          <Pencil aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
-          <span aria-hidden="true" className="sm:hidden">
-            Edit
-          </span>
-        </Link>
-        <button
-          type="button"
-          onClick={() => onRemove(food)}
-          disabled={busy}
-          aria-label={`Remove ${one}${food.foodName}`}
-          className={ACTION_BUTTON}
-        >
-          <Trash2 aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
-          <span aria-hidden="true" className="sm:hidden">
-            {count > 1 ? 'Remove one' : 'Remove'}
-          </span>
-        </button>
-      </div>
+      {onRemove && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+          <Link
+            href={editLogPath(food.id)}
+            aria-label={`Edit ${one}${food.foodName}`}
+            className={ACTION_BUTTON}
+          >
+            <Pencil aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
+            <span aria-hidden="true" className="sm:hidden">
+              Edit
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => onRemove(food)}
+            disabled={busy}
+            aria-label={`Remove ${one}${food.foodName}`}
+            className={ACTION_BUTTON}
+          >
+            <Trash2 aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
+            <span aria-hidden="true" className="sm:hidden">
+              {count > 1 ? 'Remove one' : 'Remove'}
+            </span>
+          </button>
+        </div>
+      )}
     </li>
   )
 }
@@ -158,7 +161,7 @@ interface MealRowProps {
   open: boolean
   busy: boolean
   onToggle: () => void
-  onRemove: (food: LoggedFood) => void
+  onRemove?: (food: LoggedFood) => void
 }
 
 /** A meal: its name, calories and macros, with its foods listed once opened. */
@@ -211,7 +214,7 @@ interface MealListProps {
   showTimes?: boolean
   /** While a removal is on its way, no other food can be removed. */
   busy?: boolean
-  onRemove: (food: LoggedFood) => void
+  onRemove?: (food: LoggedFood) => void
   headingRef?: Ref<HTMLHeadingElement>
 }
 

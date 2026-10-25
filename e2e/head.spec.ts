@@ -125,7 +125,15 @@ test("keeps the app's own screens out of search results", async ({ request }) =>
   for (const path of ['/', '/privacy', '/sources']) {
     expect((await request.get(path)).headers()['x-robots-tag'], path).toBeUndefined()
   }
-  for (const path of ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/1']) {
+  for (const path of [
+    '/start/age',
+    '/start/target',
+    '/trends',
+    '/trends/day/2026-10-24',
+    '/you',
+    '/log',
+    '/log/edit/1',
+  ]) {
     expect((await request.get(path)).headers()['x-robots-tag'], path).toBe('noindex')
   }
 })
