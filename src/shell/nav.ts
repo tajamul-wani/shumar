@@ -15,6 +15,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
 export const LOG_FOOD_PATH = '/log'
 
+/** One day, opened from the Trends chart. */
+export const TRENDS_DAY_PATH = '/trends/day/:date'
+
+export function trendsDayPath(date: string): string {
+  return `/trends/day/${date}`
+}
+
 /** Changing a food already logged. */
 export const EDIT_LOG_PATH = '/log/edit/:id'
 

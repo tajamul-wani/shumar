@@ -69,7 +69,15 @@ describe('noindexRules', () => {
     const rules = noindexRules()
     const robots = (paths: string[]) =>
       Object.fromEntries(paths.map((path) => [path, headersFor(path, rules)['X-Robots-Tag']]))
-    const screens = ['/start/age', '/start/target', '/trends', '/you', '/log', '/log/edit/42']
+    const screens = [
+      '/start/age',
+      '/start/target',
+      '/trends',
+      '/trends/day/2026-10-24',
+      '/you',
+      '/log',
+      '/log/edit/42',
+    ]
     expect(robots(screens)).toEqual(Object.fromEntries(screens.map((path) => [path, 'noindex'])))
     expect(robots(PUBLIC_PAGES)).toEqual(Object.fromEntries(PUBLIC_PAGES.map((path) => [path, undefined])))
   })
