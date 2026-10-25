@@ -120,7 +120,7 @@ npm run dev
 
 The site is served by Cloudflare Workers as static assets, with no server code. `wrangler.jsonc` points at `dist/` and serves `index.html` for any address that is not a file, so the app's own screens open on a refresh or from a shared link. The build writes `dist/_headers` (the security policy and the `noindex` rules) from `scripts/security-headers.ts` and `scripts/seo.ts`, and Cloudflare applies it to every response.
 
-Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler deploy`. `main` only moves through merged pull requests, which need CI to pass first. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables in the Cloudflare dashboard; none of them is a secret. The Supabase project's redirect list names the live address, so Google sign-in works there and on this machine only.
+Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler@4.151.1 deploy`. Wrangler is pinned there rather than installed as a dependency, so its own tooling stays out of this project's dependency tree and its audit. `main` only moves through merged pull requests, which need CI to pass first. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables in the Cloudflare dashboard; none of them is a secret. The Supabase project's redirect list names the live address, so Google sign-in works there and on this machine only.
 
 ## Testing
 

@@ -2,8 +2,9 @@
 // code of its own. Any address that is not a file gets index.html, so the app's own screens load
 // on a refresh or from a shared link. The headers come from dist/_headers, which the build writes
 // from scripts/security-headers.ts. Deploys run from main through Workers Builds (see README).
+// Wrangler itself is not a dependency: the deploy command pins it, so its own tooling never
+// enters this project's dependency tree or its audit.
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "shumar",
   "compatibility_date": "2026-10-11",
   "assets": {
