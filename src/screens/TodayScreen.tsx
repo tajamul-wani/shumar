@@ -1,5 +1,5 @@
 import { CalendarCheck } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
@@ -14,6 +14,7 @@ import { LogError } from '../lib/logs.ts'
 import { MEAL_LABELS } from '../lib/meals.ts'
 import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
+import { sumNutrients } from '../lib/nutrition.ts'
 import { furthestBehind, ringState, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
 import { SetTargetCard } from '../firstRun/SetTargetCard.tsx'
@@ -158,33 +159,42 @@ export function TodayScreen() {
     }
   }
 
-  let content
+  // Three slots: the card beside the calories (the review, or what stands in for it), the
+  // calories themselves (or the day's loading or error state), and the meals.
+  let side: ReactNode = null
+  let day: ReactNode
+  let mealList: ReactNode = null
   if (logs) {
     const { totals, meals } = summarizeDay(logs)
     const alert = sodiumAlert(logs)
     const macroTargets = targets && { protein: targets.protein, carbs: targets.carbs, fat: targets.fat }
     // The review needs a target and something eaten, or a sodium alert.
     const reviewing = targets && logs.length > 0
-    content = (
+    if (reviewing || alert) {
+      side = (
+        <ReviewCard
+          now={today}
+          ring={reviewing ? ringState(totals.kcal, targets.kcal) : null}
+          behind={reviewing && macroTargets ? furthestBehind(totals, macroTargets) : null}
+          alert={alert}
+          sodiumMg={sumNutrients(logs.map((log) => log.nutrients)).sodiumMg}
+        />
+      )
+    } else if (profile.status === 'error') {
+      side = (
+        <div className="flex flex-col items-start gap-3">
+          <Alert>{profile.error}</Alert>
+          <Button variant="secondary" size="small" onClick={profile.reload}>
+            Try again
+          </Button>
+        </div>
+      )
+    } else if (profile.status === 'ready' && !targets) {
+      side = <SetTargetCard />
+    }
+    day = <CaloriesCard totals={totals} target={targets?.kcal} macroTargets={macroTargets} />
+    mealList = (
       <>
-        {(reviewing || alert) && (
-          <ReviewCard
-            now={today}
-            ring={reviewing ? ringState(totals.kcal, targets.kcal) : null}
-            behind={reviewing && macroTargets ? furthestBehind(totals, macroTargets) : null}
-            alert={alert}
-          />
-        )}
-        {profile.status === 'error' && (
-          <div className="flex flex-col items-start gap-3">
-            <Alert>{profile.error}</Alert>
-            <Button variant="secondary" size="small" onClick={profile.reload}>
-              Try again
-            </Button>
-          </div>
-        )}
-        {profile.status === 'ready' && !targets && <SetTargetCard />}
-        <CaloriesCard totals={totals} target={targets?.kcal} macroTargets={macroTargets} />
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (
           <MealList
@@ -200,7 +210,7 @@ export function TodayScreen() {
       </>
     )
   } else if (error) {
-    content = (
+    day = (
       <div className="flex flex-col items-start gap-3">
         <Alert>{error}</Alert>
         <Button variant="secondary" size="small" onClick={reload}>
@@ -209,7 +219,7 @@ export function TodayScreen() {
       </div>
     )
   } else {
-    content = <Loading />
+    day = <Loading />
   }
 
   return (
@@ -229,13 +239,18 @@ export function TodayScreen() {
         </div>
         {daysLogged ? <DaysLogged count={daysLogged} /> : null}
       </header>
-      <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:flex-wrap lg:items-start">
+      {/* Phones read top to bottom: the review, the calories, the meals. From 1024 px up the page is a
+          dashboard: the calories with the review beside them, then the meals beside Add food, which
+          stays in view while a long list scrolls. */}
+      <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
+        {side && <div className="min-w-0 lg:order-2 lg:col-span-5">{side}</div>}
+        <div className={`min-w-0 lg:order-1 ${side ? 'lg:col-span-7' : 'lg:col-span-12'}`}>{day}</div>
+        {mealList && <div className="flex min-w-0 flex-col gap-4 lg:order-3 lg:col-span-7">{mealList}</div>}
         {desktop && (
-          <div className={`min-w-0 p-6 lg:grow lg:basis-90 ${CARD}`}>
+          <div className={`min-w-0 p-6 lg:sticky lg:top-7 lg:order-4 lg:col-span-5 ${CARD}`}>
             <LogSheet embedded onAdded={reload} />
           </div>
         )}
-        <div className="flex min-w-0 flex-col gap-4 lg:grow-2 lg:basis-130">{content}</div>
       </div>
       <Toast
         message={toast}
