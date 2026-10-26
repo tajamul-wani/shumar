@@ -64,12 +64,13 @@ for (const theme of ['dark', 'light'] as const) {
         'Sodium is high, mostly from Test tea',
       )
       const meals = page.getByRole('region', { name: 'Meals' })
-      await expect(meals.getByRole('listitem')).toHaveCount(2)
-      await expect(meals.getByRole('button', { name: /^Breakfast/ })).toContainText(
-        'Protein 20 g Carbs 40 g Fat 10 g 300 kcal',
-      )
-      await expect(meals.getByRole('button', { name: /^Dinner/ })).toContainText(
-        'Protein 10 g Carbs 20 g Fat 5 g 300 kcal',
+      await expect(meals.getByRole('article')).toHaveCount(2)
+      const breakfast = meals.getByRole('article', { name: 'Breakfast' })
+      await expect(breakfast).toContainText('300 kcal50% of today')
+      await expect(breakfast).toContainText('Protein 20 g Carbs 40 g Fat 10 g')
+      await expect(breakfast.getByRole('listitem')).toHaveCount(2)
+      await expect(meals.getByRole('article', { name: 'Dinner' })).toContainText(
+        'Protein 10 g Carbs 20 g Fat 5 g',
       )
       await expect(page.getByText('1 day logged')).toBeVisible()
 
@@ -101,7 +102,7 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await page.goto('/')
     const meals = page.getByRole('region', { name: 'Meals' })
     const ring = page.getByRole('region', { name: 'Calories and macros' })
-    await meals.getByRole('button', { name: /^Breakfast/ }).click()
+    await expect(meals.getByRole('article', { name: 'Breakfast' })).toContainText('Test bread')
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
     const size = page.viewportSize()
@@ -139,56 +140,79 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
   }
 })
 
-test('on a wide screen, a food added beside Today shows in the day at once', async ({ page }) => {
-  const user = await createTestUser('desktop')
+test('the Add food popup: pick a meal, search, add, name a meal of your own, and Done', async ({ page }) => {
+  const user = await createTestUser('popup')
   const api = apiClient(user.session.access_token)
   try {
     await watchCsp(page)
     await signInAs(page, user.session)
-    await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/')
     const ring = page.getByRole('region', { name: 'Calories and macros' })
     await expect(ring).toContainText('0kcal eaten')
-    await expect(page.getByRole('link', { name: 'Log food' })).toBeHidden()
-
-    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeVisible()
-    await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
-    await page
-      .getByRole('list', { name: 'Search results' })
-      .getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ })
-      .click()
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Eggs, Grade A, Large, egg whole' }),
-    ).toBeFocused()
-    await page.getByRole('button', { name: /^Add to / }).click()
-
-    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeFocused()
-    await expect(ring).not.toContainText('0kcal eaten')
     const meals = page.getByRole('region', { name: 'Meals' })
-    const meal = meals.getByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner)/ })
-    // The time of the meal shows on wide screens, and its foods once it is opened.
-    await expect(meal).toContainText(/\d{1,2}:\d{2}/)
-    await meal.click()
-    await expect(meals.getByRole('link', { name: 'Edit Eggs, Grade A, Large, egg whole' })).toBeVisible()
-    await expect(page.getByText('1 day logged')).toBeVisible()
+    await expect(meals).toContainText('No meals yet today.')
+    // The phone's round plus and the wide screen's header button open the same popup.
+    const wide = (page.viewportSize()?.width ?? 0) >= 1024
+    await page
+      .getByRole('button', { name: 'Add food' })
+      .nth(wide ? 0 : 1)
+      .click()
+    const popup = page.getByRole('dialog', { name: 'Add food' })
+    await expect(popup).toBeVisible()
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    await popup.getByRole('button', { name: 'Lunch' }).click()
+    await expect(popup.getByRole('button', { name: 'Lunch' })).toHaveAttribute('aria-pressed', 'true')
 
-    // The meals and Add food share a row, with Add food to the right, and the calories sit above them.
-    const addFood = page.getByRole('heading', { level: 2, name: 'Add food' })
-    const [ringBox, mealsBox, addBox] = await Promise.all([
-      ring.boundingBox(),
-      meals.boundingBox(),
-      addFood.boundingBox(),
-    ])
-    expect(addBox!.x).toBeGreaterThan(mealsBox!.x + mealsBox!.width)
-    expect(Math.abs(addBox!.y - mealsBox!.y)).toBeLessThan(40)
-    expect(ringBox!.y + ringBox!.height).toBeLessThanOrEqual(mealsBox!.y)
+    // One food through its unit and amount, then one from the plus on its row, which opens it first:
+    // nothing goes in until "Add to lunch".
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    const results = popup.getByRole('list', { name: 'Search results' })
+    await results.getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ }).click()
+    await expect(
+      popup.getByRole('heading', { level: 2, name: 'Eggs, Grade A, Large, egg whole' }),
+    ).toBeFocused()
+    await popup.getByRole('button', { name: 'Add to lunch' }).click()
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    const inMeal = popup.getByRole('region', { name: /^In lunch now/ })
+    await expect(inMeal).toContainText('Eggs, Grade A, Large, egg whole')
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    await results
+      .getByRole('button', { name: /^Add .*Egg, whole, raw, fresh/ })
+      .first()
+      .click()
+    await expect(inMeal.getByRole('listitem')).toHaveCount(1)
+    await popup.getByRole('button', { name: 'Add to lunch' }).click()
+    await expect(inMeal.getByRole('listitem')).toHaveCount(2)
+    // The search clears for the next food.
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
+    // The day behind the popup already shows both.
+    await expect(ring).not.toContainText('0kcal eaten')
+    await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
+
+    // A meal of the person's own.
+    await popup.getByRole('textbox', { name: 'Or name a meal' }).fill('Chai')
+    await popup.getByRole('textbox', { name: 'Or name a meal' }).press('Enter')
+    await expect(popup.getByRole('button', { name: 'Chai' })).toHaveAttribute('aria-pressed', 'true')
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('tea')
+    await results
+      .getByRole('button', { name: /^Add .*tea/i })
+      .first()
+      .click()
+    await popup.getByRole('button', { name: 'Add to Chai' }).click()
+    await expect(popup.getByRole('region', { name: /^In Chai now/ })).toBeVisible()
+    await expect(meals.getByRole('article', { name: 'Chai' })).toBeVisible()
 
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
-    // Where Add food and the day no longer fit side by side, they stack without sideways scroll.
-    await page.setViewportSize({ width: 1024, height: 768 })
+    await popup.getByRole('button', { name: 'Done' }).click()
+    await expect(popup).toBeHidden()
+    await expect(meals.getByRole('article')).toHaveCount(2)
+    await expect(meals.getByRole('article', { name: 'Lunch' })).toContainText(/\d{1,2}:\d{2}/)
+    await expect(page.getByText('1 day logged')).toBeVisible()
     expect(await scrollsSideways(page)).toBe(false)
     expect(await cspViolations(page)).toEqual([])
+    const saved = await api.from('user_logs').select('meal').order('meal')
+    expect(saved.data?.map((row) => row.meal)).toEqual(['Chai', 'lunch', 'lunch'])
   } finally {
     await api.from('user_logs').delete().eq('user_id', user.session.user.id)
   }
@@ -213,17 +237,16 @@ test('the same food in the same amount shows once with its count, and Remove tak
     await signInAs(page, user.session)
     await page.goto('/')
     const meals = page.getByRole('region', { name: 'Meals' })
-    const breakfast = meals.getByRole('button', { name: /^Breakfast/ })
+    const breakfast = meals.getByRole('article', { name: 'Breakfast' })
     await expect(breakfast).toContainText('177 kcal')
-    await breakfast.click()
 
     const row = meals.getByRole('listitem').filter({ hasText: 'Test egg' }).last()
     await expect(row).toContainText('×3')
-    await expect(row).toContainText('40 g each · 177 kcal')
+    await expect(row).toContainText('40 g each 177 kcal')
 
     await row.getByRole('button', { name: 'Remove one Test egg' }).click()
     await expect(row).toContainText('×2')
-    await expect(row).toContainText('40 g each · 118 kcal')
+    await expect(row).toContainText('40 g each 118 kcal')
     await expect
       .poll(async () => (await api.from('user_logs').select('id', { count: 'exact', head: true })).count)
       .toBe(2)
@@ -257,13 +280,20 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   await expect(ring).toContainText('Protein30128 g')
   const review = page.getByRole('region', { name: /review$/ })
   await expect(review).toContainText('A steady day. You have 1,576 kcal left.')
-  await expect(review).toContainText('Carbs are furthest behind60 of 280 g')
+  await expect(review).toContainText('Carbs are furthest behind, 60 of 280 g.')
   await expect(review).toContainText('Sodium is high, mostly from Test tea')
-  // On a wide screen the review sits beside the calories, in the same row.
+  // On a wide screen the review sits beside the ring; on a phone it sits under it.
+  const circle = ring.locator('svg').first()
+  const [circleBox, reviewBox] = await Promise.all([circle.boundingBox(), review.boundingBox()])
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
-    const [ringBox, reviewBox] = await Promise.all([ring.boundingBox(), review.boundingBox()])
-    expect(Math.abs(ringBox!.y - reviewBox!.y)).toBeLessThan(2)
-    expect(reviewBox!.x).toBeGreaterThan(ringBox!.x + ringBox!.width)
+    expect(reviewBox!.x).toBeGreaterThan(circleBox!.x + circleBox!.width)
+    // Beside the ring, the note for the day and what the last seven days say.
+    const note = page.getByRole('region', { name: 'A note for today' })
+    await expect(note).toContainText('1 of 7 days logged in the last week.')
+    await expect(note).toContainText('Yesterday: nothing logged.')
+    await expect(note.getByRole('link', { name: 'See your week' })).toHaveAttribute('href', '/trends')
+  } else {
+    expect(reviewBox!.y).toBeGreaterThan(circleBox!.y + circleBox!.height)
   }
   expect(await accessibilityViolations(page)).toEqual([])
   expect(await scrollsSideways(page)).toBe(false)

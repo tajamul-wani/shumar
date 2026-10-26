@@ -1,8 +1,9 @@
 -- Food logs can hold every food the search returns: names up to 200 characters and units up
--- to 60, the same limits as the USDA tables. Rolled back, so no test data is kept.
+-- to 60, the same limits as the USDA tables. A meal is one of the five fixed keys or a short
+-- name of the person's own. Rolled back, so no test data is kept.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(11);
 
 insert into auth.users (id, email) values ('33333333-3333-3333-3333-333333333333', 'user-c@test.local');
 
@@ -25,6 +26,27 @@ select throws_ok(
   $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
     values ('lunch', '', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
   '23514', null, 'an empty food name is refused');
+
+select lives_ok(
+  $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
+    values ('Chai', 'x', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
+  'a meal may be a name of the person''s own');
+select lives_ok(
+  $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
+    values (repeat('m', 30), 'x', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
+  'a meal name may be 30 characters');
+select throws_ok(
+  $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
+    values (repeat('m', 31), 'x', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
+  '23514', null, 'a meal name over 30 characters is refused');
+select throws_ok(
+  $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
+    values ('', 'x', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
+  '23514', null, 'an empty meal name is refused');
+select throws_ok(
+  $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
+    values (' Chai', 'x', 'usda', 1, 'g', 1, 0, 0, 0, 0)$$,
+  '23514', null, 'a meal name with a space around it is refused');
 
 reset role;
 select ok((select coalesce(max(char_length(name)), 0) <= 200 from public.usda_foods),

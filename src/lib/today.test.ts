@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { parseLoggedFood, type LoggedFood } from './dayLogs.ts'
 import {
   SODIUM_LIMIT_MG,
+  biggestMeal,
   groupMealFoods,
+  macroShares,
   reviewTitle,
   ringState,
   sodiumAlert,
@@ -52,10 +54,44 @@ describe('summarizeDay', () => {
     expect(summarizeDay(day).totals).toEqual({ kcal: 530, protein: 4, carbs: 8, fat: 12, sodiumMg: 1500 })
   })
 
+  it("lists the person's own meals after the fixed ones, in the order they were first logged", () => {
+    const { meals } = summarizeDay([
+      ...day,
+      log('6', 'Late bite', 'Test nuts', '23:00', 100),
+      log('5', 'Chai', 'Test biscuit', '17:00', 60),
+      log('7', 'Chai', 'Test chai', '17:05', 40),
+    ])
+    expect(meals.map((m) => m.meal)).toEqual(['breakfast', 'dinner', 'Chai', 'Late bite'])
+    expect(meals[2].foods.map((f) => f.id)).toEqual(['5', '7'])
+    expect(meals[2].totals.kcal).toBe(100)
+  })
+
   it('gives zeros and no meals for an empty day', () => {
     expect(summarizeDay([])).toEqual({
       totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 },
       meals: [],
+    })
+  })
+})
+
+describe('the biggest meal and the macro shares of a meal', () => {
+  it('names the meal with the most calories, only when there is more than one', () => {
+    const { meals } = summarizeDay(day)
+    expect(biggestMeal(meals)).toBe('breakfast')
+    expect(biggestMeal(meals.slice(0, 1))).toBeNull()
+    expect(biggestMeal([])).toBeNull()
+  })
+
+  it('splits a meal by energy, not by weight', () => {
+    // 10 g protein (40 kcal), 10 g carbs (40 kcal), 10 g fat (90 kcal): 170 kcal in all.
+    const shares = macroShares({ kcal: 170, protein: 10, carbs: 10, fat: 10, sodiumMg: 0 })
+    expect(shares.protein).toBeCloseTo(40 / 170, 5)
+    expect(shares.carbs).toBeCloseTo(40 / 170, 5)
+    expect(shares.fat).toBeCloseTo(90 / 170, 5)
+    expect(macroShares({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 })).toEqual({
+      protein: 0,
+      carbs: 0,
+      fat: 0,
     })
   })
 })

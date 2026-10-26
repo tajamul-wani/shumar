@@ -232,7 +232,10 @@ export function TrendsScreen() {
             >
               <ChevronLeft aria-hidden="true" size={20} strokeWidth={2} />
             </button>
-            <p className="m-0 min-w-0 text-center text-body font-semibold sm:min-w-40 lg:text-body-sm">
+            <p
+              className="m-0 min-w-0 text-center text-body-sm font-semibold sm:min-w-40 sm:text-body lg:text-body-sm"
+              style={{ textWrap: 'balance' }}
+            >
               {formatRange(range)}
             </p>
             <button

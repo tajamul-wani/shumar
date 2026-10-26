@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { AddButton } from '../components/AddButton.tsx'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useRoute } from 'wouter'
 import { Logo } from '../components/Logo.tsx'
@@ -55,6 +55,7 @@ function TabLink({ item }: { item: NavItem }) {
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation()
+  const [onToday] = useRoute('/')
   const [onLogFood] = useRoute(LOG_FOOD_PATH)
   const [onEditLog] = useRoute(EDIT_LOG_PATH)
   // The questions that set the daily target end in their own button, so the add button steps aside.
@@ -93,14 +94,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-320 flex-col gap-6">{children}</div>
       </main>
 
-      {!onLogFood && !onEditLog && !onQuestions && (
-        <Link
-          href={LOG_FOOD_PATH}
-          aria-label="Log food"
-          className={`fixed right-4 bottom-above-tab-bar z-10 flex size-15 items-center justify-center rounded-full bg-deficit-ring text-koshur-surface lg:hidden dark:text-koshur-base ${FOCUS_RING} focus-visible:ring-offset-2 focus-visible:ring-offset-koshur-base`}
-        >
-          <Plus aria-hidden="true" size={24} strokeWidth={2} />
-        </Link>
+      {/* Today has its own add button, which opens the Add food popup instead of a screen. */}
+      {!onToday && !onLogFood && !onEditLog && !onQuestions && (
+        <AddButton label="Log food" href={LOG_FOOD_PATH} />
       )}
 
       <nav

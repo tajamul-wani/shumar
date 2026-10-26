@@ -203,7 +203,7 @@ describe('the app shell', () => {
   })
 
   it('opens Add food from the add button, which then hides', async () => {
-    await signedIn()
+    await signedIn('/trends')
     await userEvent.click(screen.getByRole('link', { name: 'Log food' }))
     expect(window.location.pathname).toBe('/log')
     expect(screen.getByRole('heading', { level: 1, name: 'Add food' })).toBeInTheDocument()

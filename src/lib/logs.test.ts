@@ -65,8 +65,10 @@ describe('buildLogRow', () => {
     expect(() => buildLogRow(log({ quantity: 200 }))).toThrow('more than 20 kg')
   })
 
-  it('refuses an unknown meal', () => {
-    expect(() => buildLogRow(log({ meal: 'brunch' as never }))).toThrow('Choose a meal')
+  it('refuses a meal name the database would refuse, and keeps a name of your own', () => {
+    expect(() => buildLogRow(log({ meal: '' }))).toThrow('Choose a meal')
+    expect(() => buildLogRow(log({ meal: 'm'.repeat(31) }))).toThrow('Choose a meal')
+    expect(buildLogRow(log({ meal: 'Chai' })).meal).toBe('Chai')
   })
 })
 

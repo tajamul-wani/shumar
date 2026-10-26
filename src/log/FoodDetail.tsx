@@ -110,7 +110,6 @@ export function FoodDetail({
   const Heading = headingLevel === 2 ? 'h2' : 'h1'
   const fill = useSheetFill()
   const quantityId = useId()
-  const unitId = useId()
   const hintId = useId()
   const quantity = parseQuantity(text)
   const step = quantityStep(unit)
@@ -119,6 +118,13 @@ export function FoodDetail({
   const hint = unitHint(unit)
   // Household units first (katori, cup, piece), then grams, as the design orders them.
   const units = [...food.units.filter((u) => u.name !== 'g'), ...food.units.filter((u) => u.name === 'g')]
+  const [allUnits, setAllUnits] = useState(false)
+  // The first few units and grams, plus whichever is chosen; the rest after "more units".
+  const shownUnits =
+    units.length > MAX_UNIT_CHIPS && !allUnits
+      ? units.filter((option, i) => i < MAX_UNIT_CHIPS || option.name === 'g' || option.name === unit.name)
+      : units
+  const hiddenUnits = units.length - shownUnits.length
 
   function chooseUnit(next: FoodUnit) {
     if (next.name === unit.name) return
@@ -163,39 +169,28 @@ export function FoodDetail({
 
       {children}
 
-      {units.length > MAX_UNIT_CHIPS ? (
-        <div className="flex flex-col gap-2">
-          <label htmlFor={unitId} className="text-caption text-koshur-muted">
-            Unit
-          </label>
-          <select
-            id={unitId}
-            value={unit.name}
-            onChange={(event) => {
-              const next = units.find((option) => option.name === event.target.value)
-              if (next) chooseUnit(next)
-            }}
-            className={`h-13 min-w-0 rounded-xl border border-koshur-border ${fill} px-4 text-body text-koshur-silk ${FOCUS_RING}`}
-          >
-            {units.map((option) => (
-              <option key={option.name} value={option.name}>
-                {unitLabel(option)}
-              </option>
-            ))}
-          </select>
+      {/* Every unit is a chip. A food with many shows the first few and grams, with the rest on request:
+          a native dropdown would be shorter, but WebKit styles its menu with an inline style that our
+          security policy blocks, so on an iPhone it could not be trusted to draw. */}
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
+        <div className="flex flex-wrap gap-2">
+          {shownUnits.map((option) => (
+            <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
+              {unitLabel(option)}
+            </Chip>
+          ))}
+          {hiddenUnits > 0 && (
+            <button
+              type="button"
+              onClick={() => setAllUnits(true)}
+              className={`min-h-11 rounded-full border border-dashed border-koshur-border px-4.5 text-body-sm font-medium text-koshur-muted ${FOCUS_RING}`}
+            >
+              {hiddenUnits} more units
+            </button>
+          )}
         </div>
-      ) : (
-        <fieldset className="m-0 min-w-0 border-0 p-0">
-          <legend className="p-0 pb-2 text-caption text-koshur-muted">Unit</legend>
-          <div className="flex flex-wrap gap-2">
-            {units.map((option) => (
-              <Chip key={option.name} pressed={option.name === unit.name} onClick={() => chooseUnit(option)}>
-                {unitLabel(option)}
-              </Chip>
-            ))}
-          </div>
-        </fieldset>
-      )}
+      </fieldset>
 
       <div className="flex flex-col gap-2">
         <label htmlFor={quantityId} className="text-caption text-koshur-muted">

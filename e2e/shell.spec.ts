@@ -40,7 +40,7 @@ for (const theme of ['dark', 'light'] as const) {
         await expect(page.getByRole('button', { name: /^Theme: / })).toBeVisible()
         await expect(page.getByRole('link', { name: 'Log food' })).toBeHidden()
       } else {
-        await expect(page.getByRole('link', { name: 'Log food' })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Add food' }).last()).toBeVisible()
       }
     })
 
@@ -148,7 +148,7 @@ test('the end of a long screen is never under the add button on a phone', async 
     await expect(list).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
 
-    const button = await page.getByRole('link', { name: 'Log food' }).boundingBox()
+    const button = await page.getByRole('button', { name: 'Add food' }).last().boundingBox()
     const end = await list.boundingBox()
     if (!button || !end) throw new Error('The add button or the meals list is not on the screen')
     expect(end.y + end.height).toBeLessThanOrEqual(button.y)
