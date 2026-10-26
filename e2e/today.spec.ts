@@ -163,7 +163,8 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     await popup.getByRole('button', { name: 'Lunch' }).click()
     await expect(popup.getByRole('button', { name: 'Lunch' })).toHaveAttribute('aria-pressed', 'true')
 
-    // One food through its unit and amount, then one straight from the plus on its row.
+    // One food through its unit and amount, then one from the plus on its row, which opens it first:
+    // nothing goes in until "Add to lunch".
     await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
     const results = popup.getByRole('list', { name: 'Search results' })
     await results.getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ }).click()
@@ -179,7 +180,11 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
       .getByRole('button', { name: /^Add .*Egg, whole, raw, fresh/ })
       .first()
       .click()
+    await expect(inMeal.getByRole('listitem')).toHaveCount(1)
+    await popup.getByRole('button', { name: 'Add to lunch' }).click()
     await expect(inMeal.getByRole('listitem')).toHaveCount(2)
+    // The search clears for the next food.
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
     // The day behind the popup already shows both.
     await expect(ring).not.toContainText('0kcal eaten')
     await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
@@ -193,6 +198,7 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
       .getByRole('button', { name: /^Add .*tea/i })
       .first()
       .click()
+    await popup.getByRole('button', { name: 'Add to Chai' }).click()
     await expect(popup.getByRole('region', { name: /^In Chai now/ })).toBeVisible()
     await expect(meals.getByRole('article', { name: 'Chai' })).toBeVisible()
 
@@ -281,6 +287,11 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   const [circleBox, reviewBox] = await Promise.all([circle.boundingBox(), review.boundingBox()])
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
     expect(reviewBox!.x).toBeGreaterThan(circleBox!.x + circleBox!.width)
+    // Beside the ring, the note for the day and what the last seven days say.
+    const note = page.getByRole('region', { name: 'A note for today' })
+    await expect(note).toContainText('1 of 7 days logged in the last week.')
+    await expect(note).toContainText('Yesterday: nothing logged.')
+    await expect(note.getByRole('link', { name: 'See your week' })).toHaveAttribute('href', '/trends')
   } else {
     expect(reviewBox!.y).toBeGreaterThan(circleBox!.y + circleBox!.height)
   }

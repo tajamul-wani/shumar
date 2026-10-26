@@ -20,6 +20,7 @@ import { AddFoodDialog } from '../log/AddFoodDialog.tsx'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { HeroCard } from '../today/HeroCard.tsx'
 import { MealCards } from '../today/MealCards.tsx'
+import { NoteCard } from '../today/NoteCard.tsx'
 import { useDayLogs } from '../today/useDayLogs.ts'
 
 const CARD = 'rounded-2xl border border-koshur-border bg-koshur-surface'
@@ -254,9 +255,15 @@ export function TodayScreen() {
           </div>
         </div>
       </header>
-      {/* The day at a glance, then the meals as cards: one column on phones, two across from 1024 px up. */}
+      {/* The day at a glance (with a note for the day beside it on wide screens), then the meals as
+          cards: one column on phones, two across from 1024 px up. */}
       <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
-        {day}
+        <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-6">
+          <div className="min-w-0 lg:col-span-8">{day}</div>
+          <div className="min-w-0 lg:col-span-4">
+            <NoteCard date={today} targetKcal={targets?.kcal ?? null} version={logs?.length ?? 0} />
+          </div>
+        </div>
         {mealList && <div className="flex min-w-0 flex-col gap-4">{mealList}</div>}
       </div>
       {logs && <AddButton label="Add food" onClick={() => openAddFood()} />}
