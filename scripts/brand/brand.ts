@@ -174,7 +174,7 @@ export function pathBounds(d: string): [number, number, number, number] {
 // The logo, in the mark's 512 grid: the name to the right of the hexagon, as apps like Sentry and
 // Linear set theirs. The name's height is a share of the hexagon's, with a gap between them of a
 // share of the same, and it is centred on the hexagon's middle.
-const LOGO = { name: 0.5, gap: 0.2, margin: 10 }
+const LOGO = { name: 0.42, gap: 0.2, margin: 10 }
 
 /** The logo as one self-contained SVG, for a dark or a light background. */
 export function logo(p: Palette, text: TextOutlines): string {
