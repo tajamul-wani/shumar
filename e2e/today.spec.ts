@@ -10,12 +10,15 @@ import {
   watchCsp,
 } from './support.ts'
 
-/** Today on this machine, which the browser shares, as YYYY-MM-DD. */
-function todayKey(): string {
-  const now = new Date()
+/** A day on this machine, which the browser shares, as YYYY-MM-DD: today, or some days back. */
+function dayKey(daysAgo = 0): string {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+const todayKey = () => dayKey()
 
 // Placeholder logs with easy numbers: they only exercise the screen and are not nutrition data.
 function placeholder(meal: string, foodName: string, hour: number, kcal: number, sodiumMg: number) {
@@ -299,3 +302,90 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   expect(await scrollsSideways(page)).toBe(false)
   expect(await cspViolations(page)).toEqual([])
 })
+
+for (const theme of ['dark', 'light'] as const) {
+  test(`yesterday's meal again in one tap, and a saved meal: save, add, grow, trim and remove, ${theme} theme`, async ({
+    page,
+  }) => {
+    const user = await createTestUser('saved')
+    const api = apiClient(user.session.access_token)
+    const inserted = await api.from('user_logs').insert([
+      { ...placeholder('breakfast', 'Test tea', 8, 100, 0), log_date: dayKey(1) },
+      { ...placeholder('breakfast', 'Test bread', 8, 200, 0), log_date: dayKey(1) },
+    ])
+    expect(inserted.error).toBeNull()
+    try {
+      await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
+      await watchCsp(page)
+      await signInAs(page, user.session)
+      await page.goto('/')
+      const meals = page.getByRole('region', { name: 'Meals' })
+      await expect(meals).toContainText('No meals yet today.')
+      const wide = (page.viewportSize()?.width ?? 0) >= 1024
+      await page
+        .getByRole('button', { name: 'Add food' })
+        .nth(wide ? 0 : 1)
+        .click()
+      const popup = page.getByRole('dialog', { name: 'Add food' })
+      await popup.getByRole('button', { name: 'Breakfast' }).click()
+
+      // Yesterday's breakfast, all of it, in one tap.
+      const block = popup.getByRole('region', { name: /^Yesterday's breakfast/ })
+      await expect(block).toContainText('Test tea 1 g, Test bread 1 g')
+      await expect(block).toContainText('300 kcal')
+      await block.getByRole('button', { name: "Add all of yesterday's breakfast" }).click()
+      const inMeal = popup.getByRole('region', { name: /^In breakfast now/ })
+      await expect(inMeal.getByRole('listitem')).toHaveCount(2)
+      await expect(meals.getByRole('article', { name: 'Breakfast' }).getByRole('listitem')).toHaveCount(2)
+
+      // Saved under a name, then opened, grown by a food from the search, and trimmed by one.
+      await inMeal.getByRole('textbox', { name: 'Name this meal' }).fill('Morning chai')
+      await inMeal.getByRole('button', { name: 'Save as a meal' }).click()
+      const saved = popup.getByRole('region', { name: 'Saved meals' })
+      await expect(saved).toContainText('Morning chai')
+      await expect(saved).toContainText('300 kcal')
+      await saved.getByRole('button', { name: /^Morning chai/ }).click()
+      await expect(popup.getByRole('heading', { level: 2, name: 'Morning chai' })).toBeFocused()
+      const foods = popup.getByRole('list', { name: 'Foods in Morning chai' })
+      await expect(foods.getByRole('listitem')).toHaveCount(2)
+      await popup.getByRole('button', { name: 'Add a food' }).click()
+      await expect(popup.getByText(/^Adding a food to/)).toContainText('Morning chai')
+      await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+      await popup
+        .getByRole('list', { name: 'Search results' })
+        .getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ })
+        .click()
+      await popup.getByRole('button', { name: 'Add to Morning chai' }).click()
+      await expect(popup.getByRole('heading', { level: 2, name: 'Morning chai' })).toBeVisible()
+      await expect(foods.getByRole('listitem')).toHaveCount(3)
+      await foods.getByRole('button', { name: 'Remove Test bread from Morning chai' }).click()
+      await expect(foods.getByRole('listitem')).toHaveCount(2)
+      await expect(foods).not.toContainText('Test bread')
+
+      // Added to another meal from its row, in one tap.
+      await popup.getByRole('button', { name: 'Back to search' }).click()
+      await popup.getByRole('button', { name: 'Lunch' }).click()
+      await saved.getByRole('button', { name: 'Add Morning chai to lunch' }).click()
+      await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
+      await expect(popup.getByRole('region', { name: /^In lunch now/ })).toContainText('Eggs, Grade A')
+
+      const blocking = await accessibilityViolations(page)
+      expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+      expect(await scrollsSideways(page)).toBe(false)
+
+      // Removed, and gone from the list.
+      await saved.getByRole('button', { name: /^Morning chai/ }).click()
+      await popup.getByRole('button', { name: 'Remove saved meal' }).click()
+      await expect(popup.getByRole('region', { name: 'Saved meals' })).toBeHidden()
+      await popup.getByRole('button', { name: 'Done' }).click()
+      expect(await cspViolations(page)).toEqual([])
+      const left = await api.from('saved_meals').select('id')
+      expect(left.data).toEqual([])
+      const today = await api.from('user_logs').select('meal').eq('log_date', todayKey()).order('meal')
+      expect(today.data?.map((row) => row.meal)).toEqual(['breakfast', 'breakfast', 'lunch', 'lunch'])
+    } finally {
+      await api.from('saved_meals').delete().eq('user_id', user.session.user.id)
+      await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+    }
+  })
+}
