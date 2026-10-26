@@ -1,25 +1,22 @@
-import { CalendarCheck } from 'lucide-react'
+import { CalendarCheck, Plus } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
+import { AddButton } from '../components/AddButton.tsx'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
 import { Logo } from '../components/Logo.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
-import { buttonClass } from '../components/buttonStyles.ts'
 import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { LogError } from '../lib/logs.ts'
-import { mealPhrase } from '../lib/meals.ts'
+import { defaultMeal, mealPhrase, type Meal } from '../lib/meals.ts'
 import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
 import { furthestBehind, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
 import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
-import { LOG_FOOD_PATH } from '../shell/nav.ts'
-import { LogSheet } from '../log/LogSheet.tsx'
-import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
+import { AddFoodDialog } from '../log/AddFoodDialog.tsx'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { HeroCard } from '../today/HeroCard.tsx'
 import { MealCards } from '../today/MealCards.tsx'
@@ -61,16 +58,14 @@ function Loading() {
   )
 }
 
-/** On wide screens Add food sits beside the day, so the empty state needs no button of its own. */
-function NoMeals({ withButton }: { withButton: boolean }) {
+/** The empty day, with the way to add the first food. */
+function NoMeals({ onAdd }: { onAdd: () => void }) {
   return (
     <section aria-label="Meals" className={`flex flex-col items-start gap-3 p-5 ${CARD}`}>
       <p className="m-0 text-body text-koshur-muted">No meals yet today.</p>
-      {withButton && (
-        <Link href={LOG_FOOD_PATH} className={buttonClass('primary', 'small')}>
-          Add food
-        </Link>
-      )}
+      <Button size="small" onClick={onAdd}>
+        Add food
+      </Button>
     </section>
   )
 }
@@ -81,8 +76,10 @@ export function TodayScreen() {
   // Read once when the screen opens, so re-renders never change the date mid-view.
   const [today] = useState(() => new Date())
   const { client } = useAuth()
-  const desktop = useMediaQuery(DESKTOP_QUERY)
   const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
+  // The meal the Add food popup is open on, or null while it is closed.
+  const [adding, setAdding] = useState<Meal | null>(null)
+  const openAddFood = (meal?: Meal) => setAdding(meal ?? defaultMeal(new Date()))
   const profile = useProfile()
   const answered = profile.answers && toProfile(profile.answers)
   const targets = answered ? dailyTargets(answered) : null
@@ -210,10 +207,11 @@ export function TodayScreen() {
             showTimes
             busy={removing}
             onRemove={remove}
+            onAdd={openAddFood}
             headingRef={mealsHeadingRef}
           />
         ) : (
-          <NoMeals withButton={!desktop} />
+          <NoMeals onAdd={() => openAddFood()} />
         )}
       </>
     )
@@ -245,20 +243,30 @@ export function TodayScreen() {
             Today
           </h1>
         </div>
-        {daysLogged ? <DaysLogged count={daysLogged} /> : null}
-      </header>
-      {/* Phones read top to bottom: the review, the calories, the meals. From 1024 px up the page is a
-          dashboard: the calories with the review beside them, then the meals beside Add food, which
-          stays in view while a long list scrolls. */}
-      <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-        <div className="min-w-0 lg:order-1 lg:col-span-12">{day}</div>
-        {mealList && <div className="flex min-w-0 flex-col gap-4 lg:order-3 lg:col-span-7">{mealList}</div>}
-        {desktop && (
-          <div className={`min-w-0 p-6 lg:sticky lg:top-7 lg:order-4 lg:col-span-5 ${CARD}`}>
-            <LogSheet embedded onAdded={reload} />
+        <div className="flex shrink-0 items-center gap-3">
+          {daysLogged ? <DaysLogged count={daysLogged} /> : null}
+          {/* On phones and tablets the round plus above the tab bar opens the same popup. */}
+          <div className="hidden lg:block">
+            <Button size="small" onClick={() => openAddFood()}>
+              <Plus aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
+              Add food
+            </Button>
           </div>
-        )}
+        </div>
+      </header>
+      {/* The day at a glance, then the meals as cards: one column on phones, two across from 1024 px up. */}
+      <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
+        {day}
+        {mealList && <div className="flex min-w-0 flex-col gap-4">{mealList}</div>}
       </div>
+      {logs && <AddButton label="Add food" onClick={() => openAddFood()} />}
+      <AddFoodDialog
+        meal={adding}
+        logs={logs ?? []}
+        onChangeMeal={setAdding}
+        onAdded={reload}
+        onClose={() => setAdding(null)}
+      />
       <Toast
         message={toast}
         duration={removed ? 8000 : 5000}

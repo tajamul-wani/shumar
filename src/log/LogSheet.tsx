@@ -84,9 +84,11 @@ function noMatch(query: string): string {
 interface SearchResultsProps {
   search: Exclude<FoodSearchState, { status: 'idle' }>
   onOpen: (chosen: Chosen) => void
+  /** In the popup each result has a plus that opens it, so the amount is always chosen before it is added. */
+  withPlus: boolean
 }
 
-function SearchResults({ search, onOpen }: SearchResultsProps) {
+function SearchResults({ search, onOpen, withPlus }: SearchResultsProps) {
   const fill = useSheetFill()
   if (search.status === 'error') {
     return <Alert>We couldn't search right now. Check your connection and try again.</Alert>
@@ -112,6 +114,7 @@ function SearchResults({ search, onOpen }: SearchResultsProps) {
             food={food}
             unit={chosen.unit}
             quantity={chosen.quantity}
+            withPlus={withPlus}
             onOpen={() => onOpen(chosen)}
           />
         )
@@ -122,10 +125,18 @@ function SearchResults({ search, onOpen }: SearchResultsProps) {
 
 interface LogSheetProps {
   /**
-   * Inside another screen, as on the desktop Today screen: titled "Add food" as a section (h2),
-   * with the meal on its button and no close button.
+   * Inside another screen, as a card: titled "Add food" as a section (h2), with the meal on its
+   * button and no close button.
    */
   embedded?: boolean
+  /**
+   * Inside the Add food popup: no heading or meal button of its own (the popup has them), the
+   * search focused as soon as it opens and again after each food goes in, and no recent list.
+   */
+  dialog?: boolean
+  /** The meal, when the screen around the sheet chooses it. */
+  meal?: Meal
+  onChooseMeal?: (meal: Meal) => void
   /** Called after a food is added, so the screen around the sheet can show it. */
   onAdded?: () => void
 }
@@ -134,9 +145,16 @@ interface LogSheetProps {
  * The log sheet from the V2 design: search or pick a recent food, choose how much, and add it
  * to a meal. The meal starts from the time of day and can be changed.
  */
-export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
+export function LogSheet({
+  embedded = false,
+  dialog = false,
+  meal: chosenMeal,
+  onChooseMeal,
+  onAdded,
+}: LogSheetProps) {
   const { client } = useAuth()
-  const [meal, setMeal] = useState<Meal>(() => defaultMeal(new Date()))
+  const [ownMeal, setOwnMeal] = useState<Meal>(() => defaultMeal(new Date()))
+  const meal = chosenMeal ?? ownMeal
   const [pickingMeal, setPickingMeal] = useState(false)
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState<Chosen | null>(null)
@@ -154,18 +172,20 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
   const recentId = useId()
   const Heading = embedded ? 'h2' : 'h1'
   const SubHeading = embedded ? 'h3' : 'h2'
-  const fill = embedded ? 'bg-koshur-base' : 'bg-koshur-surface'
+  const fill = embedded || dialog ? 'bg-koshur-base' : 'bg-koshur-surface'
   const search = useFoodSearch(query)
   const mealName = mealPhrase(meal)
 
-  // Moving between the search and a food works like moving between screens: focus the sheet's new heading.
+  // Moving between the search and a food works like moving between screens: focus the sheet's new
+  // heading. In the popup the search itself takes focus, ready for the next food.
   const view = chosen ? `${chosen.food.source}:${chosen.food.sourceId}` : 'search'
   const previousView = useRef(view)
   useEffect(() => {
     if (previousView.current === view) return
     previousView.current = view
-    containerRef.current?.querySelector<HTMLElement>('h1, h2')?.focus()
-  }, [view])
+    if (dialog && view === 'search') searchRef.current?.focus()
+    else containerRef.current?.querySelector<HTMLElement>('h1, h2')?.focus()
+  }, [view, dialog])
 
   function open(next: Chosen) {
     setError(null)
@@ -174,7 +194,8 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
   }
 
   function chooseMeal(next: Meal) {
-    setMeal(next)
+    if (onChooseMeal) onChooseMeal(next)
+    else setOwnMeal(next)
     setPickingMeal(false)
     changeMealRef.current?.focus()
   }
@@ -191,6 +212,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
       toastId.current += 1
       setAdded({ id: toastId.current, text: `Added to ${mealName}`, detail: food.name, tone: 'added' })
       setChosen(null)
+      // The search clears for the next food (Tajamul Wani, 26 October 2026).
       setQuery('')
       onAdded?.()
     } catch (failure) {
@@ -207,7 +229,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
         <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
           <FoodDetail
             key={view}
-            headingLevel={embedded ? 2 : 1}
+            headingLevel={embedded || dialog ? 2 : 1}
             food={chosen.food}
             initialUnit={chosen.unit}
             initialQuantity={chosen.quantity}
@@ -230,31 +252,33 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
   return (
     <SheetFillContext.Provider value={fill}>
       <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
-        <div className="flex items-center gap-2">
-          <Heading tabIndex={-1} className="m-0 min-w-0 flex-1 text-title font-semibold focus:outline-none">
-            Add food
-          </Heading>
-          <button
-            ref={changeMealRef}
-            type="button"
-            onClick={() => setPickingMeal((shown) => !shown)}
-            aria-expanded={pickingMeal}
-            aria-controls={pickingMeal ? pickerId : undefined}
-            aria-label={`To ${mealName}, change meal`}
-            className={`min-h-11 shrink-0 rounded-full border border-koshur-border ${fill} px-3.5 text-body-sm font-medium text-koshur-silk ${FOCUS_RING}`}
-          >
-            To {mealName}
-          </button>
-          {!embedded && (
-            <Link
-              href="/"
-              aria-label="Close"
-              className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-muted ${FOCUS_RING}`}
+        {!dialog && (
+          <div className="flex items-center gap-2">
+            <Heading tabIndex={-1} className="m-0 min-w-0 flex-1 text-title font-semibold focus:outline-none">
+              Add food
+            </Heading>
+            <button
+              ref={changeMealRef}
+              type="button"
+              onClick={() => setPickingMeal((shown) => !shown)}
+              aria-expanded={pickingMeal}
+              aria-controls={pickingMeal ? pickerId : undefined}
+              aria-label={`To ${mealName}, change meal`}
+              className={`min-h-11 shrink-0 rounded-full border border-koshur-border ${fill} px-3.5 text-body-sm font-medium text-koshur-silk ${FOCUS_RING}`}
             >
-              <X aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
-            </Link>
-          )}
-        </div>
+              To {mealName}
+            </button>
+            {!embedded && (
+              <Link
+                href="/"
+                aria-label="Close"
+                className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-muted ${FOCUS_RING}`}
+              >
+                <X aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
+              </Link>
+            )}
+          </div>
+        )}
 
         {pickingMeal && <MealPicker id={pickerId} meal={meal} onChoose={chooseMeal} />}
 
@@ -304,7 +328,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
         <output className="sr-only">{searchAnnouncement(search)}</output>
 
         {search.status === 'idle' ? (
-          recent.length > 0 ? (
+          recent.length > 0 && !dialog ? (
             <section aria-labelledby={recentId} className="flex flex-col gap-1.5">
               <SubHeading
                 id={recentId}
@@ -333,7 +357,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
             <p className="m-0 text-body text-koshur-muted">Search for a food to add it to {mealName}.</p>
           )
         ) : (
-          <SearchResults search={search} onOpen={open} />
+          <SearchResults search={search} onOpen={open} withPlus={dialog} />
         )}
         <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />
       </div>

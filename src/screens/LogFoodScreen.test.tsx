@@ -223,7 +223,7 @@ describe('a chosen food', () => {
     expect(insert).not.toHaveBeenCalled()
   })
 
-  it('lists many units in a dropdown instead of a wall of chips', async () => {
+  it('shows the first few units as chips, with the rest on request, and grams always', async () => {
     const units = ['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs'].map((name, i) => ({
       name,
       grams: 10 + i,
@@ -231,15 +231,16 @@ describe('a chosen food', () => {
     renderScreen(fakeClient({ rows: [{ ...rice, units }] }))
     await searchFor('rice')
     await openFood('Test rice, cooked')
-    expect(screen.queryByRole('group', { name: 'Unit' })).not.toBeInTheDocument()
-    const unit = screen.getByRole('combobox', { name: 'Unit' })
-    expect(unit).toHaveValue('1 slice')
-    expect(
-      within(unit)
-        .getAllByRole('option')
-        .map((o) => o.textContent),
-    ).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs', 'Grams'])
-    await userEvent.selectOptions(unit, 'g')
+    expect(screen.queryByRole('combobox', { name: 'Unit' })).not.toBeInTheDocument()
+    const group = screen.getByRole('group', { name: 'Unit' })
+    const names = () =>
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+    expect(names()).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', 'Grams', '1 more units'])
+    await userEvent.click(within(group).getByRole('button', { name: '1 more units' }))
+    expect(names()).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs', 'Grams'])
+    await userEvent.click(within(group).getByRole('button', { name: 'Grams' }))
     expect(screen.getByRole('textbox', { name: 'Quantity' })).toHaveValue('100')
   })
 

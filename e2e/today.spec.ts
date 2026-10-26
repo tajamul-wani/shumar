@@ -140,55 +140,73 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
   }
 })
 
-test('on a wide screen, a food added beside Today shows in the day at once', async ({ page }) => {
-  const user = await createTestUser('desktop')
+test('the Add food popup: pick a meal, search, add, name a meal of your own, and Done', async ({ page }) => {
+  const user = await createTestUser('popup')
   const api = apiClient(user.session.access_token)
   try {
     await watchCsp(page)
     await signInAs(page, user.session)
-    await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/')
     const ring = page.getByRole('region', { name: 'Calories and macros' })
     await expect(ring).toContainText('0kcal eaten')
-    await expect(page.getByRole('link', { name: 'Log food' })).toBeHidden()
-
-    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeVisible()
-    await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
-    await page
-      .getByRole('list', { name: 'Search results' })
-      .getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ })
-      .click()
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Eggs, Grade A, Large, egg whole' }),
-    ).toBeFocused()
-    await page.getByRole('button', { name: /^Add to / }).click()
-
-    await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeFocused()
-    await expect(ring).not.toContainText('0kcal eaten')
     const meals = page.getByRole('region', { name: 'Meals' })
-    const meal = meals.getByRole('article')
-    // The meal's time shows, and its foods are listed without a tap.
-    await expect(meal).toContainText(/\d{1,2}:\d{2}/)
-    await expect(meals.getByRole('link', { name: 'Edit Eggs, Grade A, Large, egg whole' })).toBeVisible()
-    await expect(page.getByText('1 day logged')).toBeVisible()
+    await expect(meals).toContainText('No meals yet today.')
+    // The phone's round plus and the wide screen's header button open the same popup.
+    const wide = (page.viewportSize()?.width ?? 0) >= 1024
+    await page
+      .getByRole('button', { name: 'Add food' })
+      .nth(wide ? 0 : 1)
+      .click()
+    const popup = page.getByRole('dialog', { name: 'Add food' })
+    await expect(popup).toBeVisible()
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    await popup.getByRole('button', { name: 'Lunch' }).click()
+    await expect(popup.getByRole('button', { name: 'Lunch' })).toHaveAttribute('aria-pressed', 'true')
 
-    // The meals and Add food share a row, with Add food to the right, and the calories sit above them.
-    const addFood = page.getByRole('heading', { level: 2, name: 'Add food' })
-    const [ringBox, mealsBox, addBox] = await Promise.all([
-      ring.boundingBox(),
-      meals.boundingBox(),
-      addFood.boundingBox(),
-    ])
-    expect(addBox!.x).toBeGreaterThan(mealsBox!.x + mealsBox!.width)
-    expect(Math.abs(addBox!.y - mealsBox!.y)).toBeLessThan(40)
-    expect(ringBox!.y + ringBox!.height).toBeLessThanOrEqual(mealsBox!.y)
+    // One food through its unit and amount, then one straight from the plus on its row.
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    const results = popup.getByRole('list', { name: 'Search results' })
+    await results.getByRole('button', { name: /^Eggs, Grade A, Large, egg whole/ }).click()
+    await expect(
+      popup.getByRole('heading', { level: 2, name: 'Eggs, Grade A, Large, egg whole' }),
+    ).toBeFocused()
+    await popup.getByRole('button', { name: 'Add to lunch' }).click()
+    await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    const inMeal = popup.getByRole('region', { name: /^In lunch now/ })
+    await expect(inMeal).toContainText('Eggs, Grade A, Large, egg whole')
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    await results
+      .getByRole('button', { name: /^Add .*Egg, whole, raw, fresh/ })
+      .first()
+      .click()
+    await expect(inMeal.getByRole('listitem')).toHaveCount(2)
+    // The day behind the popup already shows both.
+    await expect(ring).not.toContainText('0kcal eaten')
+    await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
+
+    // A meal of the person's own.
+    await popup.getByRole('textbox', { name: 'Or name a meal' }).fill('Chai')
+    await popup.getByRole('textbox', { name: 'Or name a meal' }).press('Enter')
+    await expect(popup.getByRole('button', { name: 'Chai' })).toHaveAttribute('aria-pressed', 'true')
+    await popup.getByRole('searchbox', { name: 'Search foods' }).fill('tea')
+    await results
+      .getByRole('button', { name: /^Add .*tea/i })
+      .first()
+      .click()
+    await expect(popup.getByRole('region', { name: /^In Chai now/ })).toBeVisible()
+    await expect(meals.getByRole('article', { name: 'Chai' })).toBeVisible()
 
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
-    // Where Add food and the day no longer fit side by side, they stack without sideways scroll.
-    await page.setViewportSize({ width: 1024, height: 768 })
+    await popup.getByRole('button', { name: 'Done' }).click()
+    await expect(popup).toBeHidden()
+    await expect(meals.getByRole('article')).toHaveCount(2)
+    await expect(meals.getByRole('article', { name: 'Lunch' })).toContainText(/\d{1,2}:\d{2}/)
+    await expect(page.getByText('1 day logged')).toBeVisible()
     expect(await scrollsSideways(page)).toBe(false)
     expect(await cspViolations(page)).toEqual([])
+    const saved = await api.from('user_logs').select('meal').order('meal')
+    expect(saved.data?.map((row) => row.meal)).toEqual(['Chai', 'lunch', 'lunch'])
   } finally {
     await api.from('user_logs').delete().eq('user_id', user.session.user.id)
   }
