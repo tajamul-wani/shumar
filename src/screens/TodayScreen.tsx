@@ -23,7 +23,7 @@ import { LogSheet } from '../log/LogSheet.tsx'
 import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { CaloriesCard } from '../today/CaloriesCard.tsx'
-import { MealList } from '../today/MealList.tsx'
+import { MealCards } from '../today/MealCards.tsx'
 import { ReviewCard } from '../today/ReviewCard.tsx'
 import { useDayLogs } from '../today/useDayLogs.ts'
 
@@ -197,9 +197,10 @@ export function TodayScreen() {
       <>
         {actionError && <Alert>{actionError}</Alert>}
         {meals.length > 0 ? (
-          <MealList
+          <MealCards
             groups={meals}
-            showTimes={desktop}
+            dayKcal={totals.kcal}
+            showTimes
             busy={removing}
             onRemove={remove}
             headingRef={mealsHeadingRef}

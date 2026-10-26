@@ -166,15 +166,19 @@ describe('the day at a glance', () => {
   it('lists the meals with food in them, in the order of the day, with their calories and macros', async () => {
     renderToday()
     const meals = await screen.findByRole('region', { name: 'Meals' })
-    const rows = within(meals).getAllByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner|Snack)/ })
-    expect(rows.map((row) => row.textContent?.match(/^[A-Za-z ]+?(?=\d|Protein)/)?.[0].trim())).toEqual([
+    const cards = within(meals).getAllByRole('article')
+    expect(cards.map((card) => within(card).getByRole('heading', { level: 3 }).textContent)).toEqual([
       'Breakfast',
       'Dinner',
     ])
-    expect(rows[0]).toHaveTextContent('Protein 3 g Carbs 6 g Fat 9 g 330 kcal')
-    expect(rows[1]).toHaveTextContent('Protein 1 g Carbs 2 g Fat 3 g 200 kcal')
-    // The meal row is a summary: its foods only show once it is opened.
-    expect(rows[0]).not.toHaveTextContent('Test tea')
+    expect(cards[0]).toHaveTextContent('330 kcal62% of today')
+    expect(cards[0]).toHaveTextContent('Protein 3 g Carbs 6 g Fat 9 g')
+    expect(cards[1]).toHaveTextContent('200 kcal38% of today')
+    expect(cards[1]).toHaveTextContent('Protein 1 g Carbs 2 g Fat 3 g')
+    // Every food is listed without a tap, and the biggest meal is marked.
+    expect(cards[0]).toHaveTextContent('Test tea')
+    expect(cards[0]).toHaveTextContent('Biggest meal')
+    expect(cards[1]).not.toHaveTextContent('Biggest meal')
   })
 
   it('shows how many days have been logged', async () => {
@@ -312,15 +316,11 @@ describe('an empty or failed day', () => {
 
 describe('changing and removing foods', () => {
   async function openBreakfast() {
-    const meals = await screen.findByRole('region', { name: 'Meals' })
-    const row = within(meals).getByRole('button', { name: /^Breakfast/ })
-    expect(row).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(row)
-    expect(row).toHaveAttribute('aria-expanded', 'true')
-    return meals
+    // The foods are listed as soon as the day loads: nothing to open.
+    return await screen.findByRole('region', { name: 'Meals' })
   }
 
-  it('opens a meal to list its foods, each with a way to change it', async () => {
+  it('lists each food with a way to change it', async () => {
     renderToday()
     const meals = await openBreakfast()
     expect(within(meals).getByText('Test bread')).toBeInTheDocument()
@@ -333,7 +333,8 @@ describe('changing and removing foods', () => {
       'href',
       '/log/edit/2',
     )
-    expect(within(meals).queryByRole('button', { name: 'Remove Test rice' })).not.toBeInTheDocument()
+    // Every meal's foods are listed, so dinner's rice can be removed too.
+    expect(within(meals).getByRole('button', { name: 'Remove Test rice' })).toBeInTheDocument()
   })
 
   it('shows the same food in the same amount once, with its count and their calories together', async () => {
@@ -341,11 +342,11 @@ describe('changing and removing foods', () => {
     const meals = await openBreakfast()
     const tea = within(meals).getByText('Test tea').closest('li')
     expect(tea).toHaveTextContent('×2')
-    expect(tea).toHaveTextContent('100 g each · 90 kcal')
+    expect(tea).toHaveTextContent('100 g each 90 kcal')
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
     expect(screen.getByText('Removed')).toBeInTheDocument()
     const single = within(meals).getByText('Test tea').closest('li')
-    expect(single).toHaveTextContent('100 g · 45 kcal')
+    expect(single).toHaveTextContent('100 g 45 kcal')
     expect(single).not.toHaveTextContent('×')
     expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
   })
@@ -398,7 +399,6 @@ describe('changing and removing foods', () => {
   it("shows the empty day after removing the day's only food", async () => {
     renderToday(fakeClient({ logs: [log('3', 'dinner', 'Test rice', '20:45', 200)] }))
     const meals = await screen.findByRole('region', { name: 'Meals' })
-    await userEvent.click(within(meals).getByRole('button', { name: /^Dinner/ }))
     await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test rice' }))
     expect(screen.getByText('No meals yet today.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
@@ -423,8 +423,8 @@ describe('on wide screens', () => {
     renderToday()
     expect(screen.getByRole('heading', { level: 2, name: 'Add food' })).toBeInTheDocument()
     const meals = await screen.findByRole('region', { name: 'Meals' })
-    expect(within(meals).getByRole('button', { name: /^Breakfast/ })).toHaveTextContent('Breakfast8:05')
-    expect(within(meals).getByRole('button', { name: /^Dinner/ })).toHaveTextContent('Dinner20:45')
+    expect(within(meals).getByRole('article', { name: 'Breakfast' })).toHaveTextContent('Breakfast8:05')
+    expect(within(meals).getByRole('article', { name: 'Dinner' })).toHaveTextContent('Dinner20:45')
   })
 
   it('needs no extra Add food button when the day is empty', async () => {

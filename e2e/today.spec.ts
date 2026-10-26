@@ -64,12 +64,13 @@ for (const theme of ['dark', 'light'] as const) {
         'Sodium is high, mostly from Test tea',
       )
       const meals = page.getByRole('region', { name: 'Meals' })
-      await expect(meals.getByRole('listitem')).toHaveCount(2)
-      await expect(meals.getByRole('button', { name: /^Breakfast/ })).toContainText(
-        'Protein 20 g Carbs 40 g Fat 10 g 300 kcal',
-      )
-      await expect(meals.getByRole('button', { name: /^Dinner/ })).toContainText(
-        'Protein 10 g Carbs 20 g Fat 5 g 300 kcal',
+      await expect(meals.getByRole('article')).toHaveCount(2)
+      const breakfast = meals.getByRole('article', { name: 'Breakfast' })
+      await expect(breakfast).toContainText('300 kcal50% of today')
+      await expect(breakfast).toContainText('Protein 20 g Carbs 40 g Fat 10 g')
+      await expect(breakfast.getByRole('listitem')).toHaveCount(2)
+      await expect(meals.getByRole('article', { name: 'Dinner' })).toContainText(
+        'Protein 10 g Carbs 20 g Fat 5 g',
       )
       await expect(page.getByText('1 day logged')).toBeVisible()
 
@@ -101,7 +102,7 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await page.goto('/')
     const meals = page.getByRole('region', { name: 'Meals' })
     const ring = page.getByRole('region', { name: 'Calories and macros' })
-    await meals.getByRole('button', { name: /^Breakfast/ }).click()
+    await expect(meals.getByRole('article', { name: 'Breakfast' })).toContainText('Test bread')
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
     const size = page.viewportSize()
@@ -165,10 +166,9 @@ test('on a wide screen, a food added beside Today shows in the day at once', asy
     await expect(page.getByRole('heading', { level: 2, name: 'Add food' })).toBeFocused()
     await expect(ring).not.toContainText('0kcal eaten')
     const meals = page.getByRole('region', { name: 'Meals' })
-    const meal = meals.getByRole('button', { name: /^(Breakfast|Lunch|Evening tea|Dinner)/ })
-    // The time of the meal shows on wide screens, and its foods once it is opened.
+    const meal = meals.getByRole('article')
+    // The meal's time shows, and its foods are listed without a tap.
     await expect(meal).toContainText(/\d{1,2}:\d{2}/)
-    await meal.click()
     await expect(meals.getByRole('link', { name: 'Edit Eggs, Grade A, Large, egg whole' })).toBeVisible()
     await expect(page.getByText('1 day logged')).toBeVisible()
 
@@ -213,17 +213,16 @@ test('the same food in the same amount shows once with its count, and Remove tak
     await signInAs(page, user.session)
     await page.goto('/')
     const meals = page.getByRole('region', { name: 'Meals' })
-    const breakfast = meals.getByRole('button', { name: /^Breakfast/ })
+    const breakfast = meals.getByRole('article', { name: 'Breakfast' })
     await expect(breakfast).toContainText('177 kcal')
-    await breakfast.click()
 
     const row = meals.getByRole('listitem').filter({ hasText: 'Test egg' }).last()
     await expect(row).toContainText('×3')
-    await expect(row).toContainText('40 g each · 177 kcal')
+    await expect(row).toContainText('40 g each 177 kcal')
 
     await row.getByRole('button', { name: 'Remove one Test egg' }).click()
     await expect(row).toContainText('×2')
-    await expect(row).toContainText('40 g each · 118 kcal')
+    await expect(row).toContainText('40 g each 118 kcal')
     await expect
       .poll(async () => (await api.from('user_logs').select('id', { count: 'exact', head: true })).count)
       .toBe(2)

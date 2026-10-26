@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { parseLoggedFood, type LoggedFood } from './dayLogs.ts'
 import {
   SODIUM_LIMIT_MG,
+  biggestMeal,
   groupMealFoods,
+  macroShares,
   reviewTitle,
   ringState,
   sodiumAlert,
@@ -68,6 +70,28 @@ describe('summarizeDay', () => {
     expect(summarizeDay([])).toEqual({
       totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 },
       meals: [],
+    })
+  })
+})
+
+describe('the biggest meal and the macro shares of a meal', () => {
+  it('names the meal with the most calories, only when there is more than one', () => {
+    const { meals } = summarizeDay(day)
+    expect(biggestMeal(meals)).toBe('breakfast')
+    expect(biggestMeal(meals.slice(0, 1))).toBeNull()
+    expect(biggestMeal([])).toBeNull()
+  })
+
+  it('splits a meal by energy, not by weight', () => {
+    // 10 g protein (40 kcal), 10 g carbs (40 kcal), 10 g fat (90 kcal): 170 kcal in all.
+    const shares = macroShares({ kcal: 170, protein: 10, carbs: 10, fat: 10, sodiumMg: 0 })
+    expect(shares.protein).toBeCloseTo(40 / 170, 5)
+    expect(shares.carbs).toBeCloseTo(40 / 170, 5)
+    expect(shares.fat).toBeCloseTo(90 / 170, 5)
+    expect(macroShares({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 })).toEqual({
+      protein: 0,
+      carbs: 0,
+      fat: 0,
     })
   })
 })

@@ -103,7 +103,7 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(sodium).toContainText('2,200 / 2,000 mg')
     await expect(sodium).toContainText("Over the day's limit. Most of it came from Test item.")
     await expect(page.getByRole('heading', { level: 2, name: 'Meals' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Breakfast/ })).toBeVisible()
+    await expect(page.getByRole('article', { name: 'Breakfast' })).toContainText('Test item')
     await expect(page.getByRole('button', { name: /^Remove/ })).toHaveCount(0)
     await checkScreen(page, 'a day from the chart')
 

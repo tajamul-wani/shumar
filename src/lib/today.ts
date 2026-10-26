@@ -40,6 +40,24 @@ export function summarizeDay(logs: readonly LoggedFood[]): DaySummary {
   return { totals: sumNutrients(logs.map((log) => log.nutrients)), meals }
 }
 
+/** The meal with the most calories, when the day has more than one meal with something in it. */
+export function biggestMeal(groups: readonly MealGroup[]): Meal | null {
+  if (groups.length < 2) return null
+  let top = groups[0]
+  for (const group of groups) if (group.totals.kcal > top.totals.kcal) top = group
+  return top.totals.kcal > 0 ? top.meal : null
+}
+
+/** The three macros' shares of a meal's energy: protein and carbs at 4 kcal a gram, fat at 9. */
+export function macroShares(nutrients: Nutrients): { protein: number; carbs: number; fat: number } {
+  const protein = nutrients.protein * 4
+  const carbs = nutrients.carbs * 4
+  const fat = nutrients.fat * 9
+  const total = protein + carbs + fat
+  if (total <= 0) return { protein: 0, carbs: 0, fat: 0 }
+  return { protein: protein / total, carbs: carbs / total, fat: fat / total }
+}
+
 export interface FoodEntry {
   /** The logs this row stands for, oldest first: one, or several identical ones. */
   logs: LoggedFood[]

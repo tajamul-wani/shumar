@@ -14,7 +14,7 @@ import { SODIUM_LIMIT_MG, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { CaloriesCard } from '../today/CaloriesCard.tsx'
-import { MealList } from '../today/MealList.tsx'
+import { MealCards } from '../today/MealCards.tsx'
 
 const CARD = 'flex flex-col gap-3 rounded-2xl border border-koshur-border bg-koshur-surface p-5 lg:p-6'
 const MACROS = [
@@ -104,57 +104,62 @@ export function TrendsDayScreen({ date }: { date: string }) {
       ) : logs.length === 0 ? (
         <p className="m-0 text-body text-koshur-muted">Nothing was logged on this day.</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-          <div className="flex flex-col gap-6">
-            <CaloriesCard totals={day.totals} target={targets?.kcal} macroTargets={targets} />
-            {targets && (
-              <section aria-labelledby="day-macros" className={CARD}>
-                <h2 id="day-macros" className="m-0 text-body font-semibold">
-                  Against the targets
-                </h2>
-                <ul className="m-0 flex list-none flex-col gap-2 p-0 text-body-sm">
-                  {MACROS.map(([key, label]) => {
-                    const gap = shown[key] - targets[key]
-                    const over = gap > 0
-                    return (
-                      <li key={key} className="flex justify-between gap-3">
-                        <span className="text-koshur-muted">{label}</span>
-                        <span className={over ? 'font-semibold' : ''}>
-                          {gap === 0
-                            ? 'Right on target'
-                            : `${formatNumber(Math.abs(Math.round(gap * 10) / 10))} g ${over ? 'over' : 'short'}`}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            )}
-            <section aria-labelledby="day-sodium" className={`${CARD} gap-2`}>
-              <div className="flex justify-between gap-3 text-body-sm">
-                <h2 id="day-sodium" className="m-0 font-semibold">
-                  Sodium
-                </h2>
-                <span>
-                  <span className="font-semibold">{formatNumber(Math.round(sodium))}</span>
-                  <span className="text-koshur-muted"> / {formatNumber(SODIUM_LIMIT_MG)} mg</span>
+        <div className="flex flex-col gap-6">
+          {/* As on Today: the ring with the two small cards beside it on wide screens, then the meals full width. */}
+          <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+            <div className="min-w-0 lg:col-span-7">
+              <CaloriesCard totals={day.totals} target={targets?.kcal} macroTargets={targets} />
+            </div>
+            <div className="flex min-w-0 flex-col gap-6 lg:col-span-5">
+              {targets && (
+                <section aria-labelledby="day-macros" className={CARD}>
+                  <h2 id="day-macros" className="m-0 text-body font-semibold">
+                    Against the targets
+                  </h2>
+                  <ul className="m-0 flex list-none flex-col gap-2 p-0 text-body-sm">
+                    {MACROS.map(([key, label]) => {
+                      const gap = shown[key] - targets[key]
+                      const over = gap > 0
+                      return (
+                        <li key={key} className="flex justify-between gap-3">
+                          <span className="text-koshur-muted">{label}</span>
+                          <span className={over ? 'font-semibold' : ''}>
+                            {gap === 0
+                              ? 'Right on target'
+                              : `${formatNumber(Math.abs(Math.round(gap * 10) / 10))} g ${over ? 'over' : 'short'}`}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              )}
+              <section aria-labelledby="day-sodium" className={`${CARD} gap-2`}>
+                <div className="flex justify-between gap-3 text-body-sm">
+                  <h2 id="day-sodium" className="m-0 font-semibold">
+                    Sodium
+                  </h2>
+                  <span>
+                    <span className="font-semibold">{formatNumber(Math.round(sodium))}</span>
+                    <span className="text-koshur-muted"> / {formatNumber(SODIUM_LIMIT_MG)} mg</span>
+                  </span>
+                </div>
+                <span aria-hidden="true" className="block h-1.5 rounded-full bg-koshur-border">
+                  <span
+                    className={`block h-1.5 rounded-full ${alert ? 'bg-alert-surplus' : 'bg-deficit-ring'}`}
+                    style={{ width: `${Math.min(100, (sodium / SODIUM_LIMIT_MG) * 100)}%` }}
+                  />
                 </span>
-              </div>
-              <span aria-hidden="true" className="block h-1.5 rounded-full bg-koshur-border">
-                <span
-                  className={`block h-1.5 rounded-full ${alert ? 'bg-alert-surplus' : 'bg-deficit-ring'}`}
-                  style={{ width: `${Math.min(100, (sodium / SODIUM_LIMIT_MG) * 100)}%` }}
-                />
-              </span>
-              <p className="m-0 text-caption text-koshur-muted">
-                {alert
-                  ? `Over the day's limit. Most of it came from ${alert.mostFrom}.`
-                  : "Under the day's limit of 2,000 mg."}
-              </p>
-            </section>
+                <p className="m-0 text-caption text-koshur-muted">
+                  {alert
+                    ? `Over the day's limit. Most of it came from ${alert.mostFrom}.`
+                    : "Under the day's limit of 2,000 mg."}
+                </p>
+              </section>
+            </div>
           </div>
           <div className="flex flex-col gap-3">
-            <MealList groups={day.meals} showTimes />
+            <MealCards groups={day.meals} dayKcal={day.totals.kcal} showTimes />
             <p className="m-0 text-caption text-koshur-muted">Values as they were logged.</p>
           </div>
         </div>
