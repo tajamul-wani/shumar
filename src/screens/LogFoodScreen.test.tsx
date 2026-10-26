@@ -36,8 +36,23 @@ function fakeClient(options: { rows?: unknown[]; searchFails?: boolean; saveFail
   const insert = vi.fn<(row: unknown) => Promise<unknown>>(async () => ({
     error: options.saveFails ? { message: 'offline' } : null,
   }))
-  const from = vi.fn<(table: string) => unknown>(() => ({ insert }))
+  // Reads (yesterday's logs, saved meals) find nothing; the tests here are about adding food.
+  const from = vi.fn<(table: string) => unknown>(() => {
+    const empty = Promise.resolve({ data: [], error: null })
+    const query: Record<string, unknown> = { insert, then: empty.then.bind(empty) }
+    for (const name of ['select', 'eq', 'order']) query[name] = () => query
+    return query
+  })
   return { client: { auth: {}, rpc, from } as unknown as AppClient, rpc, insert, from }
+}
+
+/** No saved meals, and nothing to save them with: the sheet's own flows are what is tested here. */
+const noSavedMeals = {
+  meals: [],
+  save: vi.fn<() => Promise<never>>(),
+  remove: vi.fn<() => Promise<void>>(),
+  addFood: vi.fn<() => Promise<never>>(),
+  removeFood: vi.fn<() => Promise<null>>(),
 }
 
 function renderScreen(fake = fakeClient()) {
@@ -322,7 +337,7 @@ describe('inside another screen', () => {
         <main id="main">
           <h1 tabIndex={-1}>Today</h1>
           <section aria-label="Add food">
-            <LogSheet embedded onAdded={onAdded} />
+            <LogSheet embedded onAdded={onAdded} savedMeals={noSavedMeals} />
           </section>
         </main>
       </AuthContext.Provider>,

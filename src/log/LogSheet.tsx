@@ -3,17 +3,24 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
+import { Button } from '../components/Button.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import { Chip } from '../components/Chip.tsx'
-import { defaultQuantity, defaultUnit } from '../lib/foodDisplay.ts'
+import { defaultQuantity, defaultUnit, foodsLine } from '../lib/foodDisplay.ts'
 import { MAX_QUERY_LENGTH, type FoodResult, type FoodUnit } from '../lib/foodSearch.ts'
-import { LogError, logFood } from '../lib/logs.ts'
+import type { LoggedFood } from '../lib/dayLogs.ts'
+import { LogError, amountFor, copyFoods, logFood, type FoodAmount } from '../lib/logs.ts'
 import { MEALS, MEAL_LABELS, defaultMeal, isFixedMeal, mealPhrase, type Meal } from '../lib/meals.ts'
 import { readRecentFoods, rememberFood, type RecentFood } from '../lib/recentFoods.ts'
+import type { SavedFood, SavedMeal } from '../lib/savedMeals.ts'
 import { FoodDetail } from './FoodDetail.tsx'
 import { FoodRow } from './FoodRow.tsx'
+import { QuickAdds } from './QuickAdds.tsx'
+import { SavedMealView } from './SavedMealView.tsx'
 import { SheetFillContext, useSheetFill } from './fill.ts'
 import { useFoodSearch, type FoodSearchState } from './useFoodSearch.ts'
+import type { SavedMealsState } from './useSavedMeals.ts'
+import { useYesterday } from './useYesterday.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 const LIST = 'm-0 flex list-none flex-col p-0'
@@ -139,6 +146,8 @@ interface LogSheetProps {
   onChooseMeal?: (meal: Meal) => void
   /** Called after a food is added, so the screen around the sheet can show it. */
   onAdded?: () => void
+  /** The person's saved meals, owned by the screen so the popup's save form shares them. */
+  savedMeals: SavedMealsState
 }
 
 /**
@@ -151,6 +160,7 @@ export function LogSheet({
   meal: chosenMeal,
   onChooseMeal,
   onAdded,
+  savedMeals,
 }: LogSheetProps) {
   const { client } = useAuth()
   const [ownMeal, setOwnMeal] = useState<Meal>(() => defaultMeal(new Date()))
@@ -158,6 +168,12 @@ export function LogSheet({
   const [pickingMeal, setPickingMeal] = useState(false)
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState<Chosen | null>(null)
+  /** A saved meal opened from its row. */
+  const [opened, setOpened] = useState<SavedMeal | null>(null)
+  /** While set, the search adds foods to this saved meal instead of the day. */
+  const [addingTo, setAddingTo] = useState<SavedMeal | null>(null)
+  const yesterday = useYesterday()
+  const quickAdds = yesterday.some((log) => log.meal === meal) || (savedMeals.meals?.length ?? 0) > 0
   const [recent, setRecent] = useState(() => readRecentFoods())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -172,13 +188,18 @@ export function LogSheet({
   const recentId = useId()
   const Heading = embedded ? 'h2' : 'h1'
   const SubHeading = embedded ? 'h3' : 'h2'
+  const innerLevel = embedded || dialog ? 2 : 1
   const fill = embedded || dialog ? 'bg-koshur-base' : 'bg-koshur-surface'
   const search = useFoodSearch(query)
   const mealName = mealPhrase(meal)
 
-  // Moving between the search and a food works like moving between screens: focus the sheet's new
-  // heading. In the popup the search itself takes focus, ready for the next food.
-  const view = chosen ? `${chosen.food.source}:${chosen.food.sourceId}` : 'search'
+  // Moving between the search, a food and a saved meal works like moving between screens: focus
+  // the sheet's new heading. In the popup the search itself takes focus, ready for the next food.
+  const view = chosen
+    ? `food:${chosen.food.source}:${chosen.food.sourceId}`
+    : opened
+      ? `saved:${opened.id}`
+      : 'search'
   const previousView = useRef(view)
   useEffect(() => {
     if (previousView.current === view) return
@@ -200,21 +221,15 @@ export function LogSheet({
     changeMealRef.current?.focus()
   }
 
-  async function add(food: FoodResult, unit: FoodUnit, quantity: number) {
+  /** One change at a time: while one is on its way, the buttons wait, and a failure is explained. */
+  async function run(task: () => Promise<void>) {
     if (savingRef.current) return
     setError(null)
     setAdded(null)
     savingRef.current = true
     setSaving(true)
     try {
-      const row = await logFood(client, { meal, food, quantity, unit })
-      setRecent(rememberFood({ food, unitName: unit.name, quantity: row.quantity }))
-      toastId.current += 1
-      setAdded({ id: toastId.current, text: `Added to ${mealName}`, detail: food.name, tone: 'added' })
-      setChosen(null)
-      // The search clears for the next food (Tajamul Wani, 26 October 2026).
-      setQuery('')
-      onAdded?.()
+      await task()
     } catch (failure) {
       setError(errorMessage(failure))
     } finally {
@@ -223,17 +238,118 @@ export function LogSheet({
     }
   }
 
+  function notice(text: string, detail?: string, tone: ToastMessage['tone'] = 'added') {
+    toastId.current += 1
+    setAdded({ id: toastId.current, text, detail, tone })
+  }
+
+  function add(food: FoodResult, unit: FoodUnit, quantity: number) {
+    return run(async () => {
+      const row = await logFood(client, { meal, food, quantity, unit })
+      setRecent(rememberFood({ food, unitName: unit.name, quantity: row.quantity }))
+      notice(`Added to ${mealName}`, food.name)
+      setChosen(null)
+      // The search clears for the next food (Tajamul Wani, 26 October 2026).
+      setQuery('')
+      onAdded?.()
+    })
+  }
+
+  function addToSaved(target: SavedMeal, food: FoodResult, unit: FoodUnit, quantity: number) {
+    return run(async () => {
+      const next = await savedMeals.addFood(target, amountFor({ food, quantity, unit }))
+      notice(`Added to ${next.name}`, food.name)
+      setChosen(null)
+      setQuery('')
+      setAddingTo(null)
+      setOpened(next)
+    })
+  }
+
+  /** Where a chosen food goes: the saved meal being filled, or the day's meal. */
+  function submit(food: FoodResult, unit: FoodUnit, quantity: number) {
+    return addingTo ? addToSaved(addingTo, food, unit, quantity) : add(food, unit, quantity)
+  }
+
+  /** Yesterday's meal or a saved meal, into today's meal in one go. */
+  function addMany(foods: readonly FoodAmount[], text: string, detail: string) {
+    return run(async () => {
+      await copyFoods(client, foods, meal)
+      notice(text, detail)
+      setQuery('')
+      onAdded?.()
+    })
+  }
+
+  function openSaved(saved: SavedMeal) {
+    setError(null)
+    setAdded(null)
+    setOpened(saved)
+  }
+
+  function removeSavedFood(saved: SavedMeal, food: SavedFood) {
+    return run(async () => {
+      const left = await savedMeals.removeFood(saved, food.id)
+      if (left) {
+        setOpened(left)
+        notice(`Removed from ${saved.name}`, food.foodName, 'removed')
+      } else {
+        setOpened(null)
+        notice(`Removed ${saved.name}`, undefined, 'removed')
+      }
+    })
+  }
+
+  function removeSaved(saved: SavedMeal) {
+    return run(async () => {
+      await savedMeals.remove(saved)
+      setOpened(null)
+      notice(`Removed ${saved.name}`, undefined, 'removed')
+    })
+  }
+
+  if (opened) {
+    const saved = opened
+    return (
+      <SheetFillContext.Provider value={fill}>
+        <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
+          <SavedMealView
+            key={saved.id}
+            saved={saved}
+            mealName={mealName}
+            headingLevel={innerLevel}
+            busy={saving}
+            error={error}
+            onBack={() => {
+              setError(null)
+              setOpened(null)
+            }}
+            onAddToMeal={() => addMany(saved.foods, `Added ${saved.name}`, `to ${mealName}`)}
+            onAddFood={() => {
+              setError(null)
+              setAddingTo(saved)
+              setOpened(null)
+            }}
+            onRemoveFood={(food) => removeSavedFood(saved, food)}
+            onRemove={() => removeSaved(saved)}
+          />
+          <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />
+        </div>
+      </SheetFillContext.Provider>
+    )
+  }
+
   if (chosen) {
     return (
       <SheetFillContext.Provider value={fill}>
         <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
           <FoodDetail
             key={view}
-            headingLevel={embedded || dialog ? 2 : 1}
+            headingLevel={innerLevel}
             food={chosen.food}
             initialUnit={chosen.unit}
             initialQuantity={chosen.quantity}
-            actionLabel={`Add to ${mealName}`}
+            actionLabel={`Add to ${addingTo ? addingTo.name : mealName}`}
             busyLabel="Adding"
             backLabel="Back to search"
             saving={saving}
@@ -242,7 +358,7 @@ export function LogSheet({
               setError(null)
               setChosen(null)
             }}
-            onSubmit={(unit, quantity) => add(chosen.food, unit, quantity)}
+            onSubmit={(unit, quantity) => submit(chosen.food, unit, quantity)}
           />
         </div>
       </SheetFillContext.Provider>
@@ -281,6 +397,27 @@ export function LogSheet({
         )}
 
         {pickingMeal && <MealPicker id={pickerId} meal={meal} onChoose={chooseMeal} />}
+
+        {addingTo && (
+          <div
+            className={`flex items-center gap-3 rounded-xl border border-koshur-border ${fill} py-2.5 pr-2.5 pl-3.5`}
+          >
+            <p className="m-0 min-w-0 flex-1 text-body-sm text-koshur-silk">
+              Adding a food to <span className="font-semibold">{addingTo.name}</span>
+            </p>
+            <Button
+              variant="secondary"
+              size="small"
+              className="shrink-0"
+              onClick={() => {
+                setOpened(addingTo)
+                setAddingTo(null)
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
 
         <div
           className={`flex h-13 items-center gap-2.5 rounded-xl border border-koshur-border ${fill} px-4 focus-within:ring-2 focus-within:ring-deficit-ring`}
@@ -328,34 +465,52 @@ export function LogSheet({
         <output className="sr-only">{searchAnnouncement(search)}</output>
 
         {search.status === 'idle' ? (
-          recent.length > 0 && !dialog ? (
-            <section aria-labelledby={recentId} className="flex flex-col gap-1.5">
-              <SubHeading
-                id={recentId}
-                className="m-0 text-caption font-semibold tracking-wide text-koshur-muted uppercase"
-              >
-                Recent
-              </SubHeading>
-              <ul className={LIST}>
-                {recent.map((entry) => {
-                  const next = fromRecent(entry)
-                  return (
-                    <FoodRow
-                      key={`${entry.food.source}:${entry.food.sourceId}`}
-                      food={next.food}
-                      unit={next.unit}
-                      quantity={next.quantity}
-                      busy={saving}
-                      onOpen={() => open(next)}
-                      onQuickAdd={() => add(next.food, next.unit, next.quantity)}
-                    />
-                  )
-                })}
-              </ul>
-            </section>
-          ) : (
-            <p className="m-0 text-body text-koshur-muted">Search for a food to add it to {mealName}.</p>
-          )
+          <>
+            {recent.length > 0 && !dialog && (
+              <section aria-labelledby={recentId} className="flex flex-col gap-1.5">
+                <SubHeading
+                  id={recentId}
+                  className="m-0 text-caption font-semibold tracking-wide text-koshur-muted uppercase"
+                >
+                  Recent
+                </SubHeading>
+                <ul className={LIST}>
+                  {recent.map((entry) => {
+                    const next = fromRecent(entry)
+                    return (
+                      <FoodRow
+                        key={`${entry.food.source}:${entry.food.sourceId}`}
+                        food={next.food}
+                        unit={next.unit}
+                        quantity={next.quantity}
+                        busy={saving}
+                        onOpen={() => open(next)}
+                        onQuickAdd={() => submit(next.food, next.unit, next.quantity)}
+                      />
+                    )
+                  })}
+                </ul>
+              </section>
+            )}
+            {!addingTo && (
+              <QuickAdds
+                meal={meal}
+                yesterday={yesterday}
+                saved={savedMeals.meals}
+                busy={saving}
+                onAddYesterday={(foods: LoggedFood[]) =>
+                  addMany(foods, `Added yesterday's ${mealName}`, foodsLine(foods))
+                }
+                onAddSaved={(saved) => addMany(saved.foods, `Added ${saved.name}`, `to ${mealName}`)}
+                onOpenSaved={openSaved}
+              />
+            )}
+            {(recent.length === 0 || dialog) && (addingTo || !quickAdds) && (
+              <p className="m-0 text-body text-koshur-muted">
+                Search for a food to add it to {addingTo ? addingTo.name : mealName}.
+              </p>
+            )}
+          </>
         ) : (
           <SearchResults search={search} onOpen={open} withPlus={dialog} />
         )}

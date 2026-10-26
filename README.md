@@ -90,7 +90,7 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | :------------------------------ | :---------------------------------------------------------------------------------- |
 | `VITE_SUPABASE_URL`             | The Supabase project address                                                        |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here.                        |
-| `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:4173` locally |
+| `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:5173` locally |
 | `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
 | `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
 | `BACKUP_PASSPHRASE`             | Encrypts the database backups (maintainers only). At least 24 characters            |
@@ -151,16 +151,18 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
 - **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
-| Table             | Holds                                                        | Who can access it                             |
-| :---------------- | :----------------------------------------------------------- | :-------------------------------------------- |
-| `kashmiri_foods`  | Our own food catalog, per 100 g, with a source for each food | Anyone can read; nobody can write via the API |
-| `food_units`      | Grams in one piece, cup or katori of a catalog food          | Anyone can read; nobody can write via the API |
-| `user_logs`       | One row per food logged, with the nutrients at that moment   | Only the person who logged it                 |
-| `profiles`        | Each person's first-run answers                              | Only that person                              |
-| `usda_releases`   | Which USDA files are loaded, with each file's SHA-256        | Anyone can read                               |
-| `usda_foods`      | About 7,100 USDA foods, per 100 g                            | Signed-in people can read                     |
-| `usda_portions`   | USDA household portions in grams                             | Signed-in people can read                     |
-| `search_synonyms` | Local food words mapped to USDA wording                      | Signed-in people can read                     |
+| Table              | Holds                                                                         | Who can access it                             |
+| :----------------- | :---------------------------------------------------------------------------- | :-------------------------------------------- |
+| `kashmiri_foods`   | Our own food catalog, per 100 g, with a source for each food                  | Anyone can read; nobody can write via the API |
+| `food_units`       | Grams in one piece, cup or katori of a catalog food                           | Anyone can read; nobody can write via the API |
+| `user_logs`        | One row per food logged, with the nutrients at that moment                    | Only the person who logged it                 |
+| `profiles`         | Each person's first-run answers                                               | Only that person                              |
+| `saved_meals`      | A named group of foods a person adds in one tap                               | Only that person                              |
+| `saved_meal_foods` | The foods in a saved meal, with the amount and nutrients they were saved with | Only that person                              |
+| `usda_releases`    | Which USDA files are loaded, with each file's SHA-256                         | Anyone can read                               |
+| `usda_foods`       | About 7,100 USDA foods, per 100 g                                             | Signed-in people can read                     |
+| `usda_portions`    | USDA household portions in grams                                              | Signed-in people can read                     |
+| `search_synonyms`  | Local food words mapped to USDA wording                                       | Signed-in people can read                     |
 
 To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`.
 

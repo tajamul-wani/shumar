@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
@@ -45,6 +45,9 @@ type Result = { data: unknown; error: { message: string } | null }
 
 interface FakeOptions {
   logs?: unknown[]
+  /** Yesterday's logs, for the popup's "Yesterday's" block. */
+  yesterday?: unknown[]
+  savedMeals?: unknown[]
   daysLogged?: Result
   failLogs?: boolean
   failRemove?: boolean
@@ -58,13 +61,20 @@ function fakeClient(options: FakeOptions = {}) {
   const removed = vi.fn<(id: unknown) => void>()
   const inserted = vi.fn<(row: unknown) => void>()
   const offline = { data: null, error: { message: 'offline' } }
-  const from = vi.fn<(table: string) => unknown>(() => {
+  const from = vi.fn<(table: string) => unknown>((table) => {
     let kind: 'read' | 'remove' | 'restore' = 'read'
-    let row: Record<string, unknown> = {}
+    let row: Record<string, unknown> | unknown[] = {}
+    let askedDay: unknown = null
     const answer = (): Result => {
       if (kind === 'remove') return options.failRemove ? offline : { data: [{ id: 'x' }], error: null }
-      if (kind === 'restore')
-        return options.failRestore ? offline : { data: { ...row, id: 'restored' }, error: null }
+      if (kind === 'restore') {
+        if (options.failRestore) return offline
+        if (Array.isArray(row)) return { data: row.map((_, i) => ({ id: `new-${i + 1}` })), error: null }
+        return { data: { ...row, id: 'restored' }, error: null }
+      }
+      if (table === 'saved_meals') return { data: options.savedMeals ?? [], error: null }
+      if (askedDay !== null && askedDay !== '2026-10-21')
+        return { data: options.yesterday ?? [], error: null }
       return state.failLogs ? offline : { data: state.logs, error: null }
     }
     const query: Record<string, unknown> = {
@@ -74,6 +84,7 @@ function fakeClient(options: FakeOptions = {}) {
     for (const name of ['select', 'order', 'single']) query[name] = () => query
     query.eq = (column: string, value: unknown) => {
       eq(column, value)
+      if (column === 'log_date') askedDay = value
       if (kind === 'remove') removed(value)
       return query
     }
@@ -81,7 +92,7 @@ function fakeClient(options: FakeOptions = {}) {
       kind = 'remove'
       return query
     }
-    query.insert = (value: Record<string, unknown>) => {
+    query.insert = (value: Record<string, unknown> | unknown[]) => {
       kind = 'restore'
       row = value
       inserted(value)
@@ -510,5 +521,228 @@ describe('on phones and tablets', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await userEvent.click(screen.getAllByRole('button', { name: 'Add food' }).at(-1)!)
     expect(screen.getByRole('dialog', { name: 'Add food' })).toBeInTheDocument()
+  })
+})
+
+describe("yesterday's meal and saved meals in the popup", () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(min-width: 1024px)',
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+  })
+
+  const yesterday = [
+    { ...log('y1', 'breakfast', 'Test tea', '08:00', 45), log_date: '2026-10-20' },
+    { ...log('y2', 'breakfast', 'Test bread', '08:05', 240), log_date: '2026-10-20' },
+    { ...log('y3', 'lunch', 'Test rice', '13:00', 200), log_date: '2026-10-20' },
+  ]
+
+  function savedFood(id: string, position: number, name: string, kcal: number) {
+    return {
+      id,
+      position,
+      food_name: name,
+      food_source: 'usda',
+      food_source_id: name,
+      quantity: 100,
+      unit_name: 'g',
+      grams: 100,
+      kcal,
+      protein: 1,
+      carbs: 2,
+      fat: 3,
+      sodium_mg: 0,
+    }
+  }
+  const morningChai = {
+    id: 'm1',
+    name: 'Morning chai',
+    saved_meal_foods: [savedFood('f1', 1, 'Test tea', 45), savedFood('f2', 2, 'Test bread', 240)],
+  }
+
+  async function openPopupOn(meal: string) {
+    await screen.findByRole('region', { name: 'Meals' })
+    await userEvent.click(screen.getAllByRole('button', { name: 'Add food' })[0])
+    const popup = screen.getByRole('dialog', { name: 'Add food' })
+    await userEvent.click(within(popup).getByRole('button', { name: meal }))
+    return popup
+  }
+
+  it("adds all of yesterday's breakfast in one tap", async () => {
+    const fake = renderToday(fakeClient({ logs: [], yesterday }))
+    const popup = await openPopupOn('Breakfast')
+    const block = await within(popup).findByRole('region', { name: /^Yesterday's breakfast/ })
+    expect(block).toHaveTextContent('285 kcal')
+    expect(block).toHaveTextContent('Test tea 100 g, Test bread 100 g')
+    await userEvent.click(within(block).getByRole('button', { name: "Add all of yesterday's breakfast" }))
+    expect(fake.inserted).toHaveBeenCalledWith([
+      expect.objectContaining({ log_date: '2026-10-21', meal: 'breakfast', food_name: 'Test tea', kcal: 45 }),
+      expect.objectContaining({
+        log_date: '2026-10-21',
+        meal: 'breakfast',
+        food_name: 'Test bread',
+        kcal: 240,
+      }),
+    ])
+    expect(await within(popup).findByText("Added yesterday's breakfast")).toBeInTheDocument()
+    // Another meal shows its own yesterday, and a meal yesterday had nothing for shows no block.
+    await userEvent.click(within(popup).getByRole('button', { name: 'Lunch' }))
+    expect(within(popup).getByRole('region', { name: /^Yesterday's lunch/ })).toHaveTextContent(
+      'Test rice 100 g',
+    )
+    await userEvent.click(within(popup).getByRole('button', { name: 'Dinner' }))
+    expect(within(popup).queryByRole('region', { name: /^Yesterday's/ })).not.toBeInTheDocument()
+    expect(within(popup).getByText('Search for a food to add it to dinner.')).toBeInTheDocument()
+  })
+
+  it('lists saved meals, adds one in a tap, and opens one to see and remove its foods', async () => {
+    const fake = renderToday(fakeClient({ logs: [], savedMeals: [morningChai] }))
+    const popup = await openPopupOn('Breakfast')
+    const list = await within(popup).findByRole('region', { name: 'Saved meals' })
+    expect(list).toHaveTextContent('Morning chai')
+    expect(list).toHaveTextContent('285 kcal')
+    expect(list).toHaveTextContent('Test tea 100 g, Test bread 100 g')
+    await userEvent.click(within(list).getByRole('button', { name: 'Add Morning chai to breakfast' }))
+    expect(fake.inserted).toHaveBeenCalledWith([
+      expect.objectContaining({ meal: 'breakfast', food_name: 'Test tea', kcal: 45 }),
+      expect.objectContaining({ meal: 'breakfast', food_name: 'Test bread' }),
+    ])
+    expect(await within(popup).findByText('Added Morning chai')).toBeInTheDocument()
+
+    await userEvent.click(within(list).getByRole('button', { name: /^Morning chai/ }))
+    expect(within(popup).getByRole('heading', { level: 2, name: 'Morning chai' })).toHaveFocus()
+    const foods = within(popup).getByRole('list', { name: 'Foods in Morning chai' })
+    expect(within(foods).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(popup).getByText('in all').parentElement).toHaveTextContent('285 kcal')
+    await userEvent.click(within(foods).getByRole('button', { name: 'Remove Test bread from Morning chai' }))
+    expect(fake.removed).toHaveBeenCalledWith('f2')
+    expect(within(foods).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(popup).getByText('Removed from Morning chai')).toBeInTheDocument()
+
+    await userEvent.click(within(popup).getByRole('button', { name: 'Back to search' }))
+    const row = within(popup).getByRole('region', { name: 'Saved meals' })
+    expect(row).toHaveTextContent('45 kcal')
+    expect(row).not.toHaveTextContent('Test bread')
+  })
+
+  it('removes a saved meal, and the last food with its meal', async () => {
+    const one = { ...morningChai, saved_meal_foods: [savedFood('f1', 1, 'Test tea', 45)] }
+    const fake = renderToday(
+      fakeClient({ logs: [], savedMeals: [one, { ...morningChai, id: 'm2', name: 'Office lunch' }] }),
+    )
+    const popup = await openPopupOn('Breakfast')
+    const list = await within(popup).findByRole('region', { name: 'Saved meals' })
+    await userEvent.click(within(list).getByRole('button', { name: /^Office lunch/ }))
+    await userEvent.click(within(popup).getByRole('button', { name: 'Remove saved meal' }))
+    expect(fake.removed).toHaveBeenCalledWith('m2')
+    expect(within(popup).getByText('Removed Office lunch')).toBeInTheDocument()
+    expect(within(popup).getByRole('region', { name: 'Saved meals' })).not.toHaveTextContent('Office lunch')
+
+    const fresh = within(popup).getByRole('region', { name: 'Saved meals' })
+    await userEvent.click(within(fresh).getByRole('button', { name: /^Morning chai/ }))
+    await userEvent.click(within(popup).getByRole('button', { name: 'Remove Test tea from Morning chai' }))
+    expect(fake.removed).toHaveBeenLastCalledWith('m1')
+    expect(within(popup).getByText('Removed Morning chai')).toBeInTheDocument()
+    expect(within(popup).queryByRole('region', { name: 'Saved meals' })).not.toBeInTheDocument()
+  })
+
+  it('saves what is in the meal under a name, and stops at 20 saved meals', async () => {
+    const fake = renderToday()
+    const meals = await screen.findByRole('region', { name: 'Meals' })
+    await userEvent.click(within(meals).getByRole('button', { name: 'Add to breakfast' }))
+    const popup = screen.getByRole('dialog', { name: 'Add food' })
+    const inMeal = within(popup).getByRole('region', { name: /^In breakfast now/ })
+    await userEvent.click(within(inMeal).getByRole('button', { name: 'Save as a meal' }))
+    expect(within(inMeal).getByRole('alert')).toHaveTextContent(
+      'Give the meal a name of up to 40 characters.',
+    )
+    await userEvent.type(
+      within(inMeal).getByRole('textbox', { name: 'Name this meal' }),
+      ' Morning  chai {Enter}',
+    )
+    expect(fake.inserted).toHaveBeenCalledWith({ name: 'Morning chai' })
+    expect(fake.inserted).toHaveBeenLastCalledWith([
+      expect.objectContaining({ saved_meal_id: 'restored', position: 1, food_name: 'Test tea', kcal: 45 }),
+      expect.objectContaining({ position: 2, food_name: 'Test bread', kcal: 240 }),
+      expect.objectContaining({ position: 3, food_name: 'Test tea' }),
+    ])
+    expect(await within(popup).findByText('Saved Morning chai')).toBeInTheDocument()
+    expect(within(inMeal).getByRole('textbox', { name: 'Name this meal' })).toHaveValue('')
+    expect(within(popup).getByRole('region', { name: 'Saved meals' })).toHaveTextContent('Morning chai')
+
+    // Twenty saved meals is the limit.
+    cleanup()
+    const twenty = Array.from({ length: 20 }, (_, i) => ({ ...morningChai, id: `m${i}`, name: `Meal ${i}` }))
+    renderToday(fakeClient({ savedMeals: twenty }))
+    const again = await screen.findByRole('region', { name: 'Meals' })
+    await userEvent.click(within(again).getByRole('button', { name: 'Add to breakfast' }))
+    const second = screen.getByRole('dialog', { name: 'Add food' })
+    await within(second).findByRole('region', { name: 'Saved meals' })
+    const form = within(second).getByRole('region', { name: /^In breakfast now/ })
+    await userEvent.type(within(form).getByRole('textbox', { name: 'Name this meal' }), 'One more{Enter}')
+    expect(within(form).getByRole('alert')).toHaveTextContent(
+      'You have 20 saved meals. Remove one to save another.',
+    )
+  })
+
+  it('adds a food to a saved meal through the search, and Cancel goes back to the meal', async () => {
+    // A made-up food the search answers with.
+    const egg = {
+      source: 'usda',
+      source_id: '9',
+      name: 'Test egg',
+      kcal_per_100g: 150,
+      protein_per_100g: 12,
+      carbs_per_100g: 1,
+      fat_per_100g: 10,
+      sodium_mg_per_100g: 140,
+      flagged: false,
+      verified: true,
+      units: [{ name: '1 egg', grams: 50 }],
+    }
+    const fake = renderToday(fakeClient({ logs: [], savedMeals: [morningChai] }))
+    fake.rpc.mockImplementation((name: string) => {
+      const response = Promise.resolve(
+        name === 'search_foods' ? { data: [egg], error: null } : { data: 12, error: null },
+      )
+      return Object.assign(response, { abortSignal: () => response })
+    })
+    const popup = await openPopupOn('Breakfast')
+    const list = await within(popup).findByRole('region', { name: 'Saved meals' })
+    await userEvent.click(within(list).getByRole('button', { name: /^Morning chai/ }))
+    await userEvent.click(within(popup).getByRole('button', { name: 'Add a food' }))
+    expect(within(popup).getByText(/^Adding a food to/)).toHaveTextContent('Adding a food to Morning chai')
+    expect(within(popup).queryByRole('region', { name: 'Saved meals' })).not.toBeInTheDocument()
+    expect(within(popup).getByRole('searchbox', { name: 'Search foods' })).toHaveFocus()
+    await userEvent.type(within(popup).getByRole('searchbox', { name: 'Search foods' }), 'egg')
+    await userEvent.click(await within(popup).findByRole('button', { name: 'Add Test egg' }))
+    await userEvent.click(within(popup).getByRole('button', { name: 'Add to Morning chai' }))
+    expect(fake.inserted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saved_meal_id: 'm1',
+        position: 3,
+        food_name: 'Test egg',
+        quantity: 1,
+        unit_name: '1 egg',
+        grams: 50,
+        kcal: 75,
+      }),
+    )
+    expect(within(popup).getByRole('heading', { level: 2, name: 'Morning chai' })).toBeInTheDocument()
+    const foods = within(popup).getByRole('list', { name: 'Foods in Morning chai' })
+    expect(within(foods).getAllByRole('listitem')).toHaveLength(3)
+    expect(foods).toHaveTextContent('Test egg')
+    expect(within(popup).getByText('Added to Morning chai')).toBeInTheDocument()
+
+    await userEvent.click(within(popup).getByRole('button', { name: 'Add a food' }))
+    await userEvent.click(within(popup).getByRole('button', { name: 'Cancel' }))
+    expect(within(popup).getByRole('heading', { level: 2, name: 'Morning chai' })).toHaveFocus()
   })
 })

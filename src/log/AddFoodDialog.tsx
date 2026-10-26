@@ -3,8 +3,11 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { AmountChip } from '../components/AmountChip.tsx'
 import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
+import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
 import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
+import { LogError } from '../lib/logs.ts'
+import { MAX_SAVED_MEAL_NAME } from '../lib/savedMeals.ts'
 import {
   MAX_MEAL_NAME,
   MEALS,
@@ -17,9 +20,11 @@ import {
 } from '../lib/meals.ts'
 import { groupMealFoods } from '../lib/today.ts'
 import { LogSheet } from './LogSheet.tsx'
+import { useSavedMeals, type SavedMealsState } from './useSavedMeals.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 const STEP = 'm-0 text-caption font-semibold tracking-wide text-koshur-muted uppercase'
+const NAME_INPUT = `min-h-11 min-w-0 flex-1 basis-56 rounded-full border border-dashed border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`
 
 interface AddFoodDialogProps {
   /** The meal to open on, or null while the popup is closed. */
@@ -31,10 +36,86 @@ interface AddFoodDialogProps {
   onClose: () => void
 }
 
+interface SaveMealFormProps {
+  foods: readonly LoggedFood[]
+  savedMeals: SavedMealsState
+  onSaved: (name: string) => void
+}
+
+/** Saves what is in the meal right now under a name, so it can be added in one tap another day. */
+function SaveMealForm({ foods, savedMeals, onSaved }: SaveMealFormProps) {
+  const nameId = useId()
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    if (saving) return
+    setSaving(true)
+    setError(null)
+    try {
+      const saved = await savedMeals.save(name, foods)
+      setName('')
+      onSaved(saved.name)
+    } catch (failure) {
+      setError(
+        failure instanceof LogError
+          ? failure.message
+          : "We couldn't save this meal. Check your connection and try again.",
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={nameId} className="sr-only">
+          Name this meal
+        </label>
+        <input
+          id={nameId}
+          type="text"
+          value={name}
+          onChange={(event) => {
+            setError(null)
+            setName(event.target.value)
+          }}
+          onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              void save()
+            }
+          }}
+          placeholder="Name this meal, such as Morning chai"
+          maxLength={MAX_SAVED_MEAL_NAME}
+          autoComplete="off"
+          className={NAME_INPUT}
+        />
+        <Button variant="secondary" size="small" disabled={saving} onClick={() => void save()}>
+          {saving ? 'Saving' : 'Save as a meal'}
+        </Button>
+      </div>
+      {error && (
+        <p role="alert" className="m-0 text-body-sm text-koshur-silk">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+interface InMealProps {
+  meal: Meal
+  foods: readonly LoggedFood[]
+  savedMeals: SavedMealsState
+  onSaved: (name: string) => void
+}
+
 /** What has gone into the meal so far, at the foot of the popup: never under the search box. */
-function InMeal({ meal, logs }: { meal: Meal; logs: readonly LoggedFood[] }) {
+function InMeal({ meal, foods, savedMeals, onSaved }: InMealProps) {
   const headingId = useId()
-  const foods = logs.filter((log) => log.meal === meal)
   if (foods.length === 0) return null
   const kcal = foods.reduce((sum, log) => sum + log.nutrients.kcal, 0)
   return (
@@ -66,6 +147,7 @@ function InMeal({ meal, logs }: { meal: Meal; logs: readonly LoggedFood[] }) {
           )
         })}
       </ul>
+      <SaveMealForm foods={foods} savedMeals={savedMeals} onSaved={onSaved} />
     </section>
   )
 }
@@ -92,6 +174,9 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
   const nameId = useId()
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
+  const savedMeals = useSavedMeals()
+  const [notice, setNotice] = useState<ToastMessage | null>(null)
+  const noticeId = useRef(0)
 
   // Closing the dialog ourselves (when it is taken down, or when React re-runs the effect in
   // development) fires a close event too; that one must not count as the person closing it.
@@ -197,7 +282,7 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
                 placeholder="or name a meal, such as Chai"
                 maxLength={MAX_MEAL_NAME}
                 autoComplete="off"
-                className={`min-h-11 min-w-0 flex-1 basis-56 rounded-full border border-dashed border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`}
+                className={NAME_INPUT}
               />
             </div>
             {nameError && (
@@ -209,10 +294,25 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
 
           <div className="flex min-w-0 flex-col gap-2.5">
             <h3 className={STEP}>2. What you ate, for {mealLabel(meal).toLowerCase()}</h3>
-            <LogSheet dialog meal={meal} onChooseMeal={onChangeMeal} onAdded={onAdded} />
+            <LogSheet
+              dialog
+              meal={meal}
+              onChooseMeal={onChangeMeal}
+              onAdded={onAdded}
+              savedMeals={savedMeals}
+            />
           </div>
 
-          <InMeal meal={meal} logs={logs} />
+          <InMeal
+            meal={meal}
+            foods={logs.filter((log) => log.meal === meal)}
+            savedMeals={savedMeals}
+            onSaved={(savedName) => {
+              noticeId.current += 1
+              setNotice({ id: noticeId.current, text: `Saved ${savedName}`, tone: 'added' })
+            }}
+          />
+          <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} />
 
           <div className="flex justify-end">
             <Button size="small" onClick={onClose}>

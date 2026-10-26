@@ -1,4 +1,5 @@
 import type { FoodResult, FoodUnit } from './foodSearch.ts'
+import type { FoodAmount } from './logs.ts'
 import { gramsFor, roundForDisplay, scaleNutrients, type Nutrients } from './nutrition.ts'
 
 /**
@@ -74,4 +75,19 @@ export function parseQuantity(input: string): number | null {
   if (!/^\d*\.?\d+$/.test(text)) return null
   const value = Number(text)
   return value > 0 ? value : null
+}
+
+/** "Nun Chai 2 cups, Girda 1 piece": foods with the amounts they were logged or saved in, on one line. */
+export function foodsLine(foods: readonly FoodAmount[]): string {
+  return foods
+    .map(
+      (food) =>
+        `${food.foodName} ${amountLabel(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })}`,
+    )
+    .join(', ')
+}
+
+/** What a group of foods adds up to, as whole calories. */
+export function totalKcal(foods: readonly FoodAmount[]): number {
+  return Math.round(foods.reduce((sum, food) => sum + food.nutrients.kcal, 0))
 }

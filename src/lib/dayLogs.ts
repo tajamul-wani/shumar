@@ -1,29 +1,29 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { FoodResult, FoodSource, FoodUnit } from './foodSearch.ts'
-import { LogError, buildLogRow } from './logs.ts'
+import type { FoodResult, FoodUnit } from './foodSearch.ts'
+import {
+  LogError,
+  buildLogRow,
+  foodAmountColumns,
+  numberIn,
+  parseFoodAmount,
+  textUpTo,
+  type FoodAmount,
+} from './logs.ts'
 import { isMeal, type Meal } from './meals.ts'
-import { GRAM, type Nutrients } from './nutrition.ts'
+import { GRAM } from './nutrition.ts'
 
 /**
  * Reading and changing the foods a person has logged. Row-level security limits every query
  * to the signed-in person's own logs, and every row is checked before the app uses it.
  */
 
-export interface LoggedFood {
+export interface LoggedFood extends FoodAmount {
   id: string
   /** The local calendar day, YYYY-MM-DD. */
   logDate: string
   /** When it was logged, as an ISO timestamp. */
   loggedAt: string
   meal: Meal
-  foodName: string
-  foodSource: FoodSource
-  foodSourceId: string | null
-  quantity: number
-  unitName: string
-  grams: number
-  /** The values saved when it was logged. */
-  nutrients: Nutrients
 }
 
 type LogsClient = Pick<SupabaseClient, 'from'>
@@ -32,67 +32,17 @@ type LogsClient = Pick<SupabaseClient, 'from'>
 const LOG_COLUMNS =
   'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg'
 
-function number(value: unknown, min: number, max: number): number | null {
-  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
-  return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max ? n : null
-}
-
-function text(value: unknown, maxLength: number): string | null {
-  return typeof value === 'string' && value.trim() !== '' && value.length <= maxLength ? value : null
-}
-
 /** Checks one user_logs row against the table's own limits. Returns null if anything is off. */
 export function parseLoggedFood(value: unknown): LoggedFood | null {
   const row = (value ?? {}) as Record<string, unknown>
-  const id = text(row.id, 64)
+  const id = textUpTo(row.id, 64)
   const logDate =
     typeof row.log_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.log_date) ? row.log_date : null
-  const loggedAt = text(row.logged_at, 64)
+  const loggedAt = textUpTo(row.logged_at, 64)
   const meal = isMeal(row.meal) ? row.meal : null
-  const foodName = text(row.food_name, 200)
-  const foodSource = row.food_source === 'kashmiri' || row.food_source === 'usda' ? row.food_source : null
-  const foodSourceId = row.food_source_id == null ? null : text(row.food_source_id, 100)
-  const quantity = number(row.quantity, Number.MIN_VALUE, 10000)
-  const unitName = text(row.unit_name, 60)
-  const grams = number(row.grams, Number.MIN_VALUE, 20000)
-  const kcal = number(row.kcal, 0, 1e6)
-  const protein = number(row.protein, 0, 1e5)
-  const carbs = number(row.carbs, 0, 1e5)
-  const fat = number(row.fat, 0, 1e5)
-  const sodiumMg = number(row.sodium_mg, 0, 1e7)
-  if (
-    !id ||
-    !logDate ||
-    !loggedAt ||
-    Number.isNaN(Date.parse(loggedAt)) ||
-    !meal ||
-    !foodName ||
-    !foodSource ||
-    (row.food_source_id != null && !foodSourceId) ||
-    quantity === null ||
-    !unitName ||
-    grams === null ||
-    kcal === null ||
-    protein === null ||
-    carbs === null ||
-    fat === null ||
-    sodiumMg === null
-  ) {
-    return null
-  }
-  return {
-    id,
-    logDate,
-    loggedAt,
-    meal,
-    foodName,
-    foodSource,
-    foodSourceId,
-    quantity,
-    unitName,
-    grams,
-    nutrients: { kcal, protein, carbs, fat, sodiumMg },
-  }
+  const food = parseFoodAmount(row)
+  if (!id || !logDate || !loggedAt || Number.isNaN(Date.parse(loggedAt)) || !meal || !food) return null
+  return { id, logDate, loggedAt, meal, ...food }
 }
 
 function parseRows(rows: unknown): LoggedFood[] {
@@ -122,7 +72,7 @@ export async function fetchLog(client: LogsClient, id: string): Promise<LoggedFo
 export async function fetchDaysLogged(client: Pick<SupabaseClient, 'rpc'>): Promise<number | null> {
   const { data, error } = await client.rpc('days_logged')
   if (error) return null
-  return number(data, 0, 1e6)
+  return numberIn(data, 0, 1e6)
 }
 
 export async function removeLog(client: LogsClient, id: string): Promise<void> {
@@ -136,22 +86,7 @@ export async function removeLog(client: LogsClient, id: string): Promise<void> {
 export async function restoreLog(client: LogsClient, log: LoggedFood): Promise<LoggedFood> {
   const { data, error } = await client
     .from('user_logs')
-    .insert({
-      log_date: log.logDate,
-      logged_at: log.loggedAt,
-      meal: log.meal,
-      food_name: log.foodName,
-      food_source: log.foodSource,
-      food_source_id: log.foodSourceId,
-      quantity: log.quantity,
-      unit_name: log.unitName,
-      grams: log.grams,
-      kcal: log.nutrients.kcal,
-      protein: log.nutrients.protein,
-      carbs: log.nutrients.carbs,
-      fat: log.nutrients.fat,
-      sodium_mg: log.nutrients.sodiumMg,
-    })
+    .insert({ log_date: log.logDate, logged_at: log.loggedAt, meal: log.meal, ...foodAmountColumns(log) })
     .select(LOG_COLUMNS)
     .single()
   const restored = error ? null : parseLoggedFood(data)

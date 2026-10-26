@@ -11,6 +11,8 @@ import {
   showsVerified,
   sourceLabel,
   unitHint,
+  foodsLine,
+  totalKcal,
 } from './foodDisplay.ts'
 import type { FoodResult } from './foodSearch.ts'
 
@@ -121,5 +123,37 @@ describe('parseQuantity', () => {
 
   it.each(['', '0', '-1', 'abc', '1.2.3', '1e3', '2 cups'])('refuses "%s"', (input) => {
     expect(parseQuantity(input)).toBeNull()
+  })
+})
+
+describe('foodsLine and totalKcal', () => {
+  // Made-up foods with easy numbers, not nutrition data.
+  const tea = {
+    foodName: 'Test tea',
+    foodSource: 'kashmiri' as const,
+    foodSourceId: 'k1',
+    quantity: 2,
+    unitName: 'cup',
+    grams: 300,
+    nutrients: { kcal: 90.4, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
+  }
+  const bread = {
+    ...tea,
+    foodName: 'Test bread',
+    quantity: 1,
+    unitName: 'piece',
+    grams: 90,
+    nutrients: { ...tea.nutrients, kcal: 320.4 },
+  }
+
+  it('lists the foods with their amounts on one line', () => {
+    expect(foodsLine([tea, bread])).toBe('Test tea 2 cup, Test bread 1 piece')
+    expect(foodsLine([{ ...tea, unitName: 'g', quantity: 150, grams: 150 }])).toBe('Test tea 150 g')
+    expect(foodsLine([])).toBe('')
+  })
+
+  it('adds the calories up to a whole number', () => {
+    expect(totalKcal([tea, bread])).toBe(411)
+    expect(totalKcal([])).toBe(0)
   })
 })
