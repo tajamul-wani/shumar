@@ -256,13 +256,15 @@ test('with a daily target, Today shows the calories left, the macro targets and 
   await expect(ring).toContainText('Protein30128 g')
   const review = page.getByRole('region', { name: /review$/ })
   await expect(review).toContainText('A steady day. You have 1,576 kcal left.')
-  await expect(review).toContainText('Carbs are furthest behind60 of 280 g')
+  await expect(review).toContainText('Carbs are furthest behind, 60 of 280 g.')
   await expect(review).toContainText('Sodium is high, mostly from Test tea')
-  // On a wide screen the review sits beside the calories, in the same row.
+  // On a wide screen the review sits beside the ring; on a phone it sits under it.
+  const circle = ring.locator('svg').first()
+  const [circleBox, reviewBox] = await Promise.all([circle.boundingBox(), review.boundingBox()])
   if ((page.viewportSize()?.width ?? 0) >= 1024) {
-    const [ringBox, reviewBox] = await Promise.all([ring.boundingBox(), review.boundingBox()])
-    expect(Math.abs(ringBox!.y - reviewBox!.y)).toBeLessThan(2)
-    expect(reviewBox!.x).toBeGreaterThan(ringBox!.x + ringBox!.width)
+    expect(reviewBox!.x).toBeGreaterThan(circleBox!.x + circleBox!.width)
+  } else {
+    expect(reviewBox!.y).toBeGreaterThan(circleBox!.y + circleBox!.height)
   }
   expect(await accessibilityViolations(page)).toEqual([])
   expect(await scrollsSideways(page)).toBe(false)

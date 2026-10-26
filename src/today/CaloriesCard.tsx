@@ -1,9 +1,7 @@
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { roundForDisplay, type Nutrients } from '../lib/nutrition.ts'
-import { ringState, type RingState } from '../lib/today.ts'
-
-const RADIUS = 90
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+import { ringState } from '../lib/today.ts'
+import { Ring } from './Ring.tsx'
 
 const MACROS = [
   { key: 'protein', label: 'Protein', bar: 'bg-macro-protein' },
@@ -12,40 +10,6 @@ const MACROS = [
 ] as const
 
 type MacroTargets = Pick<Nutrients, 'protein' | 'carbs' | 'fat'>
-
-function ringText(state: RingState): { number: number; caption: string } {
-  if (state.kind === 'left') return { number: state.left, caption: 'kcal left' }
-  if (state.kind === 'over') return { number: state.over, caption: 'kcal over' }
-  return { number: state.eaten, caption: 'kcal eaten' }
-}
-
-/** The calorie ring: saffron as the day fills toward the target, red once it passes it. */
-function Ring({ state }: { state: RingState }) {
-  const { number, caption } = ringText(state)
-  return (
-    <div className="relative size-50 shrink-0 lg:size-45">
-      <svg viewBox="0 0 208 208" aria-hidden="true" className="size-full -rotate-90">
-        <circle cx="104" cy="104" r={RADIUS} fill="none" strokeWidth="14" className="stroke-koshur-border" />
-        {state.kind !== 'eaten' && (
-          <circle
-            cx="104"
-            cy="104"
-            r={RADIUS}
-            fill="none"
-            strokeWidth="14"
-            strokeLinecap="round"
-            strokeDasharray={`${state.progress * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-            className={state.kind === 'over' ? 'stroke-alert-surplus' : 'stroke-deficit-ring'}
-          />
-        )}
-      </svg>
-      <p className="absolute inset-0 m-0 flex flex-col items-center justify-center gap-0.5">
-        <span className="text-display font-semibold text-koshur-silk">{formatNumber(number)}</span>
-        <span className="text-body-sm text-koshur-muted">{caption}</span>
-      </p>
-    </div>
-  )
-}
 
 interface CaloriesCardProps {
   totals: Nutrients

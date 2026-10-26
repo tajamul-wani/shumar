@@ -14,17 +14,15 @@ import { LogError } from '../lib/logs.ts'
 import { mealPhrase } from '../lib/meals.ts'
 import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
-import { sumNutrients } from '../lib/nutrition.ts'
-import { furthestBehind, ringState, sodiumAlert, summarizeDay } from '../lib/today.ts'
+import { furthestBehind, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
-import { SetTargetCard } from '../firstRun/SetTargetCard.tsx'
+import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
 import { LOG_FOOD_PATH } from '../shell/nav.ts'
 import { LogSheet } from '../log/LogSheet.tsx'
 import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
-import { CaloriesCard } from '../today/CaloriesCard.tsx'
+import { HeroCard } from '../today/HeroCard.tsx'
 import { MealCards } from '../today/MealCards.tsx'
-import { ReviewCard } from '../today/ReviewCard.tsx'
 import { useDayLogs } from '../today/useDayLogs.ts'
 
 const CARD = 'rounded-2xl border border-koshur-border bg-koshur-surface'
@@ -159,9 +157,7 @@ export function TodayScreen() {
     }
   }
 
-  // Three slots: the card beside the calories (the review, or what stands in for it), the
-  // calories themselves (or the day's loading or error state), and the meals.
-  let side: ReactNode = null
+  // Two slots: the day at a glance (or its loading or error state), and the meals.
   let day: ReactNode
   let mealList: ReactNode = null
   if (logs) {
@@ -169,30 +165,41 @@ export function TodayScreen() {
     const alert = sodiumAlert(logs)
     const macroTargets = targets && { protein: targets.protein, carbs: targets.carbs, fat: targets.fat }
     // The review needs a target and something eaten, or a sodium alert.
-    const reviewing = targets && logs.length > 0
-    if (reviewing || alert) {
-      side = (
-        <ReviewCard
-          now={today}
-          ring={reviewing ? ringState(totals.kcal, targets.kcal) : null}
-          behind={reviewing && macroTargets ? furthestBehind(totals, macroTargets) : null}
-          alert={alert}
-          sodiumMg={sumNutrients(logs.map((log) => log.nutrients)).sodiumMg}
-        />
-      )
-    } else if (profile.status === 'error') {
-      side = (
-        <div className="flex flex-col items-start gap-3">
+    const reviewing = !!targets && logs.length > 0
+    // What stands beside the ring while there is no review: setting a target, or why it could not load.
+    let standIn: ReactNode = null
+    if (profile.status === 'error') {
+      standIn = (
+        <>
           <Alert>{profile.error}</Alert>
           <Button variant="secondary" size="small" onClick={profile.reload}>
             Try again
           </Button>
-        </div>
+        </>
       )
     } else if (profile.status === 'ready' && !targets) {
-      side = <SetTargetCard />
+      standIn = (
+        <section aria-labelledby="set-target-heading" className="flex flex-col items-start gap-3">
+          <h2 id="set-target-heading" className="m-0 text-body font-semibold">
+            Set your daily target
+          </h2>
+          <SetTargetPrompt />
+        </section>
+      )
     }
-    day = <CaloriesCard totals={totals} target={targets?.kcal} macroTargets={macroTargets} />
+    day = (
+      <HeroCard
+        now={today}
+        totals={totals}
+        target={targets?.kcal}
+        macroTargets={macroTargets}
+        reviewing={reviewing}
+        behind={reviewing && macroTargets ? furthestBehind(totals, macroTargets) : null}
+        alert={alert}
+      >
+        {standIn}
+      </HeroCard>
+    )
     mealList = (
       <>
         {actionError && <Alert>{actionError}</Alert>}
@@ -244,8 +251,7 @@ export function TodayScreen() {
           dashboard: the calories with the review beside them, then the meals beside Add food, which
           stays in view while a long list scrolls. */}
       <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-        {side && <div className="min-w-0 lg:order-2 lg:col-span-5">{side}</div>}
-        <div className={`min-w-0 lg:order-1 ${side ? 'lg:col-span-7' : 'lg:col-span-12'}`}>{day}</div>
+        <div className="min-w-0 lg:order-1 lg:col-span-12">{day}</div>
         {mealList && <div className="flex min-w-0 flex-col gap-4 lg:order-3 lg:col-span-7">{mealList}</div>}
         {desktop && (
           <div className={`min-w-0 p-6 lg:sticky lg:top-7 lg:order-4 lg:col-span-5 ${CARD}`}>
