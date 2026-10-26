@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FoodResult } from './foodSearch.ts'
-import { LogError, buildLogRow, logFood, saveLog, type NewLog } from './logs.ts'
+import {
+  LogError,
+  buildLogRow,
+  copyFoods,
+  logFood,
+  parseFoodAmount,
+  saveLog,
+  type FoodAmount,
+  type NewLog,
+} from './logs.ts'
 
 // A made-up food with easy numbers for checking the maths, not nutrition data.
 const food: FoodResult = {
@@ -113,5 +122,100 @@ describe('logFood', () => {
     const { date, ...rest } = log({ quantity: 0 })
     await expect(logFood(client, rest, date)).rejects.toThrow(LogError)
     expect(insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('parseFoodAmount', () => {
+  const row = {
+    food_name: 'Test tea',
+    food_source: 'kashmiri',
+    food_source_id: 'k1',
+    quantity: '2',
+    unit_name: 'cup',
+    grams: '300',
+    kcal: '90',
+    protein: '3',
+    carbs: '9',
+    fat: '4.5',
+    sodium_mg: '600',
+  }
+
+  it('reads the numbers Postgres sends as text', () => {
+    expect(parseFoodAmount(row)).toEqual({
+      foodName: 'Test tea',
+      foodSource: 'kashmiri',
+      foodSourceId: 'k1',
+      quantity: 2,
+      unitName: 'cup',
+      grams: 300,
+      nutrients: { kcal: 90, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
+    })
+  })
+
+  it("refuses a row outside the tables' limits", () => {
+    expect(parseFoodAmount({ ...row, food_source: 'off' })).toBeNull()
+    expect(parseFoodAmount({ ...row, quantity: '0' })).toBeNull()
+    expect(parseFoodAmount({ ...row, kcal: '-1' })).toBeNull()
+    expect(parseFoodAmount({ ...row, food_source_id: 'x'.repeat(101) })).toBeNull()
+    expect(parseFoodAmount({ ...row, food_source_id: null })?.foodSourceId).toBeNull()
+    expect(parseFoodAmount(null)).toBeNull()
+  })
+})
+
+describe('copyFoods', () => {
+  const tea = parseFoodAmount({
+    food_name: 'Test tea',
+    food_source: 'kashmiri',
+    food_source_id: 'k1',
+    quantity: 2,
+    unit_name: 'cup',
+    grams: 300,
+    kcal: 90,
+    protein: 3,
+    carbs: 9,
+    fat: 4.5,
+    sodium_mg: 600,
+  }) as FoodAmount
+
+  it('inserts every food as it was, into the meal on that day, in one request', async () => {
+    const insert = vi.fn<(rows: unknown[]) => Promise<{ error: null }>>(async () => ({ error: null }))
+    const client = { from: vi.fn<(table: string) => unknown>(() => ({ insert })) } as unknown as Parameters<
+      typeof copyFoods
+    >[0]
+    const count = await copyFoods(
+      client,
+      [tea, { ...tea, foodName: 'Test bread' }],
+      'Chai',
+      new Date(2026, 9, 26, 8),
+    )
+    expect(count).toBe(2)
+    expect(client.from).toHaveBeenCalledWith('user_logs')
+    expect(insert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        log_date: '2026-10-26',
+        meal: 'Chai',
+        food_name: 'Test tea',
+        quantity: 2,
+        kcal: 90,
+      }),
+      expect.objectContaining({ log_date: '2026-10-26', meal: 'Chai', food_name: 'Test bread' }),
+    ])
+  })
+
+  it('sends nothing for an empty list, and refuses a bad meal name', async () => {
+    const from = vi.fn<(table: string) => unknown>()
+    const client = { from } as unknown as Parameters<typeof copyFoods>[0]
+    expect(await copyFoods(client, [], 'lunch')).toBe(0)
+    await expect(copyFoods(client, [tea], ' x')).rejects.toThrow('Choose a meal first.')
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('explains a failed copy', async () => {
+    const client = {
+      from: vi.fn<(table: string) => unknown>(() => ({
+        insert: async () => ({ error: { message: 'down' } }),
+      })),
+    } as unknown as Parameters<typeof copyFoods>[0]
+    await expect(copyFoods(client, [tea], 'lunch')).rejects.toThrow("We couldn't add these foods.")
   })
 })
