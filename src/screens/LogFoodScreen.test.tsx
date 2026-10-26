@@ -111,7 +111,7 @@ describe('searching', () => {
     expect(rpc).toHaveBeenCalledTimes(1)
     expect(rpc).toHaveBeenCalledWith('search_foods', { query: 'rice', max_results: 20 })
     expect(within(results).getByRole('listitem')).toHaveTextContent(
-      'Test rice, cooked1 cup · 208 kcal · Ingredient',
+      'Test rice, cooked1 cup 208 kcal Ingredient',
     )
     expect(screen.getByText('1 food found')).toBeInTheDocument()
   })
@@ -146,8 +146,8 @@ describe('searching', () => {
     renderScreen(fakeClient({ rows: [stew, dish] }))
     await searchFor('test')
     const rows = within(await screen.findByRole('list', { name: 'Search results' })).getAllByRole('listitem')
-    expect(rows[0]).toHaveTextContent('100 g · about 130 kcal · Estimate')
-    expect(rows[1]).toHaveTextContent('100 g · 130 kcal · KashmiriVerified')
+    expect(rows[0]).toHaveTextContent('100 g about 130 kcal Estimate')
+    expect(rows[1]).toHaveTextContent('100 g 130 kcal Kashmiri Verified')
   })
 })
 
@@ -295,7 +295,7 @@ describe('recent foods', () => {
   it('adds a recent food again in one tap, with the amount used last time', async () => {
     const { insert } = renderScreen()
     const recent = screen.getByRole('region', { name: 'Recent' })
-    expect(within(recent).getByRole('listitem')).toHaveTextContent('2 × 1 cup · 416 kcal · Ingredient')
+    expect(within(recent).getByRole('listitem')).toHaveTextContent('2 × 1 cup 416 kcal Ingredient')
     await userEvent.click(within(recent).getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ quantity: 2, kcal: 416, meal: 'dinner' }))
     expect(screen.getByText('Added to dinner')).toBeInTheDocument()
