@@ -69,6 +69,9 @@ jobs:
         run: npx supabase start -x studio,imgproxy,realtime,storage-api,logflare,vector,edge-runtime,mailpit,supavisor,postgres-meta,postgrest,kong
       - run: npm run test:db
         timeout-minutes: 5
+      - name: Back up and restore the local database
+        run: npm run test:backup
+        timeout-minutes: 5
 
   e2e:
     name: End-to-end tests

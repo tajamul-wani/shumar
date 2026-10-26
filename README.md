@@ -66,6 +66,7 @@ src/
                 The session, the theme and the first-run answers, shared with every screen
 public/         The favicon, app icons, logo and share image
 scripts/        USDA importer, design-token check, security headers, search files, CI helpers
+  backup/       Encrypted backup of the database, its restore, and the round-trip test
   brand/        Draws the logo, icons and share image from the color tokens
 supabase/       Migrations and database tests
 e2e/            End-to-end tests
@@ -92,6 +93,7 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:4173` locally |
 | `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
 | `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
+| `BACKUP_PASSPHRASE`             | Encrypts the database backups (maintainers only). At least 24 characters            |
 
 Start the local Supabase stack (the first run downloads its images), then the app at http://localhost:5173:
 
@@ -102,25 +104,34 @@ npm run dev
 
 ### Scripts
 
-| Command             | What it does                                                       |
-| :------------------ | :----------------------------------------------------------------- |
-| `npm run dev`       | Start the development server                                       |
-| `npm run build`     | Type check and build for production, with security headers         |
-| `npm run preview`   | Serve the production build locally                                 |
-| `npm run brand`     | Draw the logo, icons, favicon and share image into `public/` again |
-| `npm run lint`      | Check design tokens, run oxlint and check formatting               |
-| `npm run format`    | Format all files with Prettier                                     |
-| `npm run typecheck` | Run the TypeScript compiler                                        |
-| `npm run test`      | Run the unit tests with coverage, then the importer's tests        |
-| `npm run test:db`   | Run the database security tests                                    |
-| `npm run test:e2e`  | Run the end-to-end tests                                           |
-| `npm run check`     | Lint, type check, unit tests and build                             |
+| Command               | What it does                                                           |
+| :-------------------- | :--------------------------------------------------------------------- |
+| `npm run dev`         | Start the development server                                           |
+| `npm run build`       | Type check and build for production, with security headers             |
+| `npm run preview`     | Serve the production build locally                                     |
+| `npm run brand`       | Draw the logo, icons, favicon and share image into `public/` again     |
+| `npm run lint`        | Check design tokens, run oxlint and check formatting                   |
+| `npm run format`      | Format all files with Prettier                                         |
+| `npm run typecheck`   | Run the TypeScript compiler                                            |
+| `npm run test`        | Run the unit tests with coverage, then the importer's tests            |
+| `npm run test:db`     | Run the database security tests                                        |
+| `npm run test:e2e`    | Run the end-to-end tests                                               |
+| `npm run test:backup` | Back up the local database, wipe it and restore it, checking every row |
+| `npm run backup`      | Write an encrypted backup of the hosted database (see Backups)         |
+| `npm run restore`     | Load a backup into the local stack or a fresh project (see Backups)    |
+| `npm run check`       | Lint, type check, unit tests and build                                 |
 
 ### Deploying
 
 The site is served by Cloudflare Workers as static assets, with no server code. `wrangler.jsonc` points at `dist/` and serves `index.html` for any address that is not a file, so the app's own screens open on a refresh or from a shared link. The build writes `dist/_headers` (the security policy and the `noindex` rules) from `scripts/security-headers.ts` and `scripts/seo.ts`, and Cloudflare applies it to every response.
 
 Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler@4.151.1 deploy`. Wrangler is pinned there rather than installed as a dependency, so its own tooling stays out of this project's dependency tree and its audit. `main` only moves through merged pull requests, which need CI to pass first. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables in the Cloudflare dashboard; none of them is a secret. The Supabase project's redirect list names the live address, so Google sign-in works there and on this machine only.
+
+### Backups
+
+`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 and `BACKUP_PASSPHRASE`. The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly. Nothing about a backup is ever committed or uploaded to GitHub.
+
+To restore, apply the migrations first (`npx supabase db reset` for the local stack, `npx supabase db push` on a fresh project), then `npm run restore -- <file> --local` or `npm run restore -- <file> --db-url <address>`. The load runs as one transaction and ends by checking every table's row count against the manifest. `npm run test:backup` is that round trip on the local stack, and CI runs it with the database tests.
 
 ## Testing
 
