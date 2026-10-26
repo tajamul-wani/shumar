@@ -90,7 +90,7 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | :------------------------------ | :---------------------------------------------------------------------------------- |
 | `VITE_SUPABASE_URL`             | The Supabase project address                                                        |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here.                        |
-| `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:4173` locally |
+| `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:5173` locally |
 | `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
 | `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
 | `BACKUP_PASSPHRASE`             | Encrypts the database backups (maintainers only). At least 24 characters            |
