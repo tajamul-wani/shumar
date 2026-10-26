@@ -8,7 +8,7 @@ import { Chip } from '../components/Chip.tsx'
 import { defaultQuantity, defaultUnit } from '../lib/foodDisplay.ts'
 import { MAX_QUERY_LENGTH, type FoodResult, type FoodUnit } from '../lib/foodSearch.ts'
 import { LogError, logFood } from '../lib/logs.ts'
-import { MEALS, MEAL_LABELS, defaultMeal, type Meal } from '../lib/meals.ts'
+import { MEALS, MEAL_LABELS, defaultMeal, isFixedMeal, mealPhrase, type Meal } from '../lib/meals.ts'
 import { readRecentFoods, rememberFood, type RecentFood } from '../lib/recentFoods.ts'
 import { FoodDetail } from './FoodDetail.tsx'
 import { FoodRow } from './FoodRow.tsx'
@@ -57,6 +57,12 @@ export function MealPicker({
             {MEAL_LABELS[option]}
           </Chip>
         ))}
+        {/* A meal of the person's own, as on a logged food being changed, stays choosable. */}
+        {!isFixedMeal(meal) && (
+          <Chip pressed onClick={() => onChoose(meal)}>
+            {meal}
+          </Chip>
+        )}
       </div>
     </fieldset>
   )
@@ -150,7 +156,7 @@ export function LogSheet({ embedded = false, onAdded }: LogSheetProps) {
   const SubHeading = embedded ? 'h3' : 'h2'
   const fill = embedded ? 'bg-koshur-base' : 'bg-koshur-surface'
   const search = useFoodSearch(query)
-  const mealName = MEAL_LABELS[meal].toLowerCase()
+  const mealName = mealPhrase(meal)
 
   // Moving between the search and a food works like moving between screens: focus the sheet's new heading.
   const view = chosen ? `${chosen.food.source}:${chosen.food.sourceId}` : 'search'

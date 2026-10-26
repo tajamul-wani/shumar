@@ -1,5 +1,5 @@
 import type { LoggedFood } from './dayLogs.ts'
-import { MEALS, type Meal } from './meals.ts'
+import { FIXED_MEALS, isFixedMeal, type Meal } from './meals.ts'
 import { sumNutrients, type Nutrients } from './nutrition.ts'
 
 /** What the Today screen shows, worked out from the day's logs. Kept apart from the screen so it can be tested. */
@@ -14,16 +14,21 @@ export interface MealGroup {
 
 interface DaySummary {
   totals: Nutrients
-  /** Only meals with food in them, in the order of the day. */
+  /** Only meals with food in them: the fixed meals in the order of the day, then the person's own meals in the order they were first logged. */
   meals: MealGroup[]
 }
 
 const byTime = (a: LoggedFood, b: LoggedFood) => Date.parse(a.loggedAt) - Date.parse(b.loggedAt)
 
 export function summarizeDay(logs: readonly LoggedFood[]): DaySummary {
+  const sorted = [...logs].sort(byTime)
+  const own: Meal[] = []
+  for (const log of sorted) {
+    if (!isFixedMeal(log.meal) && !own.includes(log.meal)) own.push(log.meal)
+  }
   const meals: MealGroup[] = []
-  for (const meal of MEALS) {
-    const foods = logs.filter((log) => log.meal === meal).sort(byTime)
+  for (const meal of [...FIXED_MEALS, ...own]) {
+    const foods = sorted.filter((log) => log.meal === meal)
     if (foods.length === 0) continue
     meals.push({
       meal,

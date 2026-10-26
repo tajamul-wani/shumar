@@ -86,7 +86,7 @@ describe('parseLoggedFood', () => {
   })
 
   it.each([
-    ['an unknown meal', { meal: 'brunch' }],
+    ['a meal name the database would refuse', { meal: ' brunch' }],
     ['an unknown source', { food_source: 'web' }],
     ['a date in another shape', { log_date: '21/10/2026' }],
     ['a time that is not a time', { logged_at: 'soon' }],
@@ -105,7 +105,7 @@ describe('parseLoggedFood', () => {
 
 describe('reading logs', () => {
   it("reads one day's logs, oldest first, leaving out rows that don't make sense", async () => {
-    const { client, calls, from } = fakeClient({ data: [row(), row({ meal: 'brunch' })], error: null })
+    const { client, calls, from } = fakeClient({ data: [row(), row({ meal: '' })], error: null })
     expect(await fetchDayLogs(client, '2026-10-21')).toEqual([tea])
     expect(from).toHaveBeenCalledWith('user_logs')
     expect(call(calls, 'eq')).toEqual(['log_date', '2026-10-21'])

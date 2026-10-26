@@ -11,7 +11,7 @@ import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { LogError } from '../lib/logs.ts'
-import { MEAL_LABELS } from '../lib/meals.ts'
+import { mealPhrase } from '../lib/meals.ts'
 import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
 import { sumNutrients } from '../lib/nutrition.ts'
@@ -35,7 +35,7 @@ function messageFrom(failure: unknown, fallback: string): string {
   return failure instanceof LogError ? failure.message : fallback
 }
 
-const mealName = (food: LoggedFood) => MEAL_LABELS[food.meal].toLowerCase()
+const mealName = (food: LoggedFood) => mealPhrase(food.meal)
 
 function DaysLogged({ count }: { count: number }) {
   return (

@@ -52,6 +52,18 @@ describe('summarizeDay', () => {
     expect(summarizeDay(day).totals).toEqual({ kcal: 530, protein: 4, carbs: 8, fat: 12, sodiumMg: 1500 })
   })
 
+  it("lists the person's own meals after the fixed ones, in the order they were first logged", () => {
+    const { meals } = summarizeDay([
+      ...day,
+      log('6', 'Late bite', 'Test nuts', '23:00', 100),
+      log('5', 'Chai', 'Test biscuit', '17:00', 60),
+      log('7', 'Chai', 'Test chai', '17:05', 40),
+    ])
+    expect(meals.map((m) => m.meal)).toEqual(['breakfast', 'dinner', 'Chai', 'Late bite'])
+    expect(meals[2].foods.map((f) => f.id)).toEqual(['5', '7'])
+    expect(meals[2].totals.kcal).toBe(100)
+  })
+
   it('gives zeros and no meals for an empty day', () => {
     expect(summarizeDay([])).toEqual({
       totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 },

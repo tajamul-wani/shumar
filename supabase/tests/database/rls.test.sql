@@ -66,8 +66,8 @@ select throws_ok(
   '23514', null, 'a quantity of zero is rejected');
 select throws_ok(
   $$insert into public.user_logs (meal, food_name, food_source, quantity, unit_name, grams, kcal, protein, carbs, fat)
-    values ('brunch', 'x', 'kashmiri', 1, 'g', 1, 1, 0, 0, 0)$$,
-  '23514', null, 'an unknown meal is rejected');
+    values (' brunch', 'x', 'kashmiri', 1, 'g', 1, 1, 0, 0, 0)$$,
+  '23514', null, 'a meal name with a space around it is rejected');
 select lives_ok(
   $$update public.user_logs set quantity = 3 where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'$$,
   'a user can change their own log');

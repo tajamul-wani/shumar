@@ -4,7 +4,7 @@ import { Link } from 'wouter'
 import type { LoggedFood } from '../lib/dayLogs.ts'
 import { formatMealTime } from '../lib/dates.ts'
 import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
-import { MEAL_LABELS, type Meal } from '../lib/meals.ts'
+import { mealLabel, type Meal } from '../lib/meals.ts'
 import { roundForDisplay, type Nutrients } from '../lib/nutrition.ts'
 import { groupMealFoods, type FoodEntry, type MealGroup } from '../lib/today.ts'
 import { editLogPath } from '../shell/nav.ts'
@@ -179,7 +179,7 @@ function MealRow({ group, showTime, open, busy, onToggle, onRemove }: MealRowPro
         <span className="flex min-w-0 flex-1 flex-col gap-1.5">
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-body font-semibold text-koshur-silk sm:text-title">
-              {MEAL_LABELS[group.meal]}
+              {mealLabel(group.meal)}
             </span>
             {showTime && (
               <span className="text-caption text-koshur-muted">
