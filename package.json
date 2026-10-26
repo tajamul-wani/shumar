@@ -18,6 +18,9 @@
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "playwright test",
+    "test:backup": "bash scripts/backup/test-backup.sh",
+    "backup": "bash scripts/backup/backup.sh",
+    "restore": "bash scripts/backup/restore.sh",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
