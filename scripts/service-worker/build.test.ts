@@ -197,12 +197,18 @@ describe('the service worker', () => {
     expect(worker.network).not.toHaveBeenCalled()
   })
 
-  it('moves to the new version only when the page asks', () => {
+  it("moves to the new version only when one of this site's pages asks", () => {
     const worker = runWorker()
-    worker.handlers.message({ data: { type: 'something else' } })
-    worker.handlers.message({ data: null })
-    expect(worker.skipWaiting).not.toHaveBeenCalled()
+    const page = { url: `${ORIGIN}/trends` }
+    worker.handlers.message({ data: { type: 'something else' }, source: page })
+    worker.handlers.message({ data: null, source: page })
+    // Anyone else asking is ignored: another site, no sender, or a sender without an address.
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: { url: 'https://other.example/' } })
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: null })
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: { url: 'not an address' } })
     worker.handlers.message({ data: { type: 'SKIP_WAITING' } })
-    expect(worker.skipWaiting).toHaveBeenCalled()
+    expect(worker.skipWaiting).not.toHaveBeenCalled()
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: page })
+    expect(worker.skipWaiting).toHaveBeenCalledTimes(1)
   })
 })
