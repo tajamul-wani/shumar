@@ -39,7 +39,11 @@ umask 077
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-gpg --batch --quiet --decrypt --pinentry-mode loopback --passphrase-fd 3 "$file" 3<<<"$pass" | tar -x -C "$tmp"
+if ! gpg --batch --quiet --decrypt --pinentry-mode loopback --passphrase-fd 3 --output "$tmp/backup.tar" "$file" 3<<<"$pass" 2>/dev/null; then
+  echo "That passphrase doesn't open this backup, or the file is damaged. Nothing was changed." >&2
+  exit 1
+fi
+tar -x -C "$tmp" -f "$tmp/backup.tar"
 echo "Backup:"
 sed 's/^/  /' "$tmp/manifest.txt"
 echo

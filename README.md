@@ -93,7 +93,7 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:5173` locally |
 | `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
 | `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
-| `BACKUP_PASSPHRASE`             | Encrypts the database backups (maintainers only). At least 24 characters            |
+| `BACKUP_PASSPHRASE`             | Optional, and best left out: the backup asks for its passphrase (maintainers only)  |
 
 Start the local Supabase stack (the first run downloads its images), then the app at http://localhost:5173:
 
@@ -129,7 +129,7 @@ Deploys run through Cloudflare's Workers Builds, connected to this repository: e
 
 ### Backups
 
-`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 and `BACKUP_PASSPHRASE`. The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly. Nothing about a backup is ever committed or uploaded to GitHub.
+`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters. The passphrase lives in the maintainers' password manager, and the script asks for it with the typing hidden, so it never sits on the same machine as the backups (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly, and before every migration is pushed to the hosted database. Nothing about a backup is ever committed or uploaded to GitHub.
 
 To restore, apply the migrations first (`npx supabase db reset` for the local stack, `npx supabase db push` on a fresh project), then `npm run restore -- <file> --local` or `npm run restore -- <file> --db-url <address>`. The load runs as one transaction and ends by checking every table's row count against the manifest. `npm run test:backup` is that round trip on the local stack, and CI runs it with the database tests.
 
