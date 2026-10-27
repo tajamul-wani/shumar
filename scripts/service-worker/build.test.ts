@@ -199,16 +199,14 @@ describe('the service worker', () => {
 
   it("moves to the new version only when one of this site's pages asks", () => {
     const worker = runWorker()
-    const page = { url: `${ORIGIN}/trends` }
-    worker.handlers.message({ data: { type: 'something else' }, source: page })
-    worker.handlers.message({ data: null, source: page })
-    // Anyone else asking is ignored: another site, no sender, or a sender without an address.
-    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: { url: 'https://other.example/' } })
-    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: null })
-    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: { url: 'not an address' } })
+    worker.handlers.message({ data: { type: 'something else' }, origin: ORIGIN })
+    worker.handlers.message({ data: null, origin: ORIGIN })
+    // Anyone else asking is ignored: another site, or a message with no origin.
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, origin: 'https://other.example' })
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, origin: '' })
     worker.handlers.message({ data: { type: 'SKIP_WAITING' } })
     expect(worker.skipWaiting).not.toHaveBeenCalled()
-    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, source: page })
+    worker.handlers.message({ data: { type: 'SKIP_WAITING' }, origin: ORIGIN })
     expect(worker.skipWaiting).toHaveBeenCalledTimes(1)
   })
 })

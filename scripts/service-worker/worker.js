@@ -40,21 +40,10 @@ self.addEventListener('activate', (event) => {
   )
 })
 
-/** True for a message sent by one of this site's own pages, and no one else. */
-function fromThisSite(event) {
-  const url = event.source && event.source.url
-  if (typeof url !== 'string') return false
-  try {
-    return new URL(url).origin === self.location.origin
-  } catch {
-    return false
-  }
-}
-
 // A new version waits until the person chooses to refresh, so a page never mixes two versions.
-// Only this site's own pages may ask; any other message is ignored.
+// Only this site's own pages may ask; a message from anywhere else is ignored.
 self.addEventListener('message', (event) => {
-  if (!fromThisSite(event)) return
+  if (event.origin !== self.location.origin) return
   if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
