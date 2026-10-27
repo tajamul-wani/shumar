@@ -4,7 +4,16 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { LOGO_SIZE } from '../../src/components/logoSizes.ts'
 import {
+  MARK_DROPS,
+  MARK_FILLED,
+  MARK_HEXAGON,
+  MARK_TRACK_LENGTH,
+  MARK_VIEWBOX,
+} from '../../src/components/markShape.ts'
+import {
+  DAY_FILLED,
   HEXAGON,
+  MARK_DROP_PATHS,
   MASKABLE_SCALE,
   PIXEL_FAVICONS,
   TRACK_LENGTH,
@@ -113,6 +122,18 @@ describe('the files in public/', () => {
         .toString()
         .match(/<svg[^>]* width="([\d.]+)" height="([\d.]+)"/) ?? []
     expect([Number(width), Number(height)]).toEqual(LOGO_SIZE)
+  })
+
+  it("gives the app the mark's shape as the generator draws it, for the loading mark", () => {
+    const { vertical } = reach()
+    const corner = Math.round((256 - vertical) * 100) / 100
+    expect(MARK_HEXAGON).toBe(HEXAGON)
+    expect(MARK_DROPS).toEqual(MARK_DROP_PATHS)
+    expect(MARK_TRACK_LENGTH).toBeCloseTo(TRACK_LENGTH, 2)
+    expect(MARK_FILLED).toBe(DAY_FILLED)
+    expect(MARK_VIEWBOX).toBe(
+      `${corner} ${corner} ${Math.round(vertical * 200) / 100} ${Math.round(vertical * 200) / 100}`,
+    )
   })
 
   it('draws the share image page in dark-theme tokens only', () => {

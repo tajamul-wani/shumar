@@ -96,16 +96,16 @@ const MARK_DROPS: [number, number][] = [
   [24.57, 14.04],
 ]
 
+/** The three drops' outlines in the 512 grid: protein, carbs, fat. */
+export const MARK_DROP_PATHS = MARK_DROPS.map(([x, y]) => dropPath(CENTRE + 1.75 * x, 276 + 1.75 * y, 36.75))
+
 /** The mark's shapes in the 512 grid: the dim track, its saffron part and the three drops. */
 export function mark(p: Palette, track = TRACK): string {
   const dash = round(FILLED * TRACK_LENGTH)
   return [
     `<path d="${HEXAGON}" fill="none" stroke="${p.border}" stroke-width="${track}" stroke-linejoin="round"/>`,
     `<path d="${HEXAGON}" fill="none" stroke="${p.saffron}" stroke-width="${track}" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${dash} ${round(TRACK_LENGTH)}"/>`,
-    ...MARK_DROPS.map(
-      ([x, y], i) =>
-        `<path d="${dropPath(CENTRE + 1.75 * x, 276 + 1.75 * y, 36.75)}" fill="${macroColors(p)[i]}"/>`,
-    ),
+    ...MARK_DROP_PATHS.map((d, i) => `<path d="${d}" fill="${macroColors(p)[i]}"/>`),
   ].join('')
 }
 

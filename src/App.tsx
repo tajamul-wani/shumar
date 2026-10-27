@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useAuth } from './auth/context.ts'
+import { LoadingMark } from './components/LoadingMark.tsx'
 import { UpdateNotice } from './components/UpdateNotice.tsx'
 
 // The signed-out pages and the signed-in app are separate files, so each visitor downloads only
@@ -9,11 +10,12 @@ const FirstRun = lazy(() =>
 )
 const SignedInApp = lazy(() => import('./SignedInApp.tsx'))
 
-/** What shows while the session is read, and while the right half of the app arrives. */
+/** What shows while the session is read, and while the right half of the app arrives: the mark, running. */
 function Loading() {
   return (
-    <main aria-busy="true" className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4">
-      <p className="m-0 text-body text-koshur-muted">Loading</p>
+    <main aria-busy="true" className="flex min-h-dvh items-center justify-center px-4">
+      <LoadingMark />
+      <p className="sr-only">Loading</p>
     </main>
   )
 }
