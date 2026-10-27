@@ -1,8 +1,10 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { readFileSync } from 'node:fs'
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 import { findSecrets } from './scripts/bundle-secrets.ts'
+import { MANIFEST_PATH, darkBaseColor, webManifest } from './scripts/manifest.ts'
 import { headersFile, headersFor, securityHeaders, type HeaderRule } from './scripts/security-headers.ts'
 import { fillPage, noindexRules, robotsTxt, siteOrigin, sitemapXml } from './scripts/seo.ts'
 import { SITE_DESCRIPTION, SITE_IMAGE_ALT, SITE_NAME, SITE_TITLE } from './src/shell/site.ts'
@@ -42,9 +44,9 @@ function security(env: Record<string, string>): Plugin {
 }
 
 /**
- * Fills the site's address and its own words into index.html, and writes robots.txt and
- * sitemap.xml, for search engines and link previews. A build needs SITE_URL, because its links
- * must name the real site; the dev server can do without.
+ * Fills the site's address and its own words into index.html, writes robots.txt and sitemap.xml
+ * for search engines and link previews, and writes the manifest that lets the app be installed.
+ * A build needs SITE_URL, because its links must name the real site; the dev server can do without.
  */
 function site(env: Record<string, string>): Plugin {
   let origin = ''
@@ -61,6 +63,12 @@ function site(env: Record<string, string>): Plugin {
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robotsTxt(origin) })
       this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemapXml(origin) })
+      const manifest = webManifest(darkBaseColor(readFileSync('src/index.css', 'utf8')))
+      this.emitFile({
+        type: 'asset',
+        fileName: MANIFEST_PATH.slice(1),
+        source: `${JSON.stringify(manifest, null, 2)}\n`,
+      })
     },
   }
 }

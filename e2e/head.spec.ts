@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { SITE_DESCRIPTION, SITE_IMAGE_ALT, SITE_NAME, SITE_TITLE } from '../src/shell/site.ts'
+import { MANIFEST_ICONS } from '../scripts/manifest.ts'
 import { cspViolations, watchCsp } from './support.ts'
 
 // What the page's head and the site's own files give browsers, phones, search engines and link
@@ -135,5 +136,33 @@ test("keeps the app's own screens out of search results", async ({ request }) =>
     '/log/edit/1',
   ]) {
     expect((await request.get(path)).headers()['x-robots-tag'], path).toBe('noindex')
+  }
+})
+
+test('can be installed: the manifest is linked, served as a manifest, and names every icon it offers', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/')
+  const head = page.locator('head')
+  expect(await head.locator('link[rel="manifest"]').getAttribute('href')).toBe('/manifest.webmanifest')
+  expect(await head.locator('meta[name="apple-mobile-web-app-title"]').getAttribute('content')).toBe(
+    SITE_NAME,
+  )
+  expect(await head.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content')).toBe('yes')
+  expect(await head.locator('meta[name="mobile-web-app-capable"]').getAttribute('content')).toBe('yes')
+
+  const response = await request.get('/manifest.webmanifest')
+  expect(response.status()).toBe(200)
+  expect(response.headers()['content-type']).toMatch(/^application\/manifest\+json/)
+  const manifest = await response.json()
+  expect(manifest).toMatchObject({
+    name: SITE_NAME,
+    start_url: '/',
+    display: 'standalone',
+    icons: MANIFEST_ICONS,
+  })
+  for (const icon of manifest.icons as { src: string }[]) {
+    expect((await request.get(icon.src)).status(), icon.src).toBe(200)
   }
 })
