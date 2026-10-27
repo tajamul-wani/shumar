@@ -144,31 +144,38 @@ for (const theme of ['dark', 'light'] as const) {
     expect(await cspViolations(page)).toEqual([])
   })
 
-  test(`when the target can't load, the You screen says so in the target card and tries again, ${theme} theme`, async ({
-    page,
-  }) => {
-    const user = await createTestUser(`target-offline-${theme}`)
-    await saveTestProfile(user.session.access_token)
-    await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
-    // Reading the profile fails, as it does offline, until the connection comes back.
-    let online = false
-    await page.route(
-      (url) => url.pathname === '/rest/v1/profiles',
-      (route) => (online ? route.continue() : route.abort('internetdisconnected')),
-    )
-    await signInAs(page, user.session)
-    await page.goto('/you')
+  test.describe('with the profile read failing', () => {
+    // The failure is faked by routing the request, which Playwright can't do once a service worker
+    // controls the page in WebKit, so this test runs without the worker. The worker never touches
+    // Supabase requests; e2e/offline.spec.ts covers it.
+    test.use({ serviceWorkers: 'block' })
 
-    const target = page.getByRole('region', { name: 'Daily target' })
-    // supabase-js tries a failed read three more times, 1, 2 and 4 seconds apart, before giving up.
-    await expect(target.getByRole('alert')).toHaveText(
-      "We couldn't load your target. Check your connection and try again.",
-      { timeout: 15_000 },
-    )
-    await checkScreen(page, 'You, target not loaded')
-    online = true
-    await target.getByRole('button', { name: 'Try again' }).click()
-    await expect(target).toContainText('2,176kcal')
-    await expect(page.getByRole('region', { name: 'Your details' })).toBeVisible()
+    test(`when the target can't load, the You screen says so in the target card and tries again, ${theme} theme`, async ({
+      page,
+    }) => {
+      const user = await createTestUser(`target-offline-${theme}`)
+      await saveTestProfile(user.session.access_token)
+      await page.addInitScript((value) => localStorage.setItem('shumar-theme', value), theme)
+      // Reading the profile fails, as it does offline, until the connection comes back.
+      let online = false
+      await page.route(
+        (url) => url.pathname === '/rest/v1/profiles',
+        (route) => (online ? route.continue() : route.abort('internetdisconnected')),
+      )
+      await signInAs(page, user.session)
+      await page.goto('/you')
+
+      const target = page.getByRole('region', { name: 'Daily target' })
+      // supabase-js tries a failed read three more times, 1, 2 and 4 seconds apart, before giving up.
+      await expect(target.getByRole('alert')).toHaveText(
+        "We couldn't load your target. Check your connection and try again.",
+        { timeout: 15_000 },
+      )
+      await checkScreen(page, 'You, target not loaded')
+      online = true
+      await target.getByRole('button', { name: 'Try again' }).click()
+      await expect(target).toContainText('2,176kcal')
+      await expect(page.getByRole('region', { name: 'Your details' })).toBeVisible()
+    })
   })
 }

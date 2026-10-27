@@ -1,17 +1,73 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 import { findSecrets } from './scripts/bundle-secrets.ts'
 import { MANIFEST_PATH, darkBaseColor, webManifest } from './scripts/manifest.ts'
+import {
+  SERVICE_WORKER_PATH,
+  keptFiles,
+  serviceWorkerSource,
+  type BuiltFile,
+} from './scripts/service-worker/build.ts'
 import { headersFile, headersFor, securityHeaders, type HeaderRule } from './scripts/security-headers.ts'
 import { fillPage, noindexRules, robotsTxt, siteOrigin, sitemapXml } from './scripts/seo.ts'
 import { SITE_DESCRIPTION, SITE_IMAGE_ALT, SITE_NAME, SITE_TITLE } from './src/shell/site.ts'
 
-/** The security headers on every response, and a noindex header on the app's own screens. */
+/**
+ * The security headers on every response, a noindex header on the app's own screens, and the
+ * service worker checked for a new version every time, never taken from a cache.
+ */
 function headerRules(env: Record<string, string>): HeaderRule[] {
-  return [{ path: '/*', headers: securityHeaders(env.VITE_SUPABASE_URL) }, ...noindexRules()]
+  return [
+    { path: '/*', headers: securityHeaders(env.VITE_SUPABASE_URL) },
+    ...noindexRules(),
+    { path: SERVICE_WORKER_PATH, headers: { 'Cache-Control': 'no-cache' } },
+  ]
+}
+
+/** Every file under a folder, by its path in the site. */
+function filesIn(folder: string): BuiltFile[] {
+  return readdirSync(folder, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const full = join(entry.parentPath, entry.name)
+      return { path: `/${relative(folder, full).split('\\').join('/')}`, content: readFileSync(full) }
+    })
+}
+
+/**
+ * Writes /sw.js, the service worker that keeps this build's own files for offline use. It runs
+ * last, after the page and every other file are written, so the list is complete.
+ */
+function serviceWorker(): Plugin {
+  let publicDir = ''
+  return {
+    name: 'shumar-service-worker',
+    apply: 'build',
+    configResolved(config) {
+      publicDir = config.publicDir
+    },
+    generateBundle: {
+      order: 'post',
+      handler(_options, bundle) {
+        const built: BuiltFile[] = Object.values(bundle).map((file) => ({
+          path: `/${file.fileName}`,
+          content: file.type === 'chunk' ? file.code : file.source,
+        }))
+        const kept = keptFiles([...built, ...(publicDir ? filesIn(publicDir) : [])])
+        if (!kept.some((file) => file.path === '/'))
+          this.error('The service worker found no index.html to keep.')
+        this.emitFile({
+          type: 'asset',
+          fileName: SERVICE_WORKER_PATH.slice(1),
+          source: serviceWorkerSource(kept),
+        })
+      },
+    },
+  }
 }
 
 /** Fails the build if it would ship a secret, and serves every page with its headers. */
@@ -80,6 +136,7 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     security(loadEnv(mode, process.cwd(), 'VITE_')),
     site(loadEnv(mode, process.cwd(), 'SITE_')),
+    serviceWorker(),
   ],
   // Fonts stay separate files, so the security policy can allow fonts from this site only.
   build: { assetsInlineLimit: (file: string) => (/\.woff2?$/.test(file) ? false : undefined) },

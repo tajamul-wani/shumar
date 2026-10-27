@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
+import { registerServiceWorker } from './lib/serviceWorker.ts'
 import { createSupabase, readSupabaseConfig } from './lib/supabase.ts'
 import { ThemeProvider } from './theme/ThemeProvider.tsx'
 
@@ -20,3 +21,6 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+// The built app keeps its own files for offline use; the dev server never does.
+if (import.meta.env.PROD) registerServiceWorker()

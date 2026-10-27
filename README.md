@@ -67,6 +67,8 @@ src/
 public/         The favicon, app icons, logo and share image
 scripts/        USDA importer, design-token check, security headers, search files, CI helpers
   backup/       Encrypted backup of the database, its restore, and the round-trip test
+  service-worker/
+                The offline worker, and the build step that lists the files it keeps
   brand/        Draws the logo, icons and share image from the color tokens
 supabase/       Migrations and database tests
 e2e/            End-to-end tests
@@ -151,6 +153,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
 - **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
 - **Installing:** `npm run build` writes `manifest.webmanifest` from `src/shell/site.ts`, the dark base color in `src/index.css` and the app icons (`scripts/manifest.ts`), so phones and computers can add Shumār to the home screen.
+- **Offline:** the build writes `sw.js` from `scripts/service-worker/`. It keeps this version's page, scripts, styles, Latin fonts and icons, opens every screen from them without a connection, and never answers a request for another site, so Supabase and sign-in always go to the network and nothing personal is stored. `src/lib/serviceWorker.ts` registers it in the built app only, never on the dev server.
 - **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
 | Table              | Holds                                                                         | Who can access it                             |
