@@ -1,4 +1,4 @@
-import { Check, Trash2 } from 'lucide-react'
+import { Check, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type Ref } from 'react'
 
 export interface ToastMessage {
@@ -8,8 +8,11 @@ export interface ToastMessage {
   text: string
   /** Read out after the text but not shown, such as the food's full name. */
   detail?: string
-  /** Added (or put back) gets a saffron edge and check; removed gets a gray edge and bin. */
-  tone: 'added' | 'removed'
+  /**
+   * Added (or put back) gets a saffron edge and check; removed gets a gray edge and bin; a new
+   * version of the app gets a saffron edge and the refresh arrows.
+   */
+  tone: 'added' | 'removed' | 'update'
 }
 
 interface ToastAction {
@@ -35,6 +38,7 @@ interface ToastProps {
 const TONES = {
   added: { edge: 'border-l-deficit-ring', icon: Check, iconColor: 'text-deficit-ring' },
   removed: { edge: 'border-l-koshur-muted', icon: Trash2, iconColor: 'text-koshur-muted' },
+  update: { edge: 'border-l-deficit-ring', icon: RefreshCw, iconColor: 'text-deficit-ring' },
 } as const
 
 /**

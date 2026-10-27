@@ -14,7 +14,7 @@ const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost'])
 export function siteOrigin(siteUrl: string | undefined): string {
   if (!siteUrl) {
     throw new Error(
-      'SITE_URL is needed to build, because search and share links name the site. On this machine, use http://localhost:4173.',
+      'SITE_URL is needed to build, because search and share links name the site. On this machine, use http://localhost:5173.',
     )
   }
   let url: URL

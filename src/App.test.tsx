@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App.tsx'
@@ -85,9 +85,22 @@ function fakeClient(initial: Session | null, options: { oauthError?: Error; rele
     } as unknown as Parameters<typeof AuthProvider>[0]['client'],
     auth,
     unsubscribe,
-    load: () => act(async () => resolveSession(initial)),
-    emit: (session: Session | null) => act(() => listener('SIGNED_IN', session)),
+    // The signed-out pages and the signed-in app load as separate files, so each step waits for
+    // "Loading" to clear, as a person would.
+    load: async () => {
+      await act(async () => resolveSession(initial))
+      await waitForLoaded()
+    },
+    emit: async (session: Session | null) => {
+      act(() => listener('SIGNED_IN', session))
+      await waitForLoaded()
+    },
   }
+}
+
+/** The first load of a lazily loaded half can take over a second on a cold test run, so this waits up to five. */
+function waitForLoaded() {
+  return waitFor(() => expect(screen.queryByText('Loading')).not.toBeInTheDocument(), { timeout: 5000 })
 }
 
 function renderApp(fake: ReturnType<typeof fakeClient>, path = '/') {
@@ -315,7 +328,7 @@ describe('session changes', () => {
     const fake = fakeClient(null)
     const { unmount } = renderApp(fake)
     await fake.load()
-    fake.emit(fakeSession({ email: 'b@example.com' }))
+    await fake.emit(fakeSession({ email: 'b@example.com' }))
     expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument()
 
     unmount()

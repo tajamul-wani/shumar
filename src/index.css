@@ -152,3 +152,29 @@ input[type='search']::-webkit-search-cancel-button {
 @utility pb-clear-add-button {
   padding-bottom: calc(9.75rem + max(1.25rem, env(safe-area-inset-bottom)));
 }
+
+/* The loading mark (SHU-19, approved 27 October 2026): it fades in after 150 ms, so a quick load
+   shows nothing, and a saffron stretch runs round the hexagon. src/components/LoadingMark.tsx sets
+   --mark-track to the track's length and stops the run when motion is reduced. The offset is in px,
+   which are the mark's own units inside the SVG; Chrome ignores a plain number there. */
+@keyframes mark-appear {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes mark-run {
+  to {
+    stroke-dashoffset: calc(var(--mark-track) * -1px);
+  }
+}
+/* The loading mark grows with the screen: 15% of its shorter side, from 56 px on a phone to 128 px. */
+@utility size-loading-mark {
+  width: clamp(3.5rem, 15vmin, 8rem);
+  height: clamp(3.5rem, 15vmin, 8rem);
+}
+@utility animate-mark-appear {
+  animation: mark-appear 150ms ease-out 150ms both;
+}
+@utility animate-mark-run {
+  animation: mark-run 1.4s linear infinite;
+}
