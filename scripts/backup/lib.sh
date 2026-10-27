@@ -21,15 +21,21 @@ need() {
   done
 }
 
-# The passphrase the backups are encrypted with: BACKUP_PASSPHRASE in the environment, else the
-# line in .env.local. Never a flag, so it never shows in a process list or a shell history.
+# The passphrase the backups are encrypted with: BACKUP_PASSPHRASE in the environment, else a line
+# in .env.local, else typed in at the terminal, hidden. Never a flag, so it never shows in a process
+# list or a shell history. Kept only in the password manager, it never sits beside the backups.
 load_passphrase() {
   local pass="${BACKUP_PASSPHRASE:-}"
   if [ -z "$pass" ] && [ -f .env.local ]; then
     pass="$(grep -E '^BACKUP_PASSPHRASE=' .env.local | head -1 | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/')"
   fi
+  if [ -z "$pass" ] && (exec </dev/tty) 2>/dev/null; then
+    printf 'Backup passphrase (from the password manager; nothing shows as you type): ' >/dev/tty
+    IFS= read -rs pass </dev/tty || pass=''
+    printf '\n' >/dev/tty
+  fi
   if [ -z "$pass" ]; then
-    echo "No passphrase. Add BACKUP_PASSPHRASE=<a long random phrase> to .env.local (and to the password manager)." >&2
+    echo "No passphrase. Run this in a terminal to type it in, or set BACKUP_PASSPHRASE." >&2
     exit 1
   fi
   if [ "${#pass}" -lt "$MIN_PASSPHRASE_LENGTH" ]; then

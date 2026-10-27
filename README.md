@@ -95,7 +95,7 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:5173` locally |
 | `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
 | `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
-| `BACKUP_PASSPHRASE`             | Encrypts the database backups (maintainers only). At least 24 characters            |
+| `BACKUP_PASSPHRASE`             | Optional, and best left out: the backup asks for its passphrase (maintainers only)  |
 
 Start the local Supabase stack (the first run downloads its images), then the app at http://localhost:5173:
 
@@ -131,7 +131,7 @@ Deploys run through Cloudflare's Workers Builds, connected to this repository: e
 
 ### Backups
 
-`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 and `BACKUP_PASSPHRASE`. The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly. Nothing about a backup is ever committed or uploaded to GitHub.
+`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters. The passphrase lives in the maintainers' password manager, and the script asks for it with the typing hidden, so it never sits on the same machine as the backups (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly, and before every migration is pushed to the hosted database. Nothing about a backup is ever committed or uploaded to GitHub.
 
 To restore, apply the migrations first (`npx supabase db reset` for the local stack, `npx supabase db push` on a fresh project), then `npm run restore -- <file> --local` or `npm run restore -- <file> --db-url <address>`. The load runs as one transaction and ends by checking every table's row count against the manifest. `npm run test:backup` is that round trip on the local stack, and CI runs it with the database tests.
 
@@ -151,6 +151,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
 - **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows. Tapping a day opens its logs as they were saved.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
+- **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each) with triggers in `supabase/migrations/20261027120000_storage_limits.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
 - **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
 - **Installing:** `npm run build` writes `manifest.webmanifest` from `src/shell/site.ts`, the dark base color in `src/index.css` and the app icons (`scripts/manifest.ts`), so phones and computers can add Shumār to the home screen.
 - **Offline:** the build writes `sw.js` from `scripts/service-worker/`. It keeps this version's page, scripts, styles, Latin fonts and icons, opens every screen from them without a connection, and never answers a request for another site, so Supabase and sign-in always go to the network and nothing personal is stored. `src/lib/serviceWorker.ts` registers it in the built app only, never on the dev server, and when a new version has installed, the app says so with a Refresh button (`src/components/UpdateNotice.tsx`); until then the open page keeps its own version.
