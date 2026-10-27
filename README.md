@@ -143,6 +143,7 @@ To restore, apply the migrations first (`npx supabase db reset` for the local st
 
 Shumār is a single-page React app. The data lives in Supabase, and row-level security keeps each person's data private.
 
+- **Loading:** `src/App.tsx` loads the signed-out pages (`src/firstRun/`) and the signed-in app (`src/SignedInApp.tsx`) as separate files, so each visitor downloads only the half they use.
 - **Signed out**, `src/firstRun/` shows the home page and the public sources and privacy pages, asks the first-run questions and shows the daily target. The answers stay on the device until sign-in and are wiped at sign-out.
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
 - **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
