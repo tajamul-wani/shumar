@@ -1,5 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { LogError, foodAmountColumns, parseFoodAmount, textUpTo, type FoodAmount } from './logs.ts'
+import {
+  LogError,
+  foodAmountColumns,
+  limitMessage,
+  parseFoodAmount,
+  textUpTo,
+  type FoodAmount,
+} from './logs.ts'
 
 /**
  * Saved meals: a named group of foods a person eats together, added to a meal in one tap. Each
@@ -79,6 +86,8 @@ export async function saveMeal(
   const created = await client.from('saved_meals').insert({ name: cleanName }).select('id').single()
   const id = created.error ? null : textUpTo((created.data as { id?: unknown } | null)?.id, 64)
   if (!id) {
+    const limit = limitMessage(created.error)
+    if (limit) throw new LogError(limit)
     if (created.error?.code === '23505')
       throw new LogError(`You already have a saved meal called ${cleanName}.`)
     throw new LogError("We couldn't save this meal. Check your connection and try again.")
@@ -93,7 +102,9 @@ export async function saveMeal(
   if (!ids) {
     // Leave no empty saved meal behind. If this fails too, the empty meal is dropped when read.
     await client.from('saved_meals').delete().eq('id', id)
-    throw new LogError("We couldn't save this meal. Check your connection and try again.")
+    throw new LogError(
+      limitMessage(error) ?? "We couldn't save this meal. Check your connection and try again.",
+    )
   }
   return {
     id,
@@ -146,7 +157,10 @@ export async function addSavedMealFood(
     .single()
   const id = error ? null : textUpTo((data as { id?: unknown } | null)?.id, 64)
   if (!id) {
-    throw new LogError(`We couldn't add this food to ${meal.name}. Check your connection and try again.`)
+    throw new LogError(
+      limitMessage(error) ??
+        `We couldn't add this food to ${meal.name}. Check your connection and try again.`,
+    )
   }
   return { ...meal, foods: [...meal.foods, savedFood(id, position, food)] }
 }

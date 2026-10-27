@@ -3,6 +3,7 @@ import type { FoodResult, FoodUnit } from './foodSearch.ts'
 import {
   LogError,
   buildLogRow,
+  limitMessage,
   foodAmountColumns,
   numberIn,
   parseFoodAmount,
@@ -90,7 +91,11 @@ export async function restoreLog(client: LogsClient, log: LoggedFood): Promise<L
     .select(LOG_COLUMNS)
     .single()
   const restored = error ? null : parseLoggedFood(data)
-  if (!restored) throw new LogError("We couldn't put this food back. Check your connection and try again.")
+  if (!restored) {
+    throw new LogError(
+      limitMessage(error) ?? "We couldn't put this food back. Check your connection and try again.",
+    )
+  }
   return restored
 }
 

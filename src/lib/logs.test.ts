@@ -4,6 +4,7 @@ import {
   LogError,
   buildLogRow,
   copyFoods,
+  limitMessage,
   logFood,
   parseFoodAmount,
   saveLog,
@@ -217,5 +218,33 @@ describe('copyFoods', () => {
       })),
     } as unknown as Parameters<typeof copyFoods>[0]
     await expect(copyFoods(client, [tea], 'lunch')).rejects.toThrow("We couldn't add these foods.")
+  })
+})
+
+describe('limitMessage', () => {
+  it("says which of the database's storage limits was reached", () => {
+    expect(limitMessage({ code: 'SH001' })).toBe('A day holds up to 100 foods. Remove one to add another.')
+    expect(limitMessage({ code: 'SH002' })).toBe('Your account holds up to 50,000 foods, and it is full.')
+    expect(limitMessage({ code: 'SH003' })).toBe('You have 20 saved meals. Remove one to save another.')
+    expect(limitMessage({ code: 'SH004' })).toBe('A saved meal holds up to 30 foods.')
+  })
+
+  it('is null for any other error, or none', () => {
+    expect(limitMessage({ code: '23505' })).toBeNull()
+    expect(limitMessage({})).toBeNull()
+    expect(limitMessage(null)).toBeNull()
+  })
+
+  it('replaces the connection message when a day is full', async () => {
+    const insert = vi.fn<(row: unknown) => Promise<unknown>>(async () => ({
+      error: { code: 'SH001', message: 'full' },
+    }))
+    const client = { from: vi.fn<(table: string) => unknown>(() => ({ insert })) } as unknown as Parameters<
+      typeof saveLog
+    >[0]
+    await expect(saveLog(client, buildLogRow(log()))).rejects.toThrow('A day holds up to 100 foods.')
+    await expect(
+      copyFoods(client, [parseFoodAmount(buildLogRow(log())) as FoodAmount], 'lunch'),
+    ).rejects.toThrow('A day holds up to 100 foods.')
   })
 })

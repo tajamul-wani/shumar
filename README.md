@@ -148,6 +148,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
 - **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows. Tapping a day opens its logs as they were saved.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
+- **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each) with triggers in `supabase/migrations/20261027120000_storage_limits.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
 - **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
 - **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 

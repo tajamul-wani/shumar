@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { LogError, type FoodAmount } from './logs.ts'
+import { LogError, limitMessage, type FoodAmount } from './logs.ts'
 import {
+  MAX_SAVED_MEALS,
   MAX_SAVED_MEAL_FOODS,
   addSavedMealFood,
   fetchSavedMeals,
@@ -271,6 +272,24 @@ describe('removeSavedMealFood', () => {
     const { client } = fakeClient({ saved_meal_foods: [{ data: [], error: null }] })
     await expect(removeSavedMealFood(client, saved, 'f1')).rejects.toThrow(
       "We couldn't remove this food from Morning chai.",
+    )
+  })
+})
+
+describe("the database's limits on saved meals", () => {
+  it('match the limits the app keeps', () => {
+    expect(limitMessage({ code: 'SH003' })).toContain(String(MAX_SAVED_MEALS))
+    expect(limitMessage({ code: 'SH004' })).toContain(String(MAX_SAVED_MEAL_FOODS))
+  })
+
+  it('are explained when saving or adding to a meal hits them', async () => {
+    const full = fakeClient({ saved_meals: [{ data: null, error: { message: 'full', code: 'SH003' } }] })
+    await expect(saveMeal(full.client, 'One more', [tea])).rejects.toThrow('You have 20 saved meals.')
+    const fullMeal = fakeClient({
+      saved_meal_foods: [{ data: null, error: { message: 'full', code: 'SH004' } }],
+    })
+    await expect(addSavedMealFood(fullMeal.client, saved, tea)).rejects.toThrow(
+      'A saved meal holds up to 30 foods.',
     )
   })
 })

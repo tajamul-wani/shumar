@@ -37,6 +37,22 @@ interface LogRow {
 export class LogError extends Error {}
 
 /**
+ * What the person reads when the database refuses a row for one of its storage limits
+ * (supabase/migrations/20261027120000_storage_limits.sql), by the error code each limit raises.
+ */
+const LIMIT_MESSAGES: Record<string, string> = {
+  SH001: 'A day holds up to 100 foods. Remove one to add another.',
+  SH002: 'Your account holds up to 50,000 foods, and it is full.',
+  SH003: 'You have 20 saved meals. Remove one to save another.',
+  SH004: 'A saved meal holds up to 30 foods.',
+}
+
+/** The plain message for a storage limit the database refused a row for, or null for any other error. */
+export function limitMessage(error: { code?: string } | null | undefined): string | null {
+  return (error?.code && LIMIT_MESSAGES[error.code]) || null
+}
+
+/**
  * A food with the amount and the nutrients it was saved with: what a logged food and a food in a
  * saved meal have in common, and all that copying one into a meal needs.
  */
@@ -158,7 +174,11 @@ export function buildLogRow({ meal, food, quantity, unit, date }: NewLog): LogRo
 /** Saves a log for the signed-in person. Row-level security makes it theirs alone. */
 export async function saveLog(client: Pick<SupabaseClient, 'from'>, row: LogRow): Promise<void> {
   const { error } = await client.from('user_logs').insert(row)
-  if (error) throw new LogError("We couldn't save this food. Check your connection and try again.")
+  if (error) {
+    throw new LogError(
+      limitMessage(error) ?? "We couldn't save this food. Check your connection and try again.",
+    )
+  }
 }
 
 /** Checks and saves a food eaten now (or at date) and returns the row as stored. */
@@ -187,6 +207,10 @@ export async function copyFoods(
   const logDate = localDateKey(date)
   const rows = foods.map((food) => ({ log_date: logDate, meal, ...foodAmountColumns(food) }))
   const { error } = await client.from('user_logs').insert(rows)
-  if (error) throw new LogError("We couldn't add these foods. Check your connection and try again.")
+  if (error) {
+    throw new LogError(
+      limitMessage(error) ?? "We couldn't add these foods. Check your connection and try again.",
+    )
+  }
   return rows.length
 }
