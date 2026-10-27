@@ -163,8 +163,11 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     const popup = page.getByRole('dialog', { name: 'Add food' })
     await expect(popup).toBeVisible()
     await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
-    await popup.getByRole('button', { name: 'Lunch' }).click()
-    await expect(popup.getByRole('button', { name: 'Lunch' })).toHaveAttribute('aria-pressed', 'true')
+    await popup.getByRole('button', { name: 'Lunch', exact: true }).click()
+    await expect(popup.getByRole('button', { name: 'Lunch', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
 
     // One food through its unit and amount, then one from the plus on its row, which opens it first:
     // nothing goes in until "Add to lunch".
@@ -195,7 +198,10 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     // A meal of the person's own.
     await popup.getByRole('textbox', { name: 'Or name a meal' }).fill('Chai')
     await popup.getByRole('textbox', { name: 'Or name a meal' }).press('Enter')
-    await expect(popup.getByRole('button', { name: 'Chai' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(popup.getByRole('button', { name: 'Chai', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await popup.getByRole('searchbox', { name: 'Search foods' }).fill('tea')
     await results
       .getByRole('button', { name: /^Add .*tea/i })
@@ -327,7 +333,7 @@ for (const theme of ['dark', 'light'] as const) {
         .nth(wide ? 0 : 1)
         .click()
       const popup = page.getByRole('dialog', { name: 'Add food' })
-      await popup.getByRole('button', { name: 'Breakfast' }).click()
+      await popup.getByRole('button', { name: 'Breakfast', exact: true }).click()
 
       // Yesterday's breakfast, all of it, in one tap.
       const block = popup.getByRole('region', { name: /^Yesterday's breakfast/ })
@@ -364,7 +370,7 @@ for (const theme of ['dark', 'light'] as const) {
 
       // Added to another meal from its row, in one tap.
       await popup.getByRole('button', { name: 'Back to search' }).click()
-      await popup.getByRole('button', { name: 'Lunch' }).click()
+      await popup.getByRole('button', { name: 'Lunch', exact: true }).click()
       await saved.getByRole('button', { name: 'Add Morning chai to lunch' }).click()
       await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
       await expect(popup.getByRole('region', { name: /^In lunch now/ })).toContainText('Eggs, Grade A')
