@@ -7,7 +7,8 @@
 #   npm run backup -- --out <dir>  somewhere other than BACKUP_DIR (default: ~/shumar-backups)
 #
 # The file is a tar of schema.sql, data.sql and manifest.txt, encrypted with AES-256 (gpg) and the
-# passphrase in BACKUP_PASSPHRASE or .env.local. Nothing about the backup is stored on GitHub.
+# passphrase from the password manager, typed in when asked (or BACKUP_PASSPHRASE). Nothing about
+# the backup is stored on GitHub.
 # Restore it with scripts/backup/restore.sh.
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
