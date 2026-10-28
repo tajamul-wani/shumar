@@ -42,6 +42,7 @@ describe('keptFiles', () => {
       file('/sitemap.xml'),
       file('/sw.js'),
       file('/brand/share-image.png'),
+      file('/screens/trends.png', new Uint8Array(80_000)),
       file('/assets/index-abc.js.map'),
       file('/assets/manrope-latin-400-normal-abc.woff'),
       file('/assets/manrope-cyrillic-400-normal-abc.woff2'),

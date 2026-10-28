@@ -22,6 +22,42 @@ export function darkBaseColor(indexCss: string): string {
   return color.toUpperCase()
 }
 
+/**
+ * Pictures of the app for the browser's install sheet: on Android, Chrome shows a fuller sheet
+ * with these instead of a one-line prompt. Taken from the real app with foods and amounts from
+ * USDA FoodData Central. Phones get the narrow ones, computers the wide one.
+ */
+export const MANIFEST_SCREENSHOTS = [
+  {
+    src: '/screens/today.png',
+    sizes: '780x1688',
+    type: 'image/png',
+    form_factor: 'narrow',
+    label: "Today: the day's calories, protein, carbs and fat",
+  },
+  {
+    src: '/screens/trends.png',
+    sizes: '780x1688',
+    type: 'image/png',
+    form_factor: 'narrow',
+    label: "Trends: the week's calories against the daily target",
+  },
+  {
+    src: '/screens/you.png',
+    sizes: '780x1688',
+    type: 'image/png',
+    form_factor: 'narrow',
+    label: 'You: the daily target and the details it comes from',
+  },
+  {
+    src: '/screens/today-wide.png',
+    sizes: '1440x900',
+    type: 'image/png',
+    form_factor: 'wide',
+    label: 'Today on a computer, with every meal and its foods',
+  },
+]
+
 export function webManifest(baseColor: string) {
   return {
     id: '/',
@@ -37,5 +73,6 @@ export function webManifest(baseColor: string) {
     theme_color: baseColor,
     categories: ['health', 'food'],
     icons: MANIFEST_ICONS,
+    screenshots: MANIFEST_SCREENSHOTS,
   }
 }
