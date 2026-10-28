@@ -334,9 +334,10 @@ for (const theme of ['dark', 'light'] as const) {
   }) => {
     const user = await createTestUser('saved')
     const api = apiClient(user.session.access_token)
+    // An hour apart: foods logged at the same moment have no set order, and the line below reads in order.
     const inserted = await api.from('user_logs').insert([
       { ...placeholder('breakfast', 'Test tea', 8, 100, 0), log_date: dayKey(1) },
-      { ...placeholder('breakfast', 'Test bread', 8, 200, 0), log_date: dayKey(1) },
+      { ...placeholder('breakfast', 'Test bread', 9, 200, 0), log_date: dayKey(1) },
     ])
     expect(inserted.error).toBeNull()
     try {
