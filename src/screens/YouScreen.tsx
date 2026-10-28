@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
+import { InstallCard } from '../components/InstallCard.tsx'
 import { buttonClass } from '../components/buttonStyles.ts'
 import { MacroTargets } from '../components/MacroTargets.tsx'
 import { stepPath } from '../firstRun/paths.ts'
@@ -391,6 +392,7 @@ export function YouScreen({ user }: { user: AccountUser }) {
             <DetailsCard />
           </div>
           <div className="flex min-w-0 flex-col gap-4">
+            <InstallCard place="you" />
             <Appearance />
             {yourData}
             <About />
@@ -400,6 +402,7 @@ export function YouScreen({ user }: { user: AccountUser }) {
         <div className="flex min-w-0 flex-col gap-4">
           {account}
           <TargetCard wide={false} />
+          <InstallCard place="you" />
           <Appearance />
           <DetailsCard />
           {yourData}

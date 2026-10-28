@@ -4,6 +4,7 @@ import { useAuth } from '../auth/context.ts'
 import { AddButton } from '../components/AddButton.tsx'
 import { Alert } from '../components/Alert.tsx'
 import { Button } from '../components/Button.tsx'
+import { InstallCard } from '../components/InstallCard.tsx'
 import { Logo } from '../components/Logo.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
@@ -258,6 +259,8 @@ export function TodayScreen() {
       {/* The day at a glance (with a note for the day beside it on wide screens), then the meals as
           cards: one column on phones, two across from 1024 px up. */}
       <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
+        {/* On phones and tablets, the offer to install the app, until it is installed or set aside. */}
+        <InstallCard place="today" className="lg:hidden" />
         <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-6">
           <div className="min-w-0 lg:col-span-8">{day}</div>
           <div className="min-w-0 lg:col-span-4">
