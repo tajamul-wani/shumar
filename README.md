@@ -64,7 +64,7 @@ src/
   lib/          Logic kept apart from the screens: nutrition math, targets, food search, logging
   auth/, theme/, profile/
                 The session, the theme and the first-run answers, shared with every screen
-public/         The favicon, app icons, logo and share image
+public/         The favicon, app icons, logo, share image and install sheet pictures
 scripts/        USDA importer, design-token check, security headers, search files, CI helpers
   backup/       Encrypted backup of the database, its restore, and the round-trip test
   service-worker/
@@ -93,9 +93,6 @@ Copy `.env.example` to `.env.local` and fill in the values (ask a maintainer). N
 | `VITE_SUPABASE_URL`             | The Supabase project address                                                        |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The Supabase publishable key. Never put the secret key here.                        |
 | `SITE_URL`                      | The site's own address, for search and share links. `http://localhost:5173` locally |
-| `LINEAR_API_KEY`                | Task tracking (maintainers only)                                                    |
-| `LINEAR_TEAM_KEY`               | Task tracking (maintainers only)                                                    |
-| `BACKUP_PASSPHRASE`             | Optional, and best left out: the backup asks for its passphrase (maintainers only)  |
 
 Start the local Supabase stack (the first run downloads its images), then the app at http://localhost:5173:
 
@@ -127,11 +124,11 @@ npm run dev
 
 The site is served by Cloudflare Workers as static assets, with no server code. `wrangler.jsonc` points at `dist/` and serves `index.html` for any address that is not a file, so the app's own screens open on a refresh or from a shared link. The build writes `dist/_headers` (the security policy and the `noindex` rules) from `scripts/security-headers.ts` and `scripts/seo.ts`, and Cloudflare applies it to every response.
 
-Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler@4.151.1 deploy`. Wrangler is pinned there rather than installed as a dependency, so its own tooling stays out of this project's dependency tree and its audit. `main` only moves through merged pull requests, which need CI to pass first. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables in the Cloudflare dashboard; none of them is a secret. The Supabase project's redirect list names the live address, so Google sign-in works there and on this machine only.
+Deploys run through Cloudflare's Workers Builds, connected to this repository: every push to `main` runs `npm run build` and then `npx wrangler@4.151.1 deploy`, with Wrangler pinned there rather than installed as a dependency. The build needs `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` and `SITE_URL` (the live address, with `https`) as build variables; none of them is a secret.
 
 ### Backups
 
-`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters. The passphrase lives in the maintainers' password manager, and the script asks for it with the typing hidden, so it never sits on the same machine as the backups (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly, and before every migration is pushed to the hosted database. Nothing about a backup is ever committed or uploaded to GitHub.
+`npm run backup` dumps the hosted database through the Supabase CLI login: people's accounts, answers and food logs, and the catalog. The tables the migrations write (the USDA tables, the search words and the picks) and sign-in sessions are left out. It bundles the dump with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters, which the script asks for with the typing hidden (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file is written to `~/shumar-backups`, or to `BACKUP_DIR`.
 
 To restore, apply the migrations first (`npx supabase db reset` for the local stack, `npx supabase db push` on a fresh project), then `npm run restore -- <file> --local` or `npm run restore -- <file> --db-url <address>`. The load runs as one transaction and ends by checking every table's row count against the manifest. `npm run test:backup` is that round trip on the local stack, and CI runs it with the database tests.
 
@@ -146,15 +143,15 @@ To restore, apply the migrations first (`npx supabase db reset` for the local st
 Shumār is a single-page React app. The data lives in Supabase, and row-level security keeps each person's data private.
 
 - **Loading:** `src/App.tsx` loads the signed-out pages (`src/firstRun/`) and the signed-in app (`src/SignedInApp.tsx`) as separate files, so each visitor downloads only the half they use.
-- **Signed out**, `src/firstRun/` shows the home page and the public sources and privacy pages, asks the first-run questions and shows the daily target. The answers stay on the device until sign-in and are wiped at sign-out.
+- **Signed out:** `src/firstRun/` holds the home page, the public sources and privacy pages, and the first-run questions. The answers stay on the device until sign-in and are wiped at sign-out.
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
-- **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
-- **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows. Tapping a day opens its logs as they were saved.
+- **Food search** is one database function, `search_foods(query)`: our own catalog first, then the everyday picks (`search_picks`, the USDA foods shown first for common searches), then other USDA foods. The app keeps the day's searches on the device.
+- **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
 - **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each) with triggers in `supabase/migrations/20261027120000_storage_limits.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
-- **Your data:** Download my data builds one JSON file in the browser from the person's own rows. Delete my account calls `delete_my_account()`, which removes the account; the profile and logs go with it through the cascade.
-- **Installing:** `npm run build` writes `manifest.webmanifest` from `src/shell/site.ts`, the dark base color in `src/index.css`, the app icons and pictures of the app for the install sheet (`public/screens/`, taken from the app with USDA foods; `scripts/manifest.ts`), so phones and computers can add Shumār to the home screen. The app offers it too (`src/lib/install.ts`, `src/components/InstallCard.tsx`): it keeps the browser's install offer, so a button opens the browser's own dialog where there is one, and shows the two Safari steps on an iPhone or iPad, on Today on phones and tablets and on the You screen, until the app is installed. A browser that can't install it (Brave, Firefox or an app's own browser on Android, or anything but Safari on an iPhone) is pointed to Chrome or Safari, with a link to copy.
-- **Offline:** the build writes `sw.js` from `scripts/service-worker/`. It keeps this version's page, scripts, styles, Latin fonts and icons, opens every screen from them without a connection, and never answers a request for another site, so Supabase and sign-in always go to the network and nothing personal is stored. `src/lib/serviceWorker.ts` registers it in the built app only, never on the dev server, and when a new version has installed, the app says so with a Refresh button (`src/components/UpdateNotice.tsx`); until then the open page keeps its own version.
+- **Your data:** the data download is one JSON file built in the browser from the person's own rows. Deleting an account calls `delete_my_account()`, which removes the account; the profile, logs and saved meals go with it through the cascade.
+- **Installing:** `npm run build` writes `manifest.webmanifest` (`scripts/manifest.ts`) from `src/shell/site.ts`, with the app icons and the install sheet's pictures in `public/screens/`. `src/lib/install.ts` keeps the browser's install offer for the app's own install button (`src/components/InstallCard.tsx`) and works out which browsers can't install.
+- **Offline:** the build writes `sw.js` from `scripts/service-worker/`. It keeps this version's page, scripts, styles, Latin fonts and icons, opens every screen from them without a connection, and never answers a request for another site, so Supabase and sign-in always go to the network and nothing personal is stored. `src/lib/serviceWorker.ts` registers it in the built app only, never on the dev server, and tells `src/components/UpdateNotice.tsx` when a new version is ready.
 - **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
 | Table              | Holds                                                                         | Who can access it                             |
@@ -169,8 +166,9 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 | `usda_foods`       | About 7,100 USDA foods, per 100 g                                             | Signed-in people can read                     |
 | `usda_portions`    | USDA household portions in grams                                              | Signed-in people can read                     |
 | `search_synonyms`  | Local food words mapped to USDA wording                                       | Signed-in people can read                     |
+| `search_picks`     | Everyday searches and the USDA foods they show first                          | Signed-in people can read                     |
 
-To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`.
+To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`. The everyday picks name SR Legacy foods, and the same test checks each one is still loaded.
 
 ## How the numbers are worked out
 
@@ -197,7 +195,7 @@ nutrient = value per 100 g × grams ÷ 100
 - A log keeps the values worked out when it was saved, so a later change to a food never rewrites anyone's history.
 - Values keep full precision and are rounded only for display: whole kcal and mg, macros to one decimal place.
 - The day's totals add up its logs. The sodium alert shows past 2,000 mg a day, the World Health Organization's limit for adults.
-- Values come only from named sources: our own measured recipes for Kashmiri dishes, and USDA FoodData Central. The importer leaves out foods with a missing value and flags foods whose calories are more than 20% off their protein, carbs and fat at 4, 4 and 9 kcal per gram.
+- Values come only from named sources: USDA FoodData Central, and measured recipes for the Kashmiri catalog. The importer leaves out foods with a missing value and flags foods whose calories are more than 20% off their protein, carbs and fat at 4, 4 and 9 kcal per gram.
 
 ### Daily targets
 
@@ -281,7 +279,7 @@ Colors, fonts, type sizes and weights are tokens in `src/index.css`, used throug
 
 Type sizes: `text-caption` (12 px), `text-body-sm` (14), `text-body` (16), `text-title` (20), `text-heading` (24), `text-display` (32, or 40 from tablets) and `text-hero` (36, or 48 from tablets, for the home page heading only). Weights: 400, 500 and 600. All text uses Manrope.
 
-The logo, app icons, favicon and share image are drawn from these tokens by `npm run brand` (`scripts/brand/`). The mark is the day as a saffron hexagon that fills up, around the protein, carbs and fat drops, with the name beside it. The name's outline comes from Manrope, shaped once with HarfBuzz by `scripts/brand/outline-text.mjs`.
+The logo, app icons, favicon and share image are drawn from these tokens by `npm run brand` (`scripts/brand/`). The name's outline comes from Manrope, shaped once with HarfBuzz by `scripts/brand/outline-text.mjs`.
 
 ## Contributing
 

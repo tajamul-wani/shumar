@@ -5,10 +5,10 @@
 # stores no files, so the storage schema stays out, as do the platform's own schemas.
 SCHEMAS='auth,public'
 
-# Tables left out of the data dump. The USDA tables and the search words are written by the
+# Tables left out of the data dump. The USDA tables, the search words and the picks are written by the
 # migrations, so a restore gets them from `supabase db push` or `supabase db reset`; the auth
 # tables here hold sign-in sessions and audit noise, which nobody needs back (people sign in again).
-EXCLUDED_TABLES='public.usda_foods,public.usda_portions,public.usda_releases,public.search_synonyms,auth.audit_log_entries,auth.flow_state,auth.sessions,auth.refresh_tokens,auth.mfa_amr_claims,auth.one_time_tokens'
+EXCLUDED_TABLES='public.usda_foods,public.usda_portions,public.usda_releases,public.search_synonyms,public.search_picks,auth.audit_log_entries,auth.flow_state,auth.sessions,auth.refresh_tokens,auth.mfa_amr_claims,auth.one_time_tokens'
 
 MIN_PASSPHRASE_LENGTH=24
 

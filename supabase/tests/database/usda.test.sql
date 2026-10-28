@@ -1,11 +1,12 @@
 -- USDA foods and food search: only signed-in people can read the USDA tables or search,
--- nobody can change them through the API, and search ranks our own catalog first, handles
--- words still being typed and simple typos, and can't be tricked by special characters.
+-- nobody can change them through the API, and search ranks our own catalog first, then the
+-- everyday picks in their order, handles words still being typed and simple typos, and can't
+-- be tricked by special characters.
 -- The fixture rows use the made-up word "kxtest" so they never collide with real foods.
 -- They are placeholders, not nutrition data, and everything is rolled back.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(43);
 
 insert into public.usda_releases (id, dataset, file_name, file_sha256, imported_on)
 values ('kxtest-release', 'sr_legacy_food', 'kxtest.zip', repeat('a', 64), '2026-10-21');
@@ -18,10 +19,19 @@ values
   (990003, 'kxtest-release', 'Kxtest chicken, breast, roasted', 'Test', 1, 1, 1, 1, 1, true),
   (990004, 'kxtest-release', 'Kxtest yogurt, plain', 'Test', 1, 1, 1, 1, 1, false),
   (990005, 'kxtest-release', 'Kxtest oil, teaseed', 'Test', 1, 1, 1, 1, 1, false),
-  (990006, 'kxtest-release', 'Kxtest beverages, tea, brewed', 'Test', 1, 1, 1, 1, 1, false);
+  (990006, 'kxtest-release', 'Kxtest beverages, tea, brewed', 'Test', 1, 1, 1, 1, 1, false),
+  -- The same name as 990004, as when Foundation Foods and SR Legacy both list a food.
+  (990007, 'kxtest-release', 'Kxtest yogurt, plain', 'Test', 2, 2, 2, 2, 2, false);
 
 insert into public.usda_portions (fdc_id, unit_name, grams)
 values (990001, '1 cup', 158);
+
+-- Picks: rice first for "kxtest" (it would come last on its own); yogurt, then rice milk, for
+-- "kxtest pick", a search no food's name matches; yogurt for "kxtest yogurt", which has a
+-- namesake; and a pick whose food isn't loaded.
+insert into public.search_picks (term, position, fdc_id)
+values ('kxtest', 1, 990001), ('kxtest pick', 1, 990004), ('kxtest pick', 2, 990002), ('kxtest gone', 1, 999999),
+       ('kxtest yogurt', 1, 990004);
 
 insert into public.kashmiri_foods (id, name, aliases, category, kcal_per_100g, protein_per_100g,
                                    carbs_per_100g, fat_per_100g, source)
@@ -36,6 +46,8 @@ select ok((select relrowsecurity from pg_class where oid = 'public.usda_releases
 select ok((select relrowsecurity from pg_class where oid = 'public.usda_foods'::regclass), 'RLS is on for usda_foods');
 select ok((select relrowsecurity from pg_class where oid = 'public.usda_portions'::regclass), 'RLS is on for usda_portions');
 select ok((select relrowsecurity from pg_class where oid = 'public.search_synonyms'::regclass), 'RLS is on for search_synonyms');
+select has_table('public', 'search_picks', 'search_picks exists');
+select ok((select relrowsecurity from pg_class where oid = 'public.search_picks'::regclass), 'RLS is on for search_picks');
 select has_function('public', 'search_foods', array['text', 'integer'], 'search_foods(text, integer) exists');
 select ok(not has_function_privilege('anon', 'public.search_foods(text, integer)', 'execute'), 'visitors cannot search');
 select ok(has_function_privilege('authenticated', 'public.search_foods(text, integer)', 'execute'), 'signed-in people can search');
@@ -45,6 +57,7 @@ set local role anon;
 select throws_ok('select count(*) from public.usda_foods', '42501', null, 'a visitor cannot read USDA foods');
 select throws_ok('select count(*) from public.usda_portions', '42501', null, 'a visitor cannot read USDA portions');
 select throws_ok('select count(*) from public.search_synonyms', '42501', null, 'a visitor cannot read search synonyms');
+select throws_ok('select count(*) from public.search_picks', '42501', null, 'a visitor cannot read search picks');
 select throws_ok($$select * from public.search_foods('kxtest rice')$$, '42501', null, 'a visitor cannot search');
 reset role;
 
@@ -74,6 +87,23 @@ select is((select name from public.search_foods('kxtest tea') where source = 'us
           'a whole word beats a word that only starts with the search (tea before teaseed)');
 select throws_ok($$insert into public.search_synonyms (term, usda_words) values ('kxtest', 'rice')$$,
                  '42501', null, 'a signed-in person cannot add search synonyms');
+select throws_ok($$insert into public.search_picks (term, position, fdc_id) values ('kxtest', 2, 990005)$$,
+                 '42501', null, 'a signed-in person cannot add search picks');
+
+-- Everyday picks
+select is((select name from public.search_foods('kxtest') where source = 'usda' limit 1), 'Kxtest rice, white, cooked',
+          'a picked food comes right after our own catalog');
+select is((select count(*)::int from public.search_foods('kxtest') where name = 'Kxtest rice, white, cooked'), 1,
+          'a picked food shows once, not again among the other results');
+select results_eq($$select name from public.search_foods('kxtest pick') where source = 'usda'$$,
+                  array['Kxtest yogurt, plain', 'Kxtest beverages, rice milk'],
+                  'picks come in their order, and no spelling guesses are added after them');
+select is((select name from public.search_foods('kxtest picks') where source = 'usda' limit 1), 'Kxtest yogurt, plain',
+          'a plural finds the picks of its singular');
+select results_eq($$select source_id from public.search_foods('kxtest yogurt') where name = 'Kxtest yogurt, plain'$$,
+                  array['990004'], 'a food with the same name as a pick is left out, so the pick shows once');
+select is((select count(*)::int from public.search_foods('kxtest gone') where source_id = '999999'), 0,
+          'a pick whose food is not loaded is left out');
 select is((select count(*)::int from public.search_foods('kxtest rice') where source = 'usda'), 2,
           'every USDA food with the words is found');
 select is((select name from public.search_foods('kxtest chiken') where source = 'usda' limit 1), 'Kxtest chicken, breast, roasted',
