@@ -165,6 +165,25 @@ test('a search made earlier today is answered on the device after a reload', asy
   expect(requests).toBe(1)
 })
 
+test('everyday words find the food as eaten first, and two-word names find it too', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.goto('/log')
+  const search = page.getByRole('searchbox', { name: 'Search foods' })
+  const first = page
+    .getByRole('list', { name: 'Search results' })
+    .getByRole('listitem')
+    .first()
+    .getByRole('button')
+    .first()
+
+  await search.fill('rice')
+  await expect(first).toHaveAccessibleName(
+    /^Rice, white, long-grain, regular, unenriched, cooked without salt/,
+  )
+  await search.fill('moong dal')
+  await expect(first).toHaveAccessibleName(/^Mung beans, mature seeds, cooked, boiled/)
+})
+
 test('the log sheet header stays on one line on a 320 px phone, even for evening tea', async ({ page }) => {
   await signInAs(page, readTestUsers().a.session)
   await page.setViewportSize({ width: 320, height: 640 })

@@ -131,7 +131,7 @@ Deploys run through Cloudflare's Workers Builds, connected to this repository: e
 
 ### Backups
 
-`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables and the search words come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters. The passphrase lives in the maintainers' password manager, and the script asks for it with the typing hidden, so it never sits on the same machine as the backups (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly, and before every migration is pushed to the hosted database. Nothing about a backup is ever committed or uploaded to GitHub.
+`npm run backup` dumps the hosted database through the Supabase CLI login (people's accounts, answers and food logs, and the catalog; the USDA tables, the search words and the picks come from the migrations and are left out, as are sign-in sessions), bundles it with the schema and a manifest of row counts, and encrypts the bundle with AES-256 under a passphrase of at least 24 characters. The passphrase lives in the maintainers' password manager, and the script asks for it with the typing hidden, so it never sits on the same machine as the backups (`BACKUP_PASSPHRASE` can supply it instead, as the tests do). The file lands in `~/shumar-backups` (or `BACKUP_DIR`) and is then copied to a store away from the machine. Maintainers run it weekly, and before every migration is pushed to the hosted database. Nothing about a backup is ever committed or uploaded to GitHub.
 
 To restore, apply the migrations first (`npx supabase db reset` for the local stack, `npx supabase db push` on a fresh project), then `npm run restore -- <file> --local` or `npm run restore -- <file> --db-url <address>`. The load runs as one transaction and ends by checking every table's row count against the manifest. `npm run test:backup` is that round trip on the local stack, and CI runs it with the database tests.
 
@@ -148,7 +148,7 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Loading:** `src/App.tsx` loads the signed-out pages (`src/firstRun/`) and the signed-in app (`src/SignedInApp.tsx`) as separate files, so each visitor downloads only the half they use.
 - **Signed out**, `src/firstRun/` shows the home page and the public sources and privacy pages, asks the first-run questions and shows the daily target. The answers stay on the device until sign-in and are wiped at sign-out.
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
-- **Food search** is one database function, `search_foods(query)`: our own catalog first, then USDA foods. The app keeps the day's searches on the device.
+- **Food search** is one database function, `search_foods(query)`: our own catalog first, then the everyday picks (the USDA foods shown first for words such as rice, curd or moong dal, cooked where food is eaten cooked), then other USDA foods. The app keeps the day's searches on the device.
 - **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows. Tapping a day opens its logs as they were saved.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
 - **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each) with triggers in `supabase/migrations/20261027120000_storage_limits.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
@@ -169,8 +169,9 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 | `usda_foods`       | About 7,100 USDA foods, per 100 g                                             | Signed-in people can read                     |
 | `usda_portions`    | USDA household portions in grams                                              | Signed-in people can read                     |
 | `search_synonyms`  | Local food words mapped to USDA wording                                       | Signed-in people can read                     |
+| `search_picks`     | Everyday searches and the USDA foods they show first                          | Signed-in people can read                     |
 
-To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`.
+To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`. The everyday picks name SR Legacy foods, and the same test checks each one is still loaded.
 
 ## How the numbers are worked out
 
