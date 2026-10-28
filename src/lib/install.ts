@@ -4,10 +4,17 @@ import { deviceStorage } from './deviceStorage.ts'
  * Offering to install the app. Browsers that can install it (Chrome and Edge, on Android and on
  * computers) fire `beforeinstallprompt` once the page qualifies; the app keeps that event so a
  * button can open the browser's own install dialog later, in one tap. iPhones and iPads have no
- * such dialog, so there the app shows the two Safari steps instead. Once the app is installed, or
- * opened from the home screen, there is nothing to offer.
+ * such dialog, so there the app shows the two Safari steps instead. Browsers that can't install it
+ * at all are pointed to one that can. Once the app is installed, or opened from the home screen,
+ * there is nothing to offer.
+ *
+ * - 'prompt': the browser's own install dialog
+ * - 'ios': Safari on an iPhone or iPad, with its two steps
+ * - 'ios-other': another browser on an iPhone or iPad, pointed to Safari
+ * - 'elsewhere': an Android browser that can't install it (Brave, Firefox, or an app's own browser), pointed to Chrome
+ * - 'none': nothing to offer
  */
-export type InstallMode = 'prompt' | 'ios' | 'none'
+export type InstallMode = 'prompt' | 'ios' | 'ios-other' | 'elsewhere' | 'none'
 
 /** The browser's install offer: not in TypeScript's own types, as only some browsers have it. */
 interface InstallPromptEvent extends Event {
@@ -20,6 +27,8 @@ type Listener = () => void
 let offer: InstallPromptEvent | null = null
 let installed = false
 const listeners = new Set<Listener>()
+/** Who wants to know the moment the app has just been installed: the message that says where it went. */
+const installedListeners = new Set<Listener>()
 
 function changed() {
   for (const listener of listeners) listener()
@@ -40,7 +49,14 @@ export function watchInstall(target: Pick<Window, 'addEventListener'> = window):
     installed = true
     offer = null
     changed()
+    for (const listener of installedListeners) listener()
   })
+}
+
+/** Calls the listener when the browser reports the app installed. Returns a way to stop. */
+export function onAppInstalled(listener: Listener): () => void {
+  installedListeners.add(listener)
+  return () => installedListeners.delete(listener)
 }
 
 /** Calls the listener whenever what can be offered changes. Returns a way to stop. */
@@ -50,7 +66,10 @@ export function onInstallChange(listener: Listener): () => void {
 }
 
 interface Device {
-  navigator: Pick<Navigator, 'userAgent' | 'platform' | 'maxTouchPoints'> & { standalone?: boolean }
+  navigator: Pick<Navigator, 'userAgent' | 'platform' | 'maxTouchPoints'> & {
+    standalone?: boolean
+    brave?: unknown
+  }
   matchMedia: (query: string) => Pick<MediaQueryList, 'matches'>
 }
 
@@ -64,11 +83,41 @@ export function isAppleMobile(nav: Device['navigator']): boolean {
   return /iPhone|iPad|iPod/.test(nav.userAgent) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1)
 }
 
+/**
+ * Safari itself on an iPhone or iPad. Other browsers there add their own name (CriOS, FxiOS,
+ * EdgiOS, OPiOS), and an app's own browser leaves out the Safari word.
+ */
+export function isSafari(nav: Device['navigator']): boolean {
+  return /Safari\//.test(nav.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(nav.userAgent)
+}
+
+/**
+ * An Android browser that can't install the app: Brave (which only adds a link to the home
+ * screen), Firefox, and the browsers inside apps such as WhatsApp or Instagram (Android marks
+ * those "wv", for web view).
+ */
+export function cannotInstallOnAndroid(nav: Device['navigator']): boolean {
+  if (!/Android/.test(nav.userAgent)) return false
+  return (
+    Boolean(nav.brave) || /Firefox\//.test(nav.userAgent) || /; wv\)|FBAN|FBAV|Instagram/.test(nav.userAgent)
+  )
+}
+
 /** What the app can offer on this device right now. */
 export function installMode(device: Device = window): InstallMode {
   if (installed || isStandalone(device)) return 'none'
-  if (offer) return 'prompt'
-  return isAppleMobile(device.navigator) ? 'ios' : 'none'
+  if (isAppleMobile(device.navigator)) return isSafari(device.navigator) ? 'ios' : 'ios-other'
+  if (cannotInstallOnAndroid(device.navigator)) return 'elsewhere'
+  return offer ? 'prompt' : 'none'
+}
+
+/**
+ * A link that asks Android to open this page in Chrome. If Chrome isn't there, Android falls back
+ * to the page's own address.
+ */
+export function chromeLink(href: string): string {
+  const url = new URL(href)
+  return `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(url.href)};end`
 }
 
 /**
@@ -113,4 +162,5 @@ export function resetInstall(): void {
   offer = null
   installed = false
   listeners.clear()
+  installedListeners.clear()
 }

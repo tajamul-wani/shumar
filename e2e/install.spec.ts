@@ -96,3 +96,66 @@ for (const theme of ['dark', 'light'] as const) {
     expect(await cspViolations(page)).toEqual([])
   })
 }
+
+test.describe('in Brave on Android, which only adds a link to the home screen', () => {
+  test.use({
+    userAgent:
+      'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36',
+  })
+
+  test('points to Chrome, with a link that opens Chrome and one to copy', async ({
+    page,
+    browserName,
+  }, info) => {
+    const wide = info.project.name === 'desktop'
+    const user = await createTestUser('install-brave')
+    // Brave marks itself this way; its address-bar name is the same as Chrome's.
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'brave', { value: { isBrave: async () => true } }),
+    )
+    if (browserName === 'chromium')
+      await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await watchCsp(page)
+    await signInAs(page, user.session)
+    await page.goto(wide ? '/you' : '/')
+    const card = page.getByRole('region', { name: 'Install Shumār from Chrome' })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText("This browser can't add Shumār as an app.")
+    expect(await card.getByRole('link', { name: 'Open in Chrome' }).getAttribute('href')).toMatch(
+      /^intent:\/\/127\.0\.0\.1:4173\/#Intent;scheme=https;package=com\.android\.chrome;/,
+    )
+    await card.getByRole('button', { name: 'Copy link' }).click()
+    // Chromium lets the test copy; where copying is refused, the address shows to copy by hand.
+    await expect(page.getByText('Link copied').or(card.getByText('http://127.0.0.1:4173/'))).toBeVisible()
+    const blocking = await accessibilityViolations(page)
+    expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+    expect(await cspViolations(page)).toEqual([])
+  })
+})
+
+for (const width of [320, 360]) {
+  test(`says where the app went once installed, on one line above the add button, at ${width} px`, async ({
+    page,
+  }, info) => {
+    const user = await createTestUser('installed')
+    await signInAs(page, user.session)
+    await page.setViewportSize({ width, height: 640 })
+    await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeAttached()
+    await page.evaluate(() => window.dispatchEvent(new Event('appinstalled')))
+    for (const words of ['Added to your home screen']) {
+      const text = page.getByText(words)
+      await expect(text).toBeVisible()
+      // One line: the text is no taller than a single line of the toast's type.
+      const [height, lineHeight] = await text.evaluate((el) => [
+        el.getBoundingClientRect().height,
+        parseFloat(getComputedStyle(el).lineHeight),
+      ])
+      expect(height, `${info.project.name}: ${words}`).toBeLessThanOrEqual(lineHeight * 1.2)
+      // Clear of the round add button, which stays free to press.
+      const toast = await page.getByRole('status').filter({ hasText: words }).boundingBox()
+      const add = await page.getByRole('button', { name: 'Add food' }).nth(1).boundingBox()
+      expect(toast!.y + toast!.height, `${info.project.name}: ${words}`).toBeLessThanOrEqual(add!.y)
+    }
+  })
+}

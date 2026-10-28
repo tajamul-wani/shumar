@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { INSTALL_DISMISSED_KEY, resetInstall, watchInstall } from '../lib/install.ts'
+import { InstallNotice } from './InstallNotice.tsx'
 import { InstallCard } from './InstallCard.tsx'
 
 const IPHONE =
@@ -108,5 +109,78 @@ describe('on an iPhone or iPad', () => {
       </>,
     )
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+})
+
+const CHROME_IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0 Mobile/15E148 Safari/604.1'
+const ANDROID =
+  'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36'
+
+describe('in a browser that cannot install the app', () => {
+  it('points Brave on Android to Chrome, with a link that opens Chrome and one to copy', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      userAgent: ANDROID,
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+      brave: {},
+    })
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<InstallCard place="today" />)
+    const card = screen.getByRole('region', { name: 'Install Shumār from Chrome' })
+    expect(card).toHaveTextContent(
+      "This browser can't add Shumār as an app. Open this page in Chrome, then tap Install.",
+    )
+    expect(screen.getByRole('link', { name: 'Open in Chrome' }).getAttribute('href')).toMatch(
+      /^intent:\/\/localhost:\d+\/#Intent;scheme=https;package=com\.android\.chrome;/,
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/`)
+    expect(await screen.findByText('Link copied')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument()
+  })
+
+  it('shows the address to copy by hand when copying is refused', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      userAgent: ANDROID,
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+      brave: {},
+      clipboard: { writeText: async () => Promise.reject(new Error('blocked')) },
+    })
+    render(<InstallCard place="you" />)
+    await userEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(await screen.findByText(`${window.location.origin}/`)).toBeInTheDocument()
+  })
+
+  it('points Chrome on an iPhone to Safari, with the steps and the link to copy', () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      userAgent: CHROME_IPHONE,
+      platform: 'iPhone',
+      maxTouchPoints: 5,
+    })
+    render(<InstallCard place="you" />)
+    const card = screen.getByRole('region', { name: 'Install Shumār from Safari' })
+    expect(card).toHaveTextContent('Open this page in Safari, then:')
+    expect(screen.getByRole('list')).toHaveTextContent('Add to Home Screen')
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open in Chrome' })).not.toBeInTheDocument()
+  })
+})
+
+describe('InstallNotice', () => {
+  it('says where the app went once the browser reports it installed', () => {
+    const handlers: Record<string, (event: Event) => void> = {}
+    watchInstall({
+      addEventListener: (type: string, handler: (event: Event) => void) => (handlers[type] = handler),
+    } as unknown as Window)
+    render(<InstallNotice />)
+    expect(screen.queryByText('Added to your home screen')).not.toBeInTheDocument()
+    act(() => handlers.appinstalled(new Event('appinstalled')))
+    expect(screen.getByText('Added to your home screen')).toBeInTheDocument()
   })
 })

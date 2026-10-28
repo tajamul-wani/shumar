@@ -148,7 +148,8 @@ describe('signed out', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Your daily tally, built for Kashmiri food.' }),
     ).toBeInTheDocument()
-    expect(document.title).toBe(SITE_TITLE)
+    // The title is set just after a lazily loaded screen appears, so wait for it.
+    await waitFor(() => expect(document.title).toBe(SITE_TITLE))
 
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(fake.auth.signInWithOAuth).toHaveBeenCalledWith({
@@ -182,7 +183,7 @@ describe('the app shell', () => {
   it('opens on Today with the date and both navigations', async () => {
     await signedIn()
     expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeInTheDocument()
-    expect(document.title).toBe('Today · Shumār')
+    await waitFor(() => expect(document.title).toBe('Today · Shumār'))
     for (const nav of screen.getAllByRole('navigation', { name: 'Main' })) {
       expect(
         within(nav)

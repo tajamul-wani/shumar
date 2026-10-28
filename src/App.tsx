@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { useAuth } from './auth/context.ts'
+import { InstallNotice } from './components/InstallNotice.tsx'
 import { LoadingMark } from './components/LoadingMark.tsx'
 import { UpdateNotice } from './components/UpdateNotice.tsx'
 
@@ -26,8 +27,9 @@ export default function App() {
   return (
     <>
       <Suspense fallback={<Loading />}>{session ? <SignedInApp session={session} /> : <FirstRun />}</Suspense>
-      {/* Signed in, phones have the round add button in the toast's corner. */}
-      <UpdateNotice besideAddButton={session !== null} />
+      {/* Rare, one-off notices take the whole line above the add button, so their words fit on one line. */}
+      <UpdateNotice />
+      <InstallNotice />
     </>
   )
 }

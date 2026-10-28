@@ -107,4 +107,14 @@ describe('Toast', () => {
     wait(5000)
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
+
+  it('on phones sits beside the round add button, or above it when it needs the whole line', () => {
+    const { container, rerender } = render(
+      <Toast message={first} duration={5000} onDismiss={() => undefined} besideAddButton />,
+    )
+    expect(container.firstElementChild).toHaveClass('bottom-above-tab-bar', 'right-24')
+    rerender(<Toast message={first} duration={5000} onDismiss={() => undefined} aboveAddButton />)
+    expect(container.firstElementChild).toHaveClass('bottom-above-add-button', 'right-4')
+    expect(container.firstElementChild).not.toHaveClass('bottom-above-tab-bar')
+  })
 })
