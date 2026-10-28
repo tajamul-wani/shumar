@@ -60,8 +60,9 @@ select matches((select name from public.search_foods('beef') limit 1), '^Beef, c
 select is((select name from public.search_foods('mooli') limit 1), 'Radishes, oriental, raw',
           '"mooli" finds the long white radish');
 select results_eq($$select name from public.search_foods('chicken', 2)$$,
-                  array['Chicken, broilers or fryers, meat only, raw', 'Chicken, broilers or fryers, meat and skin, raw'],
-                  '"chicken" offers broiler chicken without skin, then with skin');
+                  array['Chicken, broilers or fryers, meat only, raw',
+                        'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw'],
+                  '"chicken" offers skinless broiler meat, whole and then breast, as broilers are sold here');
 select is((select name from public.search_foods('salt') limit 1), 'Salt, table', '"salt" finds table salt, for the sodium');
 select is((select name from public.search_foods('red chilli powder') limit 1), 'Spices, pepper, red or cayenne',
           '"red chilli powder" finds plain ground red chilli, not the American chili powder blend');

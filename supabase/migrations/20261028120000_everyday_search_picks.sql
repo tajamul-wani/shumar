@@ -31,13 +31,14 @@ select term, food.position, food.fdc_id
 from (values
   -- Rice, white, long-grain, regular, unenriched: cooked without salt, then raw. Rice here isn't enriched.
   (array['rice', 'white rice', 'chawal'], array[169757, 169756]),
-  -- Broiler chicken. Skin changes the calories a lot, so both come, skinless first.
-  -- Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw; Chicken, broilers or
-  -- fryers, breast, meat and skin, raw; then breast, meat only, cooked, roasted
-  (array['chicken breast'], array[171077, 171474, 171477]),
-  -- Chicken, broilers or fryers, meat only, raw (the whole bird); meat and skin, raw; then the
-  -- skinless breast, raw and roasted
-  (array['chicken', 'broiler', 'murgh'], array[171052, 171447, 171077, 171477]),
+  -- Broiler chicken is sold without skin here, so skinless meat comes first; with skin comes last,
+  -- for anyone who buys it that way.
+  -- Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw; breast, meat only,
+  -- cooked, roasted; then Chicken, broilers or fryers, breast, meat and skin, raw
+  (array['chicken breast'], array[171077, 171477, 171474]),
+  -- Chicken, broilers or fryers, meat only, raw (the whole bird); the skinless breast, raw and
+  -- roasted; then Chicken, broilers or fryers, meat and skin, raw
+  (array['chicken', 'broiler', 'murgh'], array[171052, 171077, 171477, 171447]),
   (array['whole chicken'], array[171052, 171447]),
   -- Yogurt, plain, whole milk
   (array['curd', 'dahi', 'yogurt', 'yoghurt'], array[171284]),
