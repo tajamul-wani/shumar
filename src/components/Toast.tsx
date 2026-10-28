@@ -38,6 +38,11 @@ interface ToastProps {
    * need the whole line never covers the button.
    */
   aboveAddButton?: boolean
+  /**
+   * In the page's own flow instead of floating at the foot of the screen: in the Add food popup it
+   * sits just under the search box, where the eyes already are.
+   */
+  inline?: boolean
 }
 
 const TONES = {
@@ -62,6 +67,7 @@ export function Toast({
   actionRef,
   besideAddButton = false,
   aboveAddButton = false,
+  inline = false,
 }: ToastProps) {
   // The message being used right now. A new message starts unpaused, even if the button that held
   // focus disappeared without a blur event.
@@ -107,14 +113,18 @@ export function Toast({
 
   return (
     <div
-      className={`pointer-events-none fixed left-4 z-20 flex justify-end lg:right-6 lg:bottom-6 lg:left-auto lg:w-96 ${onPhones}`}
+      className={
+        inline
+          ? 'flex'
+          : `pointer-events-none fixed left-4 z-20 flex justify-end lg:right-6 lg:bottom-6 lg:left-auto lg:w-96 ${onPhones}`
+      }
     >
       <output
         ref={regionRef}
         className={
           tone
             ? // Thin and wide: 48 px tall, centered beside the 60 px add button on phones, 384 px wide on wide screens.
-              `pointer-events-auto flex min-h-12 w-full items-center gap-2.5 rounded-xl border-l-4 bg-koshur-border py-0.5 pr-1 pl-3 text-body-sm text-koshur-silk ${aboveAddButton ? '' : 'mb-1.5 lg:mb-0'} ${tone.edge}`
+              `pointer-events-auto flex min-h-12 w-full items-center gap-2.5 rounded-xl border-l-4 bg-koshur-border py-0.5 pr-1 pl-3 text-body-sm text-koshur-silk ${inline || aboveAddButton ? '' : 'mb-1.5 lg:mb-0'} ${tone.edge}`
             : 'sr-only'
         }
       >

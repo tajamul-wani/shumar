@@ -333,7 +333,7 @@ export function LogSheet({
             onRemoveFood={(food) => removeSavedFood(saved, food)}
             onRemove={() => removeSaved(saved)}
           />
-          <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />
+          <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} inline={dialog} />
         </div>
       </SheetFillContext.Provider>
     )
@@ -461,6 +461,8 @@ export function LogSheet({
           )}
         </div>
 
+        {/* In the popup, what was just added shows here, under the search box (Tajamul Wani, 28 October 2026). */}
+        {dialog && <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} inline />}
         {error && <Alert>{error}</Alert>}
         <output className="sr-only">{searchAnnouncement(search)}</output>
 
@@ -514,7 +516,7 @@ export function LogSheet({
         ) : (
           <SearchResults search={search} onOpen={open} withPlus={dialog} />
         )}
-        <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />
+        {!dialog && <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />}
       </div>
     </SheetFillContext.Provider>
   )
