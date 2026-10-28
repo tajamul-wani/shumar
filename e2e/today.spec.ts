@@ -163,6 +163,17 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     const popup = page.getByRole('dialog', { name: 'Add food' })
     await expect(popup).toBeVisible()
     await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    // On phones and tablets it fills the screen, with a clear Close button (Tajamul Wani, 28 October 2026).
+    await expect(popup.getByRole('button', { name: 'Close' })).toHaveText('Close')
+    if (!wide) {
+      const viewport = page.viewportSize()
+      expect(await popup.boundingBox()).toEqual({
+        x: 0,
+        y: 0,
+        width: viewport?.width,
+        height: viewport?.height,
+      })
+    }
     await popup.getByRole('button', { name: 'Lunch', exact: true }).click()
     await expect(popup.getByRole('button', { name: 'Lunch', exact: true })).toHaveAttribute(
       'aria-pressed',
@@ -179,6 +190,14 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     ).toBeFocused()
     await popup.getByRole('button', { name: 'Add to lunch' }).click()
     await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
+    // The confirmation shows right under the search box, where the eyes are.
+    const added = popup.getByText('Added to lunch')
+    await expect(added).toBeVisible()
+    const searchBox = await popup.getByRole('searchbox', { name: 'Search foods' }).boundingBox()
+    const addedBox = await added.boundingBox()
+    expect(
+      addedBox && searchBox && addedBox.y > searchBox.y && addedBox.y - (searchBox.y + searchBox.height) < 80,
+    ).toBe(true)
     const inMeal = popup.getByRole('region', { name: /^In lunch now/ })
     await expect(inMeal).toContainText('Eggs, Grade A, Large, egg whole')
     await popup.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
@@ -315,9 +334,10 @@ for (const theme of ['dark', 'light'] as const) {
   }) => {
     const user = await createTestUser('saved')
     const api = apiClient(user.session.access_token)
+    // An hour apart: foods logged at the same moment have no set order, and the line below reads in order.
     const inserted = await api.from('user_logs').insert([
       { ...placeholder('breakfast', 'Test tea', 8, 100, 0), log_date: dayKey(1) },
-      { ...placeholder('breakfast', 'Test bread', 8, 200, 0), log_date: dayKey(1) },
+      { ...placeholder('breakfast', 'Test bread', 9, 200, 0), log_date: dayKey(1) },
     ])
     expect(inserted.error).toBeNull()
     try {

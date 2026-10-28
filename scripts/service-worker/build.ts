@@ -15,7 +15,10 @@ export interface BuiltFile {
 /** Images bigger than this stay online only, such as the home page's screenshots. */
 export const MAX_KEPT_IMAGE_BYTES = 100_000
 
-/** Files for crawlers, link previews, Cloudflare or the worker itself, never shown by the app. */
+/**
+ * Files for crawlers, link previews, Cloudflare or the worker itself, never shown by the app. The
+ * pictures in /screens/ are for the browser's install sheet only, so they stay online too.
+ */
 const NEVER_KEPT = new Set([
   '/_headers',
   '/robots.txt',
@@ -42,7 +45,7 @@ function size(content: Uint8Array | string): number {
 export function keptFiles(files: readonly BuiltFile[]): BuiltFile[] {
   return files
     .filter(({ path, content }) => {
-      if (NEVER_KEPT.has(path) || path.endsWith('.map')) return false
+      if (NEVER_KEPT.has(path) || path.endsWith('.map') || path.startsWith('/screens/')) return false
       if (/\.woff2?$/.test(path)) return KEPT_FONT.test(path)
       if (/\.(png|jpe?g|webp|gif|ico|svg)$/.test(path)) return size(content) <= MAX_KEPT_IMAGE_BYTES
       return /\.(html|js|css|webmanifest)$/.test(path)

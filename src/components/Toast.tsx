@@ -33,6 +33,16 @@ interface ToastProps {
   actionRef?: Ref<HTMLButtonElement>
   /** On phones, sit beside the round add button instead of using the full width. */
   besideAddButton?: boolean
+  /**
+   * On phones, take the full width just above the round add button, so a rare notice whose words
+   * need the whole line never covers the button.
+   */
+  aboveAddButton?: boolean
+  /**
+   * In the page's own flow instead of floating at the foot of the screen: in the Add food popup it
+   * sits just under the search box, where the eyes already are.
+   */
+  inline?: boolean
 }
 
 const TONES = {
@@ -43,10 +53,11 @@ const TONES = {
 
 /**
  * A short one-line message: at the bottom right on wide screens, and on phones in the bottom strip
- * the add button already uses, so it covers nothing new. Its own fill (the border color) sets it
- * apart from both the page and the cards; its colored edge and icon say what happened, while red
- * stays for alerts and errors. It closes by itself, but waits while it is touched, hovered or
- * focused. The live region is always there, so each message is read out, with its detail.
+ * the add button already uses, so it covers nothing new (a rare notice that needs the whole line
+ * sits just above the button). Its own fill (the border color) sets it apart from both the page
+ * and the cards; its colored edge and icon say what happened, while red stays for alerts and errors.
+ * It closes by itself, but waits while it is touched, hovered or focused. The live region is always
+ * there, so each message is read out, with its detail.
  */
 export function Toast({
   message,
@@ -55,6 +66,8 @@ export function Toast({
   action,
   actionRef,
   besideAddButton = false,
+  aboveAddButton = false,
+  inline = false,
 }: ToastProps) {
   // The message being used right now. A new message starts unpaused, even if the button that held
   // focus disappeared without a blur event.
@@ -92,17 +105,26 @@ export function Toast({
 
   const tone = message ? TONES[message.tone] : null
   const Icon = tone?.icon
+  const onPhones = besideAddButton
+    ? 'bottom-above-tab-bar right-24'
+    : aboveAddButton
+      ? 'bottom-above-add-button right-4'
+      : 'bottom-above-tab-bar right-4'
 
   return (
     <div
-      className={`pointer-events-none fixed bottom-above-tab-bar left-4 z-20 flex justify-end lg:right-6 lg:bottom-6 lg:left-auto lg:w-96 ${besideAddButton ? 'right-24' : 'right-4'}`}
+      className={
+        inline
+          ? 'flex'
+          : `pointer-events-none fixed left-4 z-20 flex justify-end lg:right-6 lg:bottom-6 lg:left-auto lg:w-96 ${onPhones}`
+      }
     >
       <output
         ref={regionRef}
         className={
           tone
             ? // Thin and wide: 48 px tall, centered beside the 60 px add button on phones, 384 px wide on wide screens.
-              `pointer-events-auto mb-1.5 flex min-h-12 w-full items-center gap-2.5 rounded-xl border-l-4 bg-koshur-border py-0.5 pr-1 pl-3 text-body-sm text-koshur-silk lg:mb-0 ${tone.edge}`
+              `pointer-events-auto flex min-h-12 w-full items-center gap-2.5 rounded-xl border-l-4 bg-koshur-border py-0.5 pr-1 pl-3 text-body-sm text-koshur-silk ${inline || aboveAddButton ? '' : 'mb-1.5 lg:mb-0'} ${tone.edge}`
             : 'sr-only'
         }
       >

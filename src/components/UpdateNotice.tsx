@@ -9,7 +9,7 @@ const SHOWN_FOR_MS = 20_000
  * Says when a new version of the app is ready, with Refresh to use it. Until then the page keeps
  * running the version it opened with, so nothing a person is in the middle of is lost.
  */
-export function UpdateNotice({ besideAddButton }: { besideAddButton: boolean }) {
+export function UpdateNotice() {
   const [message, setMessage] = useState<ToastMessage | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const nextId = useRef(0)
@@ -33,7 +33,7 @@ export function UpdateNotice({ besideAddButton }: { besideAddButton: boolean }) 
       message={message}
       duration={SHOWN_FOR_MS}
       onDismiss={() => setMessage(null)}
-      besideAddButton={besideAddButton}
+      aboveAddButton
       action={{
         label: 'Refresh',
         busy: refreshing,

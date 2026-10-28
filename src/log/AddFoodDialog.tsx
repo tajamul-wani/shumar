@@ -234,22 +234,19 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
       ref={ref}
       aria-labelledby={headingId}
       onClose={onDialogClose}
-      className="fixed inset-x-0 top-14 bottom-0 m-0 flex h-auto max-h-none w-full max-w-none flex-col overflow-hidden rounded-t-2xl border border-koshur-border bg-koshur-surface p-0 text-koshur-silk shadow-none backdrop:bg-koshur-base/70 open:flex lg:inset-auto lg:top-1/2 lg:left-1/2 lg:max-h-dvh lg:w-full lg:max-w-3xl lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl"
+      className="fixed inset-0 m-0 flex h-auto max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-koshur-surface p-0 text-koshur-silk shadow-none backdrop:bg-koshur-base/70 open:flex lg:inset-auto lg:top-1/2 lg:left-1/2 lg:max-h-dvh lg:w-full lg:max-w-3xl lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:border lg:border-koshur-border"
     >
       {
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-4 pb-6 sm:px-6 sm:pt-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-sheet pb-sheet sm:px-6 lg:pt-6 lg:pb-6">
           <div className="flex items-center gap-3">
             <h2 id={headingId} className="m-0 min-w-0 flex-1 text-title font-semibold">
               Add food
             </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className={`flex size-11 shrink-0 items-center justify-center rounded-xl text-koshur-muted ${FOCUS_RING}`}
-            >
-              <X aria-hidden="true" size={24} strokeWidth={2} className="size-5 sm:size-6" />
-            </button>
+            {/* A clear way out: a bordered button with its name, not a faint cross (Tajamul Wani, 28 October 2026). */}
+            <Button variant="secondary" size="small" onClick={onClose} className="shrink-0">
+              <X aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
+              Close
+            </Button>
           </div>
 
           <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 border-0 p-0">
@@ -312,7 +309,7 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
               setNotice({ id: noticeId.current, text: `Saved ${savedName}`, tone: 'added' })
             }}
           />
-          <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} />
+          <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} inline />
 
           <div className="flex justify-end">
             <Button size="small" onClick={onClose}>

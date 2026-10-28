@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { SITE_DESCRIPTION, SITE_IMAGE_ALT, SITE_NAME, SITE_TITLE } from '../src/shell/site.ts'
-import { MANIFEST_ICONS } from '../scripts/manifest.ts'
+import { MANIFEST_ICONS, MANIFEST_SCREENSHOTS } from '../scripts/manifest.ts'
 import { cspViolations, watchCsp } from './support.ts'
 
 // What the page's head and the site's own files give browsers, phones, search engines and link
@@ -162,7 +162,10 @@ test('can be installed: the manifest is linked, served as a manifest, and names 
     display: 'standalone',
     icons: MANIFEST_ICONS,
   })
-  for (const icon of manifest.icons as { src: string }[]) {
-    expect((await request.get(icon.src)).status(), icon.src).toBe(200)
+  expect(manifest.screenshots).toEqual(MANIFEST_SCREENSHOTS)
+  for (const file of [...manifest.icons, ...manifest.screenshots] as { src: string }[]) {
+    const served = await request.get(file.src)
+    expect(served.status(), file.src).toBe(200)
+    expect(served.headers()['content-type'], file.src).toMatch(/^image\/png/)
   }
 })

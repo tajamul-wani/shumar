@@ -147,6 +147,17 @@ input[type='search']::-webkit-search-cancel-button {
 @utility bottom-above-tab-bar {
   bottom: calc(5rem + max(1.25rem, env(safe-area-inset-bottom)));
 }
+/* Just above the add button (3.75rem tall), with a 0.75rem gap, for a notice that needs the full width. */
+@utility bottom-above-add-button {
+  bottom: calc(9.5rem + max(1.25rem, env(safe-area-inset-bottom)));
+}
+/* The Add food popup fills a phone's screen, so its content clears the status bar and the home bar. */
+@utility pt-sheet {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+@utility pb-sheet {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
 /* Room at the end of each phone screen, so the add button (3.75rem tall, above the tab bar) never
    covers content: its top edge plus a 1rem gap. */
 @utility pb-clear-add-button {
