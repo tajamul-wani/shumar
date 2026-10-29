@@ -96,6 +96,8 @@ interface FoodDetailProps {
   error: string | null
   /** Shown above the unit, such as the meal when changing a logged food. */
   children?: ReactNode
+  /** A second button under the main one, such as Remove when changing a logged food. */
+  secondaryAction?: ReactNode
   onBack: () => void
   /** quantity is NaN when the amount typed isn't a number, so the log check explains it. */
   onSubmit: (unit: FoodUnit, quantity: number) => void
@@ -113,6 +115,7 @@ export function FoodDetail({
   saving,
   error,
   children,
+  secondaryAction,
   onBack,
   onSubmit,
 }: FoodDetailProps) {
@@ -275,9 +278,12 @@ export function FoodDetail({
 
       {error && <Alert>{error}</Alert>}
 
-      <Button onClick={submit} disabled={saving} className="w-full">
-        {saving ? busyLabel : actionLabel}
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button onClick={submit} disabled={saving} className="w-full">
+          {saving ? busyLabel : actionLabel}
+        </Button>
+        {secondaryAction}
+      </div>
     </>
   )
 }

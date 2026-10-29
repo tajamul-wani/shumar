@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test'
 import { DAILY_NOTES } from '../src/lib/notes.ts'
 import {
   FIRST_RUN_ANSWERS,
+  apiClient,
+  createTestUser,
   FIRST_RUN_SCREENS,
   SCREENS,
   THEMES,
@@ -64,3 +66,70 @@ for (const theme of THEMES) {
     })
   }
 }
+
+// Today's meal cards and the search results show only with food, so each is swept with some.
+test('Today with meals, and search results, leave no word alone on a line', async ({ page }) => {
+  const user = await createTestUser('orphans-meals')
+  const api = apiClient(user.session.access_token)
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  // Placeholder logs with long and short names: they only fill the cards and are not nutrition data.
+  const food = (
+    meal: string,
+    name: string,
+    hour: number,
+    quantity: number,
+    unitName: string,
+    grams: number,
+  ) => ({
+    log_date: today,
+    logged_at: new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour).toISOString(),
+    meal,
+    food_name: name,
+    food_source: 'usda',
+    quantity,
+    unit_name: unitName,
+    grams,
+    kcal: 155,
+    protein: 12.5,
+    carbs: 1,
+    fat: 10.5,
+    sodium_mg: 120,
+  })
+  const inserted = await api
+    .from('user_logs')
+    .insert([
+      food('breakfast', 'Test egg, whole, cooked, hard-boiled', 8, 2, '1 large', 100),
+      food('breakfast', 'Test tea', 8, 1, '1 cup', 240),
+      food('breakfast', 'Test tea', 8, 1, '1 cup', 240),
+      food(
+        'lunch',
+        'Test rice, white, long-grain, regular, unenriched, cooked without salt',
+        13,
+        150,
+        'g',
+        150,
+      ),
+    ])
+  expect(inserted.error).toBeNull()
+  try {
+    await signInAs(page, user.session)
+    await page.goto('/')
+    await expect(page.getByRole('region', { name: 'Meals' })).toContainText('Test tea')
+    for (const size of WIDTHS) {
+      await page.setViewportSize(size)
+      expect.soft(await loneWords(page), `Today with meals at ${size.width} px`).toEqual([])
+    }
+
+    await page.goto('/log')
+    await page.getByRole('searchbox', { name: 'Search foods' }).fill('egg')
+    await expect(page.getByRole('list', { name: 'Search results' })).toBeVisible()
+    for (const size of WIDTHS) {
+      await page.setViewportSize(size)
+      expect.soft(await loneWords(page), `search results at ${size.width} px`).toEqual([])
+    }
+  } finally {
+    await api.from('user_logs').delete().eq('user_id', user.session.user.id)
+  }
+})

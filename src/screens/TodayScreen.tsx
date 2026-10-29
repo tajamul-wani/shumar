@@ -7,7 +7,7 @@ import { Button } from '../components/Button.tsx'
 import { InstallCard } from '../components/InstallCard.tsx'
 import { Logo } from '../components/Logo.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
-import { removeLog, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
+import { parseLoggedFood, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { LogError } from '../lib/logs.ts'
@@ -33,6 +33,12 @@ function messageFrom(failure: unknown, fallback: string): string {
 }
 
 const mealName = (food: LoggedFood) => mealPhrase(food.meal)
+
+/** A food just removed on its edit page, which comes back here with it so Today can offer Undo. */
+function removedOnArrival(): LoggedFood | null {
+  const state = history.state as { removedLog?: unknown } | null
+  return state?.removedLog ? parseLoggedFood(state.removedLog) : null
+}
 
 function DaysLogged({ count }: { count: number }) {
   return (
@@ -85,15 +91,21 @@ export function TodayScreen() {
   const profile = useProfile()
   const answered = profile.answers && toProfile(profile.answers)
   const targets = answered ? dailyTargets(answered) : null
+  // Read once as the screen opens: a food removed on its edit page, to say so and offer Undo.
+  const [arrived] = useState(removedOnArrival)
   // The food just removed, kept so Undo can put it back exactly as it was.
-  const [removed, setRemoved] = useState<LoggedFood | null>(null)
-  const [removing, setRemoving] = useState(false)
+  const [removed, setRemoved] = useState<LoggedFood | null>(arrived)
   const [restoring, setRestoring] = useState(false)
-  const [toast, setToast] = useState<ToastMessage | null>(null)
-  const toastId = useRef(0)
+  const [toast, setToast] = useState<ToastMessage | null>(
+    arrived && {
+      id: 1,
+      text: 'Removed',
+      tone: 'removed',
+      detail: `${arrived.foodName} from ${mealName(arrived)}`,
+    },
+  )
+  const toastId = useRef(1)
   const [actionError, setActionError] = useState<string | null>(null)
-  // Settles true once the last removal is saved, false if it failed. Undo waits for it.
-  const pendingRemoval = useRef<Promise<boolean>>(Promise.resolve(true))
   const undoRef = useRef<HTMLButtonElement>(null)
   const mealsHeadingRef = useRef<HTMLHeadingElement>(null)
 
@@ -102,46 +114,24 @@ export function TodayScreen() {
     setToast({ id: toastId.current, text, tone, detail })
   }
 
-  // After a removal, focus goes to Undo, so a keyboard can reverse it at once.
   useEffect(() => {
-    if (removed) undoRef.current?.focus()
-  }, [removed])
-
-  async function remove(food: LoggedFood) {
-    setActionError(null)
-    update((current) => current.filter((log) => log.id !== food.id))
-    setRemoved(food)
-    showToast('Removed', 'removed', `${food.foodName} from ${mealName(food)}`)
-    setRemoving(true)
-    const saved = removeLog(client, food.id).then(
-      () => true,
-      (failure: unknown) => {
-        update((current) => [...current, food].sort(byTime))
-        setRemoved(null)
-        setToast(null)
-        setActionError(
-          messageFrom(failure, "We couldn't remove this food. Check your connection and try again."),
-        )
-        return false
-      },
-    )
-    pendingRemoval.current = saved
-    if (await saved) refreshDays()
-    setRemoving(false)
-  }
+    if (!arrived) return
+    // Forgotten at once, so a reload or going back and forward never offers it again.
+    history.replaceState(null, '')
+    // Focus goes to Undo, so a keyboard can reverse it at once. The shell puts focus on the new
+    // screen's heading after this runs, so Undo takes it a frame later.
+    requestAnimationFrame(() => undoRef.current?.focus())
+  }, [arrived])
 
   async function undo() {
     if (!removed || restoring) return
     setActionError(null)
     setRestoring(true)
-    // Undo can be tapped before the removal is saved: wait for it, and if it failed the food is already back.
-    if (!(await pendingRemoval.current)) {
-      setRestoring(false)
-      return
-    }
     try {
       const restored = await restoreLog(client, removed)
-      update((current) => [...current, restored].sort(byTime))
+      // Tapped before the day had loaded, the food may be missing from what loads, so load it again.
+      if (logs) update((current) => [...current, restored].sort(byTime))
+      else reload()
       showToast('Put back', 'added', `${removed.foodName} in ${mealName(removed)}`)
       setRemoved(null)
       refreshDays()
@@ -207,8 +197,7 @@ export function TodayScreen() {
             groups={meals}
             dayKcal={totals.kcal}
             showTimes
-            busy={removing}
-            onRemove={remove}
+            editable
             onAdd={openAddFood}
             headingRef={mealsHeadingRef}
           />
@@ -237,7 +226,9 @@ export function TodayScreen() {
           <div className="mb-4 lg:hidden">
             <Logo decorative className="h-8 w-auto" />
           </div>
-          <p className="m-0 text-body text-koshur-muted lg:text-body-sm">{formatDayHeading(today)}</p>
+          <p className="m-0 text-body text-balance! text-koshur-muted lg:text-body-sm">
+            {formatDayHeading(today)}
+          </p>
           <h1
             tabIndex={-1}
             className="sr-only m-0 text-heading font-semibold focus:outline-none lg:not-sr-only"

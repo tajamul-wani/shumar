@@ -2,7 +2,6 @@ import { Check, Plus } from 'lucide-react'
 import {
   amountLabel,
   amountWithGrams,
-  formatNumber,
   isEstimate,
   nutrientsFor,
   showsVerified,
@@ -10,6 +9,7 @@ import {
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { useSheetFill } from './fill.ts'
+import { FoodValues } from './FoodValues.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -41,7 +41,6 @@ export function FoodRow({
 }: FoodRowProps) {
   const amount = amountLabel(quantity, unit)
   const values = nutrientsFor(food, quantity, unit)
-  const estimate = isEstimate(food)
   const fill = useSheetFill()
   const tag = sourceTag(food)
   return (
@@ -52,18 +51,14 @@ export function FoodRow({
         className={`flex min-h-11 min-w-0 flex-1 flex-col items-start gap-1 rounded-xl text-left ${FOCUS_RING}`}
       >
         <span className="text-body-sm font-medium text-koshur-silk sm:text-body">{food.name}</span>
-        {/* Protein first, then calories, then how much they are for (Tajamul Wani, 29 October 2026). */}
         <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-caption text-koshur-muted">
-          <span>
-            <span className="text-body-sm font-semibold text-koshur-silk">
-              {formatNumber(values?.protein ?? 0)} g
-            </span>{' '}
-            protein · {estimate ? 'about ' : ''}
-            <span className="text-body-sm font-semibold text-koshur-silk">
-              {formatNumber(values?.kcal ?? 0)}
-            </span>{' '}
-            kcal · <span className="whitespace-nowrap">{amountWithGrams(quantity, unit)}</span>
-          </span>
+          {values && (
+            <FoodValues
+              nutrients={values}
+              amount={amountWithGrams(quantity, unit)}
+              about={isEstimate(food)}
+            />
+          )}
           {tag && (
             <>
               {' '}

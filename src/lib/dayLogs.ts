@@ -46,6 +46,17 @@ export function parseLoggedFood(value: unknown): LoggedFood | null {
   return { id, logDate, loggedAt, meal, ...food }
 }
 
+/** A log as its user_logs row, to hand to another screen and read back there with parseLoggedFood. */
+export function logRow(log: LoggedFood) {
+  return {
+    id: log.id,
+    log_date: log.logDate,
+    logged_at: log.loggedAt,
+    meal: log.meal,
+    ...foodAmountColumns(log),
+  }
+}
+
 function parseRows(rows: unknown): LoggedFood[] {
   if (!Array.isArray(rows)) return []
   return rows.map(parseLoggedFood).filter((log): log is LoggedFood => log !== null)

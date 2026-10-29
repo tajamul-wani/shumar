@@ -1,87 +1,67 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
 import { useId, type Ref } from 'react'
 import { Link } from 'wouter'
-import { AmountChip } from '../components/AmountChip.tsx'
-import type { LoggedFood } from '../lib/dayLogs.ts'
 import { formatMealTime } from '../lib/dates.ts'
-import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
+import { amountWithGrams } from '../lib/foodDisplay.ts'
 import { mealLabel, mealPhrase, type Meal } from '../lib/meals.ts'
 import { biggestMeal, groupMealFoods, type FoodEntry, type MealGroup } from '../lib/today.ts'
+import { FoodValues } from '../log/FoodValues.tsx'
 import { editLogPath } from '../shell/nav.ts'
 import { Amounts, Kcal, MacroBar } from './amounts.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
-// Edit and Remove are icon buttons beside the food, 44 px targets with 16 px icons.
-const ACTION_BUTTON = `inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border bg-koshur-base text-koshur-silk transition-colors hover:border-deficit-ring hover:text-deficit-ring disabled:opacity-60 ${FOCUS_RING}`
-
-interface EntryItemProps {
-  entry: FoodEntry
-  busy: boolean
-  /** Without it the list is read only, as on a past day opened from Trends. */
-  onRemove?: (food: LoggedFood) => void
-}
 
 /**
  * One food in a meal: its name (with a count when the same food in the same amount was logged more
- * than once), the amount as a chip, its sodium, its calories, and Edit and Remove.
+ * than once), then its protein, calories and amount. On Today the whole row opens the food to
+ * change it or remove it (option A, approved by Tajamul Wani on 29 October 2026); on a past day it
+ * is read only.
  */
-function EntryItem({ entry, busy, onRemove }: EntryItemProps) {
+function EntryItem({ entry, editable }: { entry: FoodEntry; editable: boolean }) {
   const count = entry.logs.length
-  // The latest one, so Edit and Remove act on the one most likely added by mistake.
+  // The latest one, so a tap changes the one most likely added by mistake.
   const food = entry.logs[count - 1]
-  const amount = amountLabel(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })
-  const one = count > 1 ? 'one ' : ''
-  return (
-    <li className="flex items-center gap-3 border-t border-koshur-border py-3">
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body-sm text-koshur-silk">
-          <span>{food.foodName}</span>
-          {count > 1 && (
-            <>
-              <span
-                aria-hidden="true"
-                className="inline-flex items-center rounded-full bg-koshur-border px-2 py-0.5 text-caption font-semibold text-koshur-silk"
-              >
-                ×{count}
-              </span>
-              <span className="sr-only">{count} times, </span>
-            </>
-          )}
-        </p>
-        {/* The spaces keep the parts apart when read aloud; the gap spaces them on screen. */}
-        <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-caption text-koshur-muted">
-          <AmountChip>
-            {amount}
-            {count > 1 ? ' each' : ''}
-          </AmountChip>{' '}
-          <Kcal value={entry.totals.kcal} size="caption" />{' '}
-          <span className="whitespace-nowrap">
-            Sodium{' '}
-            <span className="font-semibold text-koshur-silk">
-              {formatNumber(Math.round(entry.totals.sodiumMg))} mg
+  const amount = amountWithGrams(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })
+  const content = (
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body-sm text-koshur-silk">
+        <span>{food.foodName}</span>
+        {count > 1 && (
+          <>
+            <span
+              aria-hidden="true"
+              className="inline-flex items-center rounded-full bg-koshur-border px-2 py-0.5 text-caption font-semibold text-koshur-silk"
+            >
+              ×{count}
             </span>
-          </span>
-        </p>
-      </div>
-      {onRemove && (
-        <div className="flex shrink-0 gap-2">
-          <Link
-            href={editLogPath(food.id)}
-            aria-label={`Edit ${one}${food.foodName}`}
-            className={ACTION_BUTTON}
-          >
-            <Pencil aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
-          </Link>
-          <button
-            type="button"
-            onClick={() => onRemove(food)}
-            disabled={busy}
-            aria-label={`Remove ${one}${food.foodName}`}
-            className={ACTION_BUTTON}
-          >
-            <Trash2 aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
-          </button>
-        </div>
+            <span className="sr-only">, {count} times</span>
+          </>
+        )}
+      </span>
+      <span className="text-caption text-koshur-muted">
+        <span className="sr-only">,</span>{' '}
+        <FoodValues nutrients={entry.totals} amount={count > 1 ? `${amount} each` : amount} />
+      </span>
+    </span>
+  )
+  return (
+    <li className="border-t border-koshur-border">
+      {editable ? (
+        <Link
+          href={editLogPath(food.id)}
+          className={`flex min-h-11 items-center gap-3 rounded-xl py-3 ${FOCUS_RING}`}
+        >
+          {content}
+          <span className="sr-only">, change or remove{count > 1 ? ' one' : ''}</span>
+          <ChevronRight
+            aria-hidden="true"
+            size={20}
+            strokeWidth={2}
+            className="size-4 shrink-0 text-koshur-muted"
+          />
+        </Link>
+      ) : (
+        <div className="flex py-3">{content}</div>
       )}
     </li>
   )
@@ -93,8 +73,7 @@ interface MealCardProps {
   dayKcal: number
   biggest: boolean
   showTime: boolean
-  busy: boolean
-  onRemove?: (food: LoggedFood) => void
+  editable: boolean
   onAdd?: (meal: Meal) => void
 }
 
@@ -102,7 +81,7 @@ interface MealCardProps {
  * A meal as a card: its name as a bordered tag, the time of its first food, its calories and share
  * of the day, a bar of its macros, every food listed, and a way to add to it.
  */
-function MealCard({ group, dayKcal, biggest, showTime, busy, onRemove, onAdd }: MealCardProps) {
+function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd }: MealCardProps) {
   const headingId = useId()
   const share = dayKcal > 0 ? Math.round((group.totals.kcal / dayKcal) * 100) : 0
   return (
@@ -138,7 +117,7 @@ function MealCard({ group, dayKcal, biggest, showTime, busy, onRemove, onAdd }: 
       <Amounts nutrients={group.totals} />
       <ul className="m-0 flex list-none flex-col p-0">
         {groupMealFoods(group.foods).map((entry) => (
-          <EntryItem key={entry.logs[0].id} entry={entry} busy={busy} onRemove={onRemove} />
+          <EntryItem key={entry.logs[0].id} entry={entry} editable={editable} />
         ))}
       </ul>
       {onAdd && (
@@ -161,9 +140,8 @@ interface MealCardsProps {
   dayKcal: number
   /** The time of each meal's first food. */
   showTimes?: boolean
-  /** While a removal is on its way, no other food can be removed. */
-  busy?: boolean
-  onRemove?: (food: LoggedFood) => void
+  /** Each food opens to be changed or removed. Without it the cards are read only, as on a past day. */
+  editable?: boolean
   /** Opens the Add food popup on that meal. Without it, as on a past day, cards have no add line. */
   onAdd?: (meal: Meal) => void
   headingRef?: Ref<HTMLHeadingElement>
@@ -174,8 +152,7 @@ export function MealCards({
   groups,
   dayKcal,
   showTimes = false,
-  busy = false,
-  onRemove,
+  editable = false,
   onAdd,
   headingRef,
 }: MealCardsProps) {
@@ -199,12 +176,16 @@ export function MealCards({
             dayKcal={dayKcal}
             biggest={group.meal === biggest}
             showTime={showTimes}
-            busy={busy}
-            onRemove={onRemove}
+            editable={editable}
             onAdd={onAdd}
           />
         ))}
       </div>
+      {editable && (
+        <p className="m-0 text-caption text-koshur-muted">
+          Tap a food to see all its values, change it or remove it.
+        </p>
+      )}
     </section>
   )
 }
