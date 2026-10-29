@@ -24,6 +24,7 @@ export function showsVerified(food: FoodResult): boolean {
 }
 
 export function sourceLabel(food: FoodResult): string {
+  if (food.source === 'mine') return 'Yours'
   return food.source === 'kashmiri' ? 'Kashmiri' : 'Ingredient'
 }
 
@@ -65,16 +66,21 @@ export function nutrientsFor(food: FoodResult, quantity: number, unit: FoodUnit)
 }
 
 /**
- * Reads what someone typed as an amount. Accepts "0.5" and "0,5" (some keyboards give a comma)
- * and "1,000". Returns null for anything that isn't a positive number.
+ * Reads a number someone typed. Accepts "0.5" and "0,5" (some keyboards give a comma) and
+ * "1,000". Returns null for anything that isn't a number of zero or more.
  */
-export function parseQuantity(input: string): number | null {
+export function parseDecimal(input: string): number | null {
   let text = input.trim().replace(/\s+/g, '')
   if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(text)) text = text.replace(/,/g, '')
   else if (/^\d*,\d+$/.test(text)) text = text.replace(',', '.')
   if (!/^\d*\.?\d+$/.test(text)) return null
-  const value = Number(text)
-  return value > 0 ? value : null
+  return Number(text)
+}
+
+/** Reads what someone typed as an amount, as parseDecimal does. Returns null unless it is above zero. */
+export function parseQuantity(input: string): number | null {
+  const value = parseDecimal(input)
+  return value !== null && value > 0 ? value : null
 }
 
 /** "Nun Chai 2 cups, Girda 1 piece": foods with the amounts they were logged or saved in, on one line. */

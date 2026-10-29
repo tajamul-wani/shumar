@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { FoodResult } from './foodSearch.ts'
-import { MAX_RECENT_FOODS, RECENT_FOODS_KEY, readRecentFoods, rememberFood } from './recentFoods.ts'
+import {
+  MAX_RECENT_FOODS,
+  RECENT_FOODS_KEY,
+  forgetFood,
+  readRecentFoods,
+  rememberFood,
+} from './recentFoods.ts'
 
 // Made-up foods for testing storage, not nutrition data.
 function food(id: string): FoodResult {
@@ -41,6 +47,16 @@ describe('recent foods', () => {
       ['1', 'g', 100],
     ])
     expect(readRecentFoods(storage)).toEqual(list)
+  })
+
+  it('forgets a food that changed, keeping the rest', () => {
+    const storage = memoryStorage()
+    rememberFood({ food: food('1'), unitName: 'g', quantity: 100 }, storage)
+    rememberFood({ food: { ...food('2'), source: 'mine' }, unitName: 'g', quantity: 50 }, storage)
+    expect(forgetFood({ source: 'mine', sourceId: '2' }, storage).map((r) => r.food.sourceId)).toEqual(['1'])
+    expect(readRecentFoods(storage).map((r) => r.food.sourceId)).toEqual(['1'])
+    // A food that isn't listed leaves the list as it was.
+    expect(forgetFood({ source: 'usda', sourceId: '9' }, storage)).toHaveLength(1)
   })
 
   it('moves a food added again to the front instead of listing it twice', () => {

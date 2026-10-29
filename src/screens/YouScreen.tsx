@@ -13,6 +13,7 @@ import { summarizeAccount, type AccountUser } from '../lib/account.ts'
 import { buildExport, confirmsDeletion, deleteAccount, exportFileName, saveFile } from '../lib/accountData.ts'
 import { signOut } from '../lib/auth.ts'
 import { fetchAllLogs } from '../lib/dayLogs.ts'
+import { fetchMyFoods } from '../lib/myFoods.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import {
   ANSWER_LABELS,
@@ -142,9 +143,9 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
     setBusy('download')
     setError(null)
     try {
-      const logs = await fetchAllLogs(client)
+      const [logs, myFoods] = await Promise.all([fetchAllLogs(client), fetchMyFoods(client)])
       const now = new Date()
-      saveFile(exportFileName(now), JSON.stringify(buildExport(user, answers, logs, now), null, 2))
+      saveFile(exportFileName(now), JSON.stringify(buildExport(user, answers, logs, myFoods, now), null, 2))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "We couldn't prepare your file. Try again.")
     } finally {

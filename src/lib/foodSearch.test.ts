@@ -195,6 +195,37 @@ describe('createFoodSearch', () => {
   })
 })
 
+describe('forgetting the kept searches', () => {
+  it('asks the database again, after a food of their own changed', async () => {
+    const storage = memoryStorage()
+    const fake = fakeClient(() => ({ data: [row()], error: null }))
+    const search = createFoodSearch(fake.client, { storage, userId: 'a', now: morning })
+    await search.search('rice')
+    search.forget()
+    expect(JSON.parse(storage.items.get(SEARCH_CACHE_KEY) ?? '{}').searches).toEqual([])
+    await search.search('rice')
+    expect(fake.rpc).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not keep an answer that was asked for before it forgot', async () => {
+    // The first search waits until the test answers it; later ones are answered at once.
+    let answer: ((result: RpcResult) => void) | null = null
+    const fake = fakeClient(() =>
+      answer === null
+        ? new Promise<RpcResult>((resolve) => (answer = resolve))
+        : { data: [row()], error: null },
+    )
+    const search = createFoodSearch(fake.client, { storage: memoryStorage(), userId: 'a', now: morning })
+    const asked = search.search('rice')
+    await Promise.resolve()
+    search.forget()
+    answer!({ data: [row()], error: null })
+    await expect(asked).resolves.toHaveLength(1)
+    await search.search('rice')
+    expect(fake.rpc).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe("keeping the day's searches", () => {
   async function searchOnce(storage: ReturnType<typeof memoryStorage>, options = {}) {
     const fake = fakeClient(() => ({ data: [row()], error: null }))
@@ -291,6 +322,13 @@ describe("keeping the day's searches", () => {
     expect(localStorage.getItem(SEARCH_CACHE_KEY)).toContain('Test food, cooked')
     clearUserData()
     expect(localStorage.getItem(SEARCH_CACHE_KEY)).toBeNull()
+  })
+})
+
+describe('a food of their own', () => {
+  it('comes through search like any other food', () => {
+    const [food] = parseResults([row({ source: 'mine', source_id: 'm1', name: 'Test cheese (Test brand)' })])
+    expect(food).toMatchObject({ source: 'mine', sourceId: 'm1', name: 'Test cheese (Test brand)' })
   })
 })
 

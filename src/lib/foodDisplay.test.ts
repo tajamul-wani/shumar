@@ -6,6 +6,7 @@ import {
   formatNumber,
   isEstimate,
   nutrientsFor,
+  parseDecimal,
   parseQuantity,
   quantityStep,
   showsVerified,
@@ -55,6 +56,7 @@ describe('estimates and sources', () => {
   it('names the source the way the design does', () => {
     expect(sourceLabel(food())).toBe('Ingredient')
     expect(sourceLabel(food({ source: 'kashmiri' }))).toBe('Kashmiri')
+    expect(sourceLabel(food({ source: 'mine' }))).toBe('Yours')
   })
 })
 
@@ -123,6 +125,15 @@ describe('parseQuantity', () => {
 
   it.each(['', '0', '-1', 'abc', '1.2.3', '1e3', '2 cups'])('refuses "%s"', (input) => {
     expect(parseQuantity(input)).toBeNull()
+  })
+})
+
+describe('parseDecimal', () => {
+  it('reads zero too, for a label that gives 0 g of something', () => {
+    expect(parseDecimal('0')).toBe(0)
+    expect(parseDecimal('0,5')).toBe(0.5)
+    expect(parseDecimal('-1')).toBeNull()
+    expect(parseDecimal('')).toBeNull()
   })
 })
 
