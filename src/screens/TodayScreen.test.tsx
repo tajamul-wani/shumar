@@ -484,7 +484,7 @@ describe('on wide screens', () => {
       sodium_mg_per_100g: 140,
       flagged: false,
       verified: true,
-      units: [{ name: '1 egg', grams: 50 }],
+      units: [{ name: '1 large', grams: 50 }],
     }
     const fake = renderToday()
     // The search chains abortSignal() on the request, as the real client allows.
@@ -705,7 +705,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
       sodium_mg_per_100g: 140,
       flagged: false,
       verified: true,
-      units: [{ name: '1 egg', grams: 50 }],
+      units: [{ name: '1 large', grams: 50 }],
     }
     const fake = renderToday(fakeClient({ logs: [], savedMeals: [morningChai] }))
     fake.rpc.mockImplementation((name: string) => {
@@ -730,7 +730,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
         position: 3,
         food_name: 'Test egg',
         quantity: 1,
-        unit_name: '1 egg',
+        unit_name: '1 large',
         grams: 50,
         kcal: 75,
       }),

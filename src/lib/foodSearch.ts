@@ -67,6 +67,13 @@ export function isFoodSource(value: unknown): value is FoodSource {
   return value === 'kashmiri' || value === 'mine' || value === 'usda'
 }
 
+/**
+ * A unit in ounces or pounds ("4 oz", "1 fl oz"), which grams cover. Only the name before any
+ * brackets counts, so "1 cup (8 fl oz)" and "1 slice (1 oz)" stay.
+ */
+const IMPERIAL = /\b(oz|lbs?)\b/i
+const isImperial = (name: string) => IMPERIAL.test(name.replace(/\([^)]*\)/g, ''))
+
 function parseUnits(value: unknown): FoodUnit[] {
   const units: FoodUnit[] = [GRAMS]
   if (!Array.isArray(value)) return units
@@ -74,7 +81,7 @@ function parseUnits(value: unknown): FoodUnit[] {
     const unit = raw as { name?: unknown; grams?: unknown }
     const name = text(unit?.name, 60)
     const grams = number(unit?.grams, Number.MIN_VALUE, 5000)
-    if (name && grams !== null && name !== GRAMS.name) units.push({ name, grams })
+    if (name && grams !== null && name !== GRAMS.name && !isImperial(name)) units.push({ name, grams })
   }
   return units
 }

@@ -122,6 +122,22 @@ describe('parseResults', () => {
     ])
   })
 
+  it('leaves out units in ounces and pounds, which grams already cover', () => {
+    const units = [
+      { name: '4 oz', grams: 113 },
+      { name: '1 fl oz', grams: 30 },
+      { name: '1 lb', grams: 454 },
+      { name: '1 large', grams: 50 },
+      // Ounces in the description in brackets don't make it a unit in ounces.
+      { name: '1 cup (8 fl oz)', grams: 244 },
+    ]
+    expect(parseResults([row({ units })])[0].units).toEqual([
+      { name: 'g', grams: 1 },
+      { name: '1 large', grams: 50 },
+      { name: '1 cup (8 fl oz)', grams: 244 },
+    ])
+  })
+
   it('gives grams only when units are missing, and treats odd flags as false', () => {
     const result = parseResults([row({ units: null, flagged: 'yes', verified: 1 })])[0]
     expect(result.units).toEqual([{ name: 'g', grams: 1 }])

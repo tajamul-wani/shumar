@@ -134,6 +134,9 @@ function SearchResults({ search, onOpen, withPlus, onAddFromPack }: SearchResult
   }
   return (
     <>
+      <p className="m-0 text-caption text-koshur-muted">
+        Tap a food to see all its values and choose how much.
+      </p>
       <ul aria-label="Search results" className={LIST}>
         {results.map((food) => {
           const chosen = chooseDefaults(food)

@@ -175,9 +175,11 @@ describe('searching', () => {
     const results = await screen.findByRole('list', { name: 'Search results' })
     expect(rpc).toHaveBeenCalledTimes(1)
     expect(rpc).toHaveBeenCalledWith('search_foods', { query: 'rice', max_results: 20 })
+    // A weighed food reads per 100 g, protein first, with no tag: USDA foods need none.
     expect(within(results).getByRole('listitem')).toHaveTextContent(
-      'Test rice, cooked1 cup 208 kcal Ingredient',
+      'Test rice, cooked2.5 g protein · 130 kcal · 100 g',
     )
+    expect(screen.getByText('Tap a food to see all its values and choose how much.')).toBeInTheDocument()
     expect(screen.getByText('1 food found')).toBeInTheDocument()
   })
 
@@ -256,8 +258,8 @@ describe('searching', () => {
     renderScreen(fakeClient({ rows: [stew, dish] }))
     await searchFor('test')
     const rows = within(await screen.findByRole('list', { name: 'Search results' })).getAllByRole('listitem')
-    expect(rows[0]).toHaveTextContent('100 g about 130 kcal Estimate')
-    expect(rows[1]).toHaveTextContent('100 g 130 kcal Kashmiri Verified')
+    expect(rows[0]).toHaveTextContent('2.5 g protein · about 130 kcal · 100 g Estimate')
+    expect(rows[1]).toHaveTextContent('2.5 g protein · 130 kcal · 100 g Kashmiri Verified')
   })
 })
 
@@ -275,8 +277,13 @@ describe('a chosen food', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['1 cup', 'Grams'])
-    expect(within(units).getByRole('button', { name: '1 cup' })).toHaveAttribute('aria-pressed', 'true')
+    // A USDA food that is weighed starts on grams.
+    expect(within(units).getByRole('button', { name: 'Grams' })).toHaveAttribute('aria-pressed', 'true')
     const quantity = screen.getByRole('textbox', { name: 'Quantity' })
+    expect(quantity).toHaveValue('100')
+    expect(screen.getByText('130')).toBeInTheDocument()
+
+    await userEvent.click(within(units).getByRole('button', { name: '1 cup' }))
     expect(quantity).toHaveValue('1')
     expect(quantity).toHaveAccessibleDescription('1 cup is 160 g')
     expect(screen.getByText('208')).toBeInTheDocument()
@@ -308,7 +315,7 @@ describe('a chosen food', () => {
     expect(heading()).toHaveFocus()
     expect(screen.getByText('Added to dinner')).toBeInTheDocument()
     expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Add 1.5 × 1 cup Test rice, cooked' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add 1.5 cups Test rice, cooked' })).toBeInTheDocument()
     expect(localStorage.getItem(RECENT_FOODS_KEY)).toContain('Test rice, cooked')
   })
 
@@ -316,6 +323,7 @@ describe('a chosen food', () => {
     const { insert } = renderScreen()
     await searchFor('rice')
     await openFood('Test rice, cooked')
+    await userEvent.click(screen.getByRole('button', { name: '1 cup' }))
     await userEvent.click(screen.getByRole('button', { name: 'Grams' }))
     const quantity = screen.getByRole('textbox', { name: 'Quantity' })
     expect(quantity).toHaveValue('100')
@@ -334,10 +342,13 @@ describe('a chosen food', () => {
   })
 
   it('shows the first few units as chips, with the rest on request, and grams always', async () => {
-    const units = ['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs'].map((name, i) => ({
-      name,
-      grams: 10 + i,
-    }))
+    // Ounces and pounds are left out: grams cover them.
+    const units = ['1 slice', '1 slice, thin', '1 oz', '1 cup, diced', '1 cup, cubes', '1 cup, crumbs'].map(
+      (name, i) => ({
+        name,
+        grams: 10 + i,
+      }),
+    )
     renderScreen(fakeClient({ rows: [{ ...rice, units }] }))
     await searchFor('rice')
     await openFood('Test rice, cooked')
@@ -347,9 +358,25 @@ describe('a chosen food', () => {
       within(group)
         .getAllByRole('button')
         .map((b) => b.textContent)
-    expect(names()).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', 'Grams', '1 more units'])
+    expect(names()).toEqual([
+      '1 slice',
+      '1 slice, thin',
+      '1 cup, diced',
+      '1 cup, cubes',
+      'Grams',
+      '1 more units',
+    ])
     await userEvent.click(within(group).getByRole('button', { name: '1 more units' }))
-    expect(names()).toEqual(['1 slice', '1 slice, thin', '1 oz', '1 cup, cubes', '1 cup, crumbs', 'Grams'])
+    expect(names()).toEqual([
+      '1 slice',
+      '1 slice, thin',
+      '1 cup, diced',
+      '1 cup, cubes',
+      '1 cup, crumbs',
+      'Grams',
+    ])
+    await userEvent.click(within(group).getByRole('button', { name: '1 slice' }))
+    expect(screen.getByRole('textbox', { name: 'Quantity' })).toHaveValue('1')
     await userEvent.click(within(group).getByRole('button', { name: 'Grams' }))
     expect(screen.getByRole('textbox', { name: 'Quantity' })).toHaveValue('100')
   })
@@ -358,6 +385,7 @@ describe('a chosen food', () => {
     const { insert } = renderScreen()
     await searchFor('rice')
     await openFood('Test rice, cooked')
+    await userEvent.click(screen.getByRole('button', { name: '1 cup' }))
     const quantity = screen.getByRole('textbox', { name: 'Quantity' })
     await userEvent.clear(quantity)
     await userEvent.type(quantity, '0,5{Enter}')
@@ -406,8 +434,8 @@ describe('recent foods', () => {
   it('adds a recent food again in one tap, with the amount used last time', async () => {
     const { insert } = renderScreen()
     const recent = screen.getByRole('region', { name: 'Recent' })
-    expect(within(recent).getByRole('listitem')).toHaveTextContent('2 × 1 cup 416 kcal Ingredient')
-    await userEvent.click(within(recent).getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
+    expect(within(recent).getByRole('listitem')).toHaveTextContent('8 g protein · 416 kcal · 2 cups (320 g)')
+    await userEvent.click(within(recent).getByRole('button', { name: 'Add 2 cups Test rice, cooked' }))
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ quantity: 2, kcal: 416, meal: 'dinner' }))
     expect(screen.getByText('Added to dinner')).toBeInTheDocument()
   })
@@ -420,7 +448,7 @@ describe('recent foods', () => {
 
   it('shows a failed quick add on the search view', async () => {
     renderScreen(fakeClient({ saveFails: true }))
-    await userEvent.click(screen.getByRole('button', { name: 'Add 2 × 1 cup Test rice, cooked' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add 2 cups Test rice, cooked' }))
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't save this food.")
   })
 })
