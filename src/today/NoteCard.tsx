@@ -61,7 +61,9 @@ export function NoteCard({ date, targetKcal, version = 0 }: NoteCardProps) {
         <Quote aria-hidden="true" size={20} strokeWidth={2} className="size-4 text-deficit-ring" />A note for
         today
       </h2>
-      <p className="m-0 text-title font-semibold text-koshur-silk">{noteForDay(date)}</p>
+      {/* Balanced like a heading: the card is narrow, so even lines keep a word from ending alone. The
+          ! wins over the stylesheet's own rule for paragraphs (src/index.css). */}
+      <p className="m-0 text-title font-semibold text-balance! text-koshur-silk">{noteForDay(date)}</p>
       {lines && (
         <div className="mt-auto flex flex-col gap-2 border-t border-koshur-border pt-4">
           {lines.map((line) => (

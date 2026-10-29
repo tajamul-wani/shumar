@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { DAILY_NOTES } from '../src/lib/notes.ts'
 import {
   FIRST_RUN_ANSWERS,
   FIRST_RUN_SCREENS,
@@ -13,6 +14,25 @@ import {
 
 // No heading, button, label or short text ends with one word alone on its last line, at any
 // width, in either theme (shumar-no-orphans). Fix the words or the room they have, never this test.
+
+// The note for the day changes every day, so the sweep below only ever sees one of them. Each note
+// is put in the card in turn and measured at every width where the card shows, so no day's note
+// can leave a word alone on a line.
+test('every note for the day leaves no word alone on a line', async ({ page }) => {
+  await signInAs(page, readTestUsers().a.session)
+  await page.goto('/')
+  const note = page.getByRole('region', { name: 'A note for today' }).getByRole('paragraph').first()
+  for (const size of WIDTHS.filter(({ width }) => width >= 1024)) {
+    await page.setViewportSize(size)
+    await expect(note).toBeVisible()
+    for (const text of DAILY_NOTES) {
+      await note.evaluate((element, value) => {
+        element.textContent = value
+      }, text)
+      expect.soft(await loneWords(page), `"${text}" at ${size.width} px`).toEqual([])
+    }
+  }
+})
 
 for (const theme of THEMES) {
   for (const { path, title, heading } of SCREENS) {
