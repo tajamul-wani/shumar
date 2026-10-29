@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react'
+import { Pencil, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
@@ -11,14 +11,26 @@ import { MAX_QUERY_LENGTH, type FoodResult, type FoodUnit } from '../lib/foodSea
 import type { LoggedFood } from '../lib/dayLogs.ts'
 import { LogError, amountFor, copyFoods, logFood, type FoodAmount } from '../lib/logs.ts'
 import { MEALS, MEAL_LABELS, defaultMeal, isFixedMeal, mealPhrase, type Meal } from '../lib/meals.ts'
+import {
+  EMPTY_DRAFT,
+  displayName,
+  toDraft,
+  toFoodResult,
+  type MyFood,
+  type MyFoodDraft,
+  type MyFoodInput,
+} from '../lib/myFoods.ts'
 import { readRecentFoods, rememberFood, type RecentFood } from '../lib/recentFoods.ts'
 import type { SavedFood, SavedMeal } from '../lib/savedMeals.ts'
 import { FoodDetail } from './FoodDetail.tsx'
 import { FoodRow } from './FoodRow.tsx'
+import { FromPackCard, FromPackLink } from './FromPack.tsx'
+import { MyFoodForm } from './MyFoodForm.tsx'
 import { QuickAdds } from './QuickAdds.tsx'
 import { SavedMealView } from './SavedMealView.tsx'
 import { SheetFillContext, useSheetFill } from './fill.ts'
 import { useFoodSearch, type FoodSearchState } from './useFoodSearch.ts'
+import { useMyFoods } from './useMyFoods.ts'
 import type { SavedMealsState } from './useSavedMeals.ts'
 import { useYesterday } from './useYesterday.ts'
 
@@ -85,7 +97,7 @@ function searchAnnouncement(search: FoodSearchState): string {
 }
 
 function noMatch(query: string): string {
-  return `No foods match "${query}". Try another word or a shorter search.`
+  return `No foods match "${query}".`
 }
 
 interface SearchResultsProps {
@@ -93,9 +105,11 @@ interface SearchResultsProps {
   onOpen: (chosen: Chosen) => void
   /** In the popup each result has a plus that opens it, so the amount is always chosen before it is added. */
   withPlus: boolean
+  /** Opens the form for a food from its pack, when search can't find the one wanted. */
+  onAddFromPack: () => void
 }
 
-function SearchResults({ search, onOpen, withPlus }: SearchResultsProps) {
+function SearchResults({ search, onOpen, withPlus, onAddFromPack }: SearchResultsProps) {
   const fill = useSheetFill()
   if (search.status === 'error') {
     return <Alert>We couldn't search right now. Check your connection and try again.</Alert>
@@ -110,25 +124,38 @@ function SearchResults({ search, onOpen, withPlus }: SearchResultsProps) {
       </div>
     )
   }
-  if (results.length === 0) return <p className="m-0 text-body text-koshur-muted">{noMatch(search.query)}</p>
+  if (results.length === 0) {
+    return (
+      <>
+        <p className="m-0 text-body text-koshur-muted">{noMatch(search.query)}</p>
+        <FromPackCard query={search.query} onAdd={onAddFromPack} />
+      </>
+    )
+  }
   return (
-    <ul aria-label="Search results" className={LIST}>
-      {results.map((food) => {
-        const chosen = chooseDefaults(food)
-        return (
-          <FoodRow
-            key={`${food.source}:${food.sourceId}`}
-            food={food}
-            unit={chosen.unit}
-            quantity={chosen.quantity}
-            withPlus={withPlus}
-            onOpen={() => onOpen(chosen)}
-          />
-        )
-      })}
-    </ul>
+    <>
+      <ul aria-label="Search results" className={LIST}>
+        {results.map((food) => {
+          const chosen = chooseDefaults(food)
+          return (
+            <FoodRow
+              key={`${food.source}:${food.sourceId}`}
+              food={food}
+              unit={chosen.unit}
+              quantity={chosen.quantity}
+              withPlus={withPlus}
+              onOpen={() => onOpen(chosen)}
+            />
+          )
+        })}
+      </ul>
+      <FromPackLink onClick={onAddFromPack}>Not the one? Add another from the pack</FromPackLink>
+    </>
   )
 }
+
+/** A food of the person's own being added from its pack, or changed. */
+type PackForm = { mode: 'new'; draft: MyFoodDraft } | { mode: 'edit'; food: MyFood }
 
 interface LogSheetProps {
   /**
@@ -172,8 +199,14 @@ export function LogSheet({
   const [opened, setOpened] = useState<SavedMeal | null>(null)
   /** While set, the search adds foods to this saved meal instead of the day. */
   const [addingTo, setAddingTo] = useState<SavedMeal | null>(null)
+  /** The form for a food from its pack, when open. */
+  const [pack, setPack] = useState<PackForm | null>(null)
   const yesterday = useYesterday()
-  const quickAdds = yesterday.some((log) => log.meal === meal) || (savedMeals.meals?.length ?? 0) > 0
+  const myFoods = useMyFoods()
+  const quickAdds =
+    yesterday.some((log) => log.meal === meal) ||
+    (savedMeals.meals?.length ?? 0) > 0 ||
+    (myFoods.foods?.length ?? 0) > 0
   const [recent, setRecent] = useState(() => readRecentFoods())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -190,16 +223,20 @@ export function LogSheet({
   const SubHeading = embedded ? 'h3' : 'h2'
   const innerLevel = embedded || dialog ? 2 : 1
   const fill = embedded || dialog ? 'bg-koshur-base' : 'bg-koshur-surface'
-  const search = useFoodSearch(query)
+  /** Goes up when a food of the person's own changes, so the same search is asked again. */
+  const [searchRound, setSearchRound] = useState(0)
+  const search = useFoodSearch(query, 300, searchRound)
   const mealName = mealPhrase(meal)
 
   // Moving between the search, a food and a saved meal works like moving between screens: focus
   // the sheet's new heading. In the popup the search itself takes focus, ready for the next food.
-  const view = chosen
-    ? `food:${chosen.food.source}:${chosen.food.sourceId}`
-    : opened
-      ? `saved:${opened.id}`
-      : 'search'
+  const view = pack
+    ? `pack:${pack.mode === 'edit' ? pack.food.id : 'new'}`
+    : chosen
+      ? `food:${chosen.food.source}:${chosen.food.sourceId}`
+      : opened
+        ? `saved:${opened.id}`
+        : 'search'
   const previousView = useRef(view)
   useEffect(() => {
     if (previousView.current === view) return
@@ -281,6 +318,44 @@ export function LogSheet({
     })
   }
 
+  /** The form for a food from its pack, its name started from what was searched. */
+  function openPack(name: string) {
+    setError(null)
+    setAdded(null)
+    setPack({ mode: 'new', draft: { ...EMPTY_DRAFT, name: name.trim() } })
+  }
+
+  /**
+   * A new food goes into the search, which finds it first; a changed one opens again with its new
+   * values. Either way the same search is asked again, now that the food has changed.
+   */
+  function savePack(food: MyFoodInput) {
+    const form = pack
+    return run(async () => {
+      if (form?.mode === 'edit') {
+        const saved = await myFoods.change(form.food.id, food)
+        setPack(null)
+        setSearchRound((round) => round + 1)
+        setChosen(chooseDefaults(toFoodResult(saved)))
+      } else {
+        const saved = await myFoods.add(food)
+        setPack(null)
+        setSearchRound((round) => round + 1)
+        setQuery(saved.name)
+        notice('Saved to your foods', displayName(saved))
+      }
+    })
+  }
+
+  function removeOwn(own: MyFood) {
+    return run(async () => {
+      await myFoods.remove(own)
+      setChosen(null)
+      setSearchRound((round) => round + 1)
+      notice('Removed from your foods', displayName(own), 'removed')
+    })
+  }
+
   function openSaved(saved: SavedMeal) {
     setError(null)
     setAdded(null)
@@ -339,7 +414,34 @@ export function LogSheet({
     )
   }
 
+  if (pack) {
+    return (
+      <SheetFillContext.Provider value={fill}>
+        <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
+          <MyFoodForm
+            key={view}
+            headingLevel={innerLevel}
+            mode={pack.mode}
+            initial={pack.mode === 'edit' ? toDraft(pack.food) : pack.draft}
+            saving={saving}
+            error={error}
+            onBack={() => {
+              setError(null)
+              setPack(null)
+            }}
+            onSave={savePack}
+          />
+        </div>
+      </SheetFillContext.Provider>
+    )
+  }
+
   if (chosen) {
+    // A food of the person's own can be changed or removed from here, once their foods have loaded.
+    const own =
+      chosen.food.source === 'mine'
+        ? (myFoods.foods?.find((food) => food.id === chosen.food.sourceId) ?? null)
+        : null
     return (
       <SheetFillContext.Provider value={fill}>
         <div ref={containerRef} className="flex min-w-0 flex-col gap-5">
@@ -359,7 +461,32 @@ export function LogSheet({
               setChosen(null)
             }}
             onSubmit={(unit, quantity) => submit(chosen.food, unit, quantity)}
-          />
+          >
+            {chosen.food.source === 'mine' && (
+              <div className="flex flex-col gap-3">
+                <p className="m-0 text-body-sm text-koshur-muted">Your food, from its pack</p>
+                {own && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        setError(null)
+                        setPack({ mode: 'edit', food: own })
+                      }}
+                    >
+                      <Pencil aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
+                      Edit
+                    </Button>
+                    <Button variant="secondary" size="small" disabled={saving} onClick={() => removeOwn(own)}>
+                      <Trash2 aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </FoodDetail>
         </div>
       </SheetFillContext.Provider>
     )
@@ -505,6 +632,10 @@ export function LogSheet({
                 }
                 onAddSaved={(saved) => addMany(saved.foods, `Added ${saved.name}`, `to ${mealName}`)}
                 onOpenSaved={openSaved}
+                mine={myFoods.foods}
+                onOpenMine={(food, unit, quantity) => open({ food, unit, quantity })}
+                onAddMine={(food, unit, quantity) => submit(food, unit, quantity)}
+                onAddFromPack={() => openPack('')}
               />
             )}
             {(recent.length === 0 || dialog) && (addingTo || !quickAdds) && (
@@ -514,7 +645,12 @@ export function LogSheet({
             )}
           </>
         ) : (
-          <SearchResults search={search} onOpen={open} withPlus={dialog} />
+          <SearchResults
+            search={search}
+            onOpen={open}
+            withPlus={dialog}
+            onAddFromPack={() => openPack(query)}
+          />
         )}
         {!dialog && <Toast message={added} duration={5000} onDismiss={() => setAdded(null)} />}
       </div>

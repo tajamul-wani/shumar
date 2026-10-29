@@ -30,18 +30,27 @@ function twoPlaces(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-/** Why the values are an estimate, and where to read how they were worked out. */
+/**
+ * Why the values are an estimate, and where to read how they were worked out. A food of the
+ * person's own comes from their pack, so the note sends them back to its label instead.
+ */
 function EstimateNote({ food }: { food: FoodResult }) {
   const fill = useSheetFill()
-  const [title, body] = food.flagged
+  const own = food.source === 'mine'
+  const [title, body] = own
     ? [
-        'Estimate, these values may be off',
-        "The calories for this food don't match its protein, carbs and fat as closely as we expect, so treat them as a guide.",
+        "These numbers don't add up",
+        "The calories don't match the protein, carbs and fat as closely as a label's should. Check them against the pack, and change them if one is off.",
       ]
-    : [
-        'Estimate, home recipes vary',
-        'Worked out from a weighed recipe and not yet confirmed by a second weighing. Oil and meat cuts change the numbers most.',
-      ]
+    : food.flagged
+      ? [
+          'Estimate, these values may be off',
+          "The calories for this food don't match its protein, carbs and fat as closely as we expect, so treat them as a guide.",
+        ]
+      : [
+          'Estimate, home recipes vary',
+          'Worked out from a weighed recipe and not yet confirmed by a second weighing. Oil and meat cuts change the numbers most.',
+        ]
   return (
     <div className={`flex gap-3 rounded-2xl border border-koshur-border ${fill} px-4 py-3.5`}>
       <Info
@@ -53,12 +62,14 @@ function EstimateNote({ food }: { food: FoodResult }) {
       <div className="flex min-w-0 flex-col gap-1">
         <p className="m-0 text-body-sm font-semibold text-koshur-silk">{title}</p>
         <p className="m-0 text-body-sm text-koshur-muted">{body}</p>
-        <Link
-          href="/sources"
-          className={`flex min-h-8 items-center self-start rounded-sm text-body-sm font-semibold text-koshur-silk underline ${FOCUS_RING}`}
-        >
-          How this is calculated
-        </Link>
+        {!own && (
+          <Link
+            href="/sources"
+            className={`flex min-h-8 items-center self-start rounded-sm text-body-sm font-semibold text-koshur-silk underline ${FOCUS_RING}`}
+          >
+            How this is calculated
+          </Link>
+        )}
       </div>
     </div>
   )

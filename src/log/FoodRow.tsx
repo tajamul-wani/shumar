@@ -61,7 +61,8 @@ export function FoodRow({
             kcal
           </span>{' '}
           <span className="inline-flex h-5 items-center rounded-md border border-koshur-border px-1.5 whitespace-nowrap">
-            {estimate ? 'Estimate' : sourceLabel(food)}
+            {/* A food of the person's own always says so; "about" before its calories marks an estimate. */}
+            {estimate && food.source !== 'mine' ? 'Estimate' : sourceLabel(food)}
           </span>
           {showsVerified(food) && (
             <>

@@ -172,7 +172,8 @@ function YourDataCard({ user, onDeleted }: { user: AccountUser; onDeleted: () =>
         Your data
       </h2>
       <p className="m-0 text-body-sm text-koshur-muted">
-        Your answers, your target and every log, as one file you can keep or move elsewhere.
+        Your answers, your target, every log and the foods you added, as one file you can keep or move
+        elsewhere.
       </p>
       <div className="flex flex-wrap gap-3">
         <Button variant="secondary" size="small" onClick={handleDownload} disabled={busy !== null}>

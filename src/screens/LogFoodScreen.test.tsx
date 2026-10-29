@@ -24,7 +24,42 @@ const rice = {
 const stew = { ...rice, source_id: '1002', name: 'Test stew', flagged: true, units: [] }
 const dish = { ...rice, source: 'kashmiri', source_id: 'k1', name: 'Test dish', units: [] }
 
-function fakeClient(options: { rows?: unknown[]; searchFails?: boolean; saveFails?: boolean } = {}) {
+// A food of the person's own, as my_foods and search_foods give it: 300 kcal per 100 g, 30 g a serving.
+const cheeseRow = {
+  id: 'm1',
+  name: 'Test cheese',
+  brand: 'Test brand',
+  label_basis: 'serving',
+  serving_grams: '30',
+  kcal: '90',
+  protein: '6',
+  carbs: '0.6',
+  fat: '7.2',
+  sodium_mg: '6',
+}
+const cheese = {
+  ...rice,
+  source: 'mine',
+  source_id: 'm1',
+  name: 'Test cheese (Test brand)',
+  kcal_per_100g: 300,
+  protein_per_100g: 20,
+  carbs_per_100g: 2,
+  fat_per_100g: 24,
+  sodium_mg_per_100g: 20,
+  units: [{ name: '1 serving', grams: 30 }],
+}
+
+function fakeClient(
+  options: {
+    rows?: unknown[]
+    searchFails?: boolean
+    saveFails?: boolean
+    /** The person's own foods, and what saving or changing one answers with. */
+    myFoods?: unknown[]
+    savedFood?: unknown
+  } = {},
+) {
   const rpc = vi.fn<(name: string, args: Record<string, unknown>) => unknown>(() => {
     const response = Promise.resolve(
       options.searchFails
@@ -36,14 +71,29 @@ function fakeClient(options: { rows?: unknown[]; searchFails?: boolean; saveFail
   const insert = vi.fn<(row: unknown) => Promise<unknown>>(async () => ({
     error: options.saveFails ? { message: 'offline' } : null,
   }))
+  const myFoodCalls: string[] = []
   // Reads (yesterday's logs, saved meals) find nothing; the tests here are about adding food.
-  const from = vi.fn<(table: string) => unknown>(() => {
+  const from = vi.fn<(table: string) => unknown>((table) => {
+    if (table === 'my_foods') {
+      const list = Promise.resolve({ data: options.myFoods ?? [], error: null })
+      const one = Promise.resolve({ data: options.savedFood ?? null, error: null })
+      const query: Record<string, unknown> = { then: list.then.bind(list) }
+      for (const name of ['select', 'eq', 'order', 'insert', 'update', 'delete']) {
+        query[name] = () => {
+          myFoodCalls.push(name)
+          return query
+        }
+      }
+      query.single = () => one
+      query.maybeSingle = () => one
+      return query
+    }
     const empty = Promise.resolve({ data: [], error: null })
     const query: Record<string, unknown> = { insert, then: empty.then.bind(empty) }
     for (const name of ['select', 'eq', 'order']) query[name] = () => query
     return query
   })
-  return { client: { auth: {}, rpc, from } as unknown as AppClient, rpc, insert, from }
+  return { client: { auth: {}, rpc, from } as unknown as AppClient, rpc, insert, from, myFoodCalls }
 }
 
 /** No saved meals, and nothing to save them with: the sheet's own flows are what is tested here. */
@@ -143,12 +193,57 @@ describe('searching', () => {
     expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
   })
 
-  it('says when nothing matches', async () => {
+  it('says when nothing matches, and offers to add the food from its pack', async () => {
     renderScreen(fakeClient({ rows: [] }))
     await searchFor('zz')
+    expect(await screen.findAllByText('No foods match "zz".')).not.toHaveLength(0)
     expect(
-      await screen.findAllByText('No foods match "zz". Try another word or a shorter search.'),
-    ).not.toHaveLength(0)
+      screen.getByText('Add zz with the values printed on its label. Only you will see it.'),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add it from the pack' }))
+    expect(heading()).toHaveTextContent('Add a food from its pack')
+    expect(heading()).toHaveFocus()
+    expect(screen.getByLabelText('Name')).toHaveValue('zz')
+    await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+    expect(screen.getByRole('searchbox', { name: 'Search foods' })).toHaveValue('zz')
+  })
+
+  it('saves a food from its pack, then finds it first', async () => {
+    const fake = renderScreen(fakeClient({ rows: [cheese], savedFood: cheeseRow }))
+    await searchFor('cheese')
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Per serving' }))
+    for (const [label, value] of [
+      ['Name', 'Test cheese'],
+      ['Brand', 'Test brand'],
+      ['One serving is', '30'],
+      ['Calories', '90'],
+      ['Protein', '6'],
+      ['Carbs', '0.6'],
+      ['Fat', '7.2'],
+      ['Sodium', '6'],
+    ]) {
+      await userEvent.clear(screen.getByLabelText(label))
+      await userEvent.type(screen.getByLabelText(label), value)
+    }
+    await userEvent.click(screen.getByRole('button', { name: 'Save food' }))
+    expect(fake.myFoodCalls).toContain('insert')
+    expect(await screen.findByRole('searchbox', { name: 'Search foods' })).toHaveValue('Test cheese')
+    expect(await screen.findByRole('button', { name: /^Test cheese \(Test brand\)/ })).toHaveTextContent(
+      'Yours',
+    )
+    expect(screen.getByText('Saved to your foods')).toBeInTheDocument()
+  })
+
+  it('offers another food from its pack under the results', async () => {
+    renderScreen()
+    await searchFor('rice')
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
+    )
+    expect(heading()).toHaveTextContent('Add a food from its pack')
   })
 
   it('explains when the search fails', async () => {
@@ -375,5 +470,44 @@ describe('inside another screen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add 1 cup Test rice, cooked' }))
     expect(insert).toHaveBeenCalled()
     expect(onAdded).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("the person's own foods", () => {
+  it('are listed before any search, and one is added in a tap', async () => {
+    const fake = renderScreen(fakeClient({ myFoods: [cheeseRow] }))
+    expect(await screen.findByRole('heading', { name: 'Your foods' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 serving Test cheese (Test brand)' }))
+    expect(fake.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_source: 'mine',
+        food_source_id: 'm1',
+        unit_name: '1 serving',
+        grams: 30,
+        kcal: 90,
+      }),
+    )
+  })
+
+  it('open with Edit and Remove, and Edit shows the label as it was typed', async () => {
+    renderScreen(fakeClient({ myFoods: [cheeseRow] }))
+    await openFood('Test cheese')
+    expect(heading()).toHaveTextContent('Test cheese (Test brand)')
+    expect(screen.getByText('Your food, from its pack')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(heading()).toHaveTextContent('Change your food')
+    expect(screen.getByLabelText('One serving is')).toHaveValue('30')
+    expect(screen.getByLabelText('Calories')).toHaveValue('90')
+    await userEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+    expect(heading()).toHaveTextContent('Test cheese (Test brand)')
+  })
+
+  it('can be removed, which goes back to the search', async () => {
+    const fake = renderScreen(fakeClient({ myFoods: [cheeseRow] }))
+    await openFood('Test cheese')
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    expect(fake.myFoodCalls).toContain('delete')
+    expect(await screen.findByRole('searchbox', { name: 'Search foods' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Your foods' })).not.toBeInTheDocument()
   })
 })

@@ -2,9 +2,13 @@ import { Plus } from 'lucide-react'
 import { useId } from 'react'
 import { Button } from '../components/Button.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
-import { foodsLine, formatNumber, totalKcal } from '../lib/foodDisplay.ts'
+import { defaultQuantity, defaultUnit, foodsLine, formatNumber, totalKcal } from '../lib/foodDisplay.ts'
+import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { mealPhrase, type Meal } from '../lib/meals.ts'
+import { toFoodResult, type MyFood } from '../lib/myFoods.ts'
 import type { SavedMeal } from '../lib/savedMeals.ts'
+import { FoodRow } from './FoodRow.tsx'
+import { FromPackLink } from './FromPack.tsx'
 import { useSheetFill } from './fill.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
@@ -15,26 +19,38 @@ interface QuickAddsProps {
   yesterday: readonly LoggedFood[]
   /** null until they have loaded. */
   saved: readonly SavedMeal[] | null
+  /** The person's own foods; null until they have loaded. */
+  mine: readonly MyFood[] | null
   busy: boolean
   onAddYesterday: (foods: LoggedFood[]) => void
   onAddSaved: (saved: SavedMeal) => void
   onOpenSaved: (saved: SavedMeal) => void
+  /** A food of their own opened to choose the amount, or added in one tap with its first unit. */
+  onOpenMine: (food: FoodResult, unit: FoodUnit, quantity: number) => void
+  onAddMine: (food: FoodResult, unit: FoodUnit, quantity: number) => void
+  onAddFromPack: () => void
 }
 
 /**
  * The fastest ways to fill a meal, shown under the search while nothing is typed: what yesterday's
- * same meal held, added in one tap, and the person's saved meals, each added in one tap or opened.
+ * same meal held, added in one tap; the person's own foods; and their saved meals. Each is added
+ * in one tap or opened.
  */
 export function QuickAdds({
   meal,
   yesterday,
   saved,
+  mine,
   busy,
   onAddYesterday,
   onAddSaved,
   onOpenSaved,
+  onOpenMine,
+  onAddMine,
+  onAddFromPack,
 }: QuickAddsProps) {
   const yesterdayId = useId()
+  const mineId = useId()
   const savedId = useId()
   const fill = useSheetFill()
   const phrase = mealPhrase(meal)
@@ -64,6 +80,32 @@ export function QuickAdds({
               Add all
             </Button>
           </div>
+        </section>
+      )}
+      {mine && mine.length > 0 && (
+        <section aria-labelledby={mineId} className="flex flex-col gap-1.5">
+          <h3 id={mineId} className={EYEBROW}>
+            Your foods
+          </h3>
+          <ul className="m-0 flex list-none flex-col p-0">
+            {mine.map((own) => {
+              const food = toFoodResult(own)
+              const unit = defaultUnit(food)
+              const quantity = defaultQuantity(unit)
+              return (
+                <FoodRow
+                  key={own.id}
+                  food={food}
+                  unit={unit}
+                  quantity={quantity}
+                  busy={busy}
+                  onOpen={() => onOpenMine(food, unit, quantity)}
+                  onQuickAdd={() => onAddMine(food, unit, quantity)}
+                />
+              )
+            })}
+          </ul>
+          <FromPackLink onClick={onAddFromPack}>Add a food from its pack</FromPackLink>
         </section>
       )}
       {saved && saved.length > 0 && (
