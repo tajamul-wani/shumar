@@ -3,7 +3,7 @@
 -- Rolled back, so no test data is kept. The foods are test fixtures, not food data.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(21);
 
 insert into auth.users (id, email)
 values
@@ -68,6 +68,16 @@ select lives_ok(
   'another saved meal still takes food');
 select lives_ok($$delete from public.saved_meals where name = 'Meal 20'$$, 'removing a saved meal');
 select lives_ok($$insert into public.saved_meals (name) values ('One more')$$, 'makes room for another');
+
+-- 500 foods of one's own
+select lives_ok(
+  $$insert into public.my_foods (name, label_basis, kcal, protein, carbs, fat, sodium_mg)
+    select 'Test food ' || i, '100g', 0, 0, 0, 0, 0 from generate_series(1, 500) as i$$,
+  'a person can keep 500 foods of their own');
+select throws_ok(
+  $$insert into public.my_foods (name, label_basis, kcal, protein, carbs, fat, sodium_mg)
+    values ('One more food', '100g', 0, 0, 0, 0, 0)$$,
+  'SH005', 'One account holds up to 500 of its own foods.', 'the 501st is refused');
 
 select * from finish();
 rollback;

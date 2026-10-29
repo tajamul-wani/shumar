@@ -3,7 +3,7 @@
 -- fails a test just like a missing one.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(26);
 
 -- Signed-out visitors (anon)
 select table_privs_are('public', 'kashmiri_foods', 'anon', array['SELECT'], 'visitors can only read the catalog');
@@ -17,6 +17,7 @@ select table_privs_are('public', 'search_synonyms', 'anon', array[]::text[], 'vi
 select table_privs_are('public', 'search_picks', 'anon', array[]::text[], 'visitors have no access to search picks');
 select table_privs_are('public', 'saved_meals', 'anon', array[]::text[], 'visitors have no access to saved meals');
 select table_privs_are('public', 'saved_meal_foods', 'anon', array[]::text[], 'visitors have no access to saved meal foods');
+select table_privs_are('public', 'my_foods', 'anon', array[]::text[], 'visitors have no access to anyone''s own foods');
 
 -- Signed-in users (authenticated)
 select table_privs_are('public', 'kashmiri_foods', 'authenticated', array['SELECT'], 'signed-in users can only read the catalog');
@@ -38,6 +39,9 @@ select table_privs_are(
 select table_privs_are(
   'public', 'saved_meal_foods', 'authenticated', array['SELECT', 'INSERT', 'DELETE'],
   'signed-in users can read, add and remove the foods of a saved meal (row-level security limits them to their own), never change or truncate them');
+select table_privs_are(
+  'public', 'my_foods', 'authenticated', array['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  'signed-in users can read, add, change and remove foods of their own (row-level security limits them to theirs), and cannot truncate');
 
 -- Supabase's rls_auto_enable() helper exists only on hosted projects. Where it exists,
 -- the app roles must not be able to call it through the API.
