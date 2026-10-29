@@ -1,12 +1,12 @@
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { Alert } from '../components/Alert.tsx'
-import { AmountChip } from '../components/AmountChip.tsx'
 import { Button } from '../components/Button.tsx'
-import { amountLabel } from '../lib/foodDisplay.ts'
+import { amountWithGrams } from '../lib/foodDisplay.ts'
 import type { Nutrients } from '../lib/nutrition.ts'
 import type { SavedFood, SavedMeal } from '../lib/savedMeals.ts'
 import { Amounts, Kcal, MacroBar } from '../today/amounts.tsx'
 import { useSheetFill } from './fill.ts'
+import { FoodValues } from './FoodValues.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -80,12 +80,14 @@ export function SavedMealView({
           <li key={food.id} className="flex items-center gap-3 border-b border-koshur-border py-3">
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <p className="m-0 text-body-sm font-medium text-koshur-silk sm:text-body">{food.foodName}</p>
-              {/* The space keeps the parts apart when read aloud; the gap spaces them on screen. */}
-              <p className="m-0 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-caption text-koshur-muted">
-                <AmountChip>
-                  {amountLabel(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })}
-                </AmountChip>{' '}
-                <Kcal value={food.nutrients.kcal} size="caption" />
+              <p className="m-0 text-caption text-koshur-muted">
+                <FoodValues
+                  nutrients={food.nutrients}
+                  amount={amountWithGrams(food.quantity, {
+                    name: food.unitName,
+                    grams: food.grams / food.quantity,
+                  })}
+                />
               </p>
             </div>
             <button

@@ -45,10 +45,18 @@ interface ToastProps {
   inline?: boolean
 }
 
+// The icon sits in a filled circle, so it reads at a glance (Tajamul Wani, 29 October 2026): saffron
+// with the dark text a saffron button uses, or gray for a removal. The check is drawn bolder.
+const ON_SAFFRON = 'bg-deficit-ring text-koshur-surface dark:text-koshur-base'
 const TONES = {
-  added: { edge: 'border-l-deficit-ring', icon: Check, iconColor: 'text-deficit-ring' },
-  removed: { edge: 'border-l-koshur-muted', icon: Trash2, iconColor: 'text-koshur-muted' },
-  update: { edge: 'border-l-deficit-ring', icon: RefreshCw, iconColor: 'text-deficit-ring' },
+  added: { edge: 'border-l-deficit-ring', icon: Check, badge: ON_SAFFRON, stroke: 3 },
+  removed: {
+    edge: 'border-l-koshur-muted',
+    icon: Trash2,
+    badge: 'bg-koshur-muted text-koshur-surface',
+    stroke: 2.5,
+  },
+  update: { edge: 'border-l-deficit-ring', icon: RefreshCw, badge: ON_SAFFRON, stroke: 2.5 },
 } as const
 
 /**
@@ -130,13 +138,13 @@ export function Toast({
       >
         {message && tone && Icon && (
           <>
-            <Icon
+            <span
               aria-hidden="true"
-              size={20}
-              strokeWidth={2}
-              className={`size-4 shrink-0 ${tone.iconColor}`}
-            />
-            <span className="min-w-0 flex-1">
+              className={`flex size-5.5 shrink-0 items-center justify-center rounded-full ${tone.badge}`}
+            >
+              <Icon size={14} strokeWidth={tone.stroke} className="size-3.5" />
+            </span>
+            <span className="min-w-0 flex-1 font-medium">
               {message.text}
               {message.detail && <span className="sr-only"> · {message.detail}</span>}
             </span>

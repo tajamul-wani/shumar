@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { localDateKey } from './dates.ts'
-import type { FoodResult, FoodSource, FoodUnit } from './foodSearch.ts'
+import { isFoodSource, type FoodResult, type FoodSource, type FoodUnit } from './foodSearch.ts'
 import { isMeal, type Meal } from './meals.ts'
 import { gramsFor, scaleNutrients, type Nutrients } from './nutrition.ts'
 
@@ -45,6 +45,7 @@ const LIMIT_MESSAGES: Record<string, string> = {
   SH002: 'Your account holds up to 50,000 foods, and it is full.',
   SH003: 'You have 20 saved meals. Remove one to save another.',
   SH004: 'A saved meal holds up to 30 foods.',
+  SH005: 'You have 500 foods of your own. Remove one to add another.',
 }
 
 /** The plain message for a storage limit the database refused a row for, or null for any other error. */
@@ -82,7 +83,7 @@ export function textUpTo(value: unknown, maxLength: number): string | null {
 export function parseFoodAmount(value: unknown): FoodAmount | null {
   const row = (value ?? {}) as Record<string, unknown>
   const foodName = textUpTo(row.food_name, 200)
-  const foodSource = row.food_source === 'kashmiri' || row.food_source === 'usda' ? row.food_source : null
+  const foodSource = isFoodSource(row.food_source) ? row.food_source : null
   const foodSourceId = row.food_source_id == null ? null : textUpTo(row.food_source_id, 100)
   const quantity = numberIn(row.quantity, Number.MIN_VALUE, 10000)
   const unitName = textUpTo(row.unit_name, 60)

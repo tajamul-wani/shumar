@@ -1,11 +1,13 @@
+import { Trash2 } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
-import { changeLog, fetchLog, foodFromLog, type LoggedFood } from '../lib/dayLogs.ts'
+import { Button } from '../components/Button.tsx'
+import { changeLog, fetchLog, foodFromLog, logRow, removeLog, type LoggedFood } from '../lib/dayLogs.ts'
 import type { FoodUnit } from '../lib/foodSearch.ts'
 import { LogError } from '../lib/logs.ts'
-import type { Meal } from '../lib/meals.ts'
+import { mealPhrase, type Meal } from '../lib/meals.ts'
 import { FoodDetail } from '../log/FoodDetail.tsx'
 import { MealPicker } from '../log/LogSheet.tsx'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
@@ -23,12 +25,16 @@ function messageFrom(failure: unknown, fallback: string): string {
   return failure instanceof LogError ? failure.message : fallback
 }
 
-/** The logged food in the log sheet's food view, with its meal, saved with "Save changes". */
+/**
+ * The logged food in the log sheet's food view, with its meal, saved with "Save changes" or
+ * removed. A removed food goes back to Today with the screen, which offers Undo.
+ */
 function ChangeLog({ log }: { log: LoggedFood }) {
   const { client } = useAuth()
   const [, navigate] = useLocation()
   const [meal, setMeal] = useState<Meal>(log.meal)
   const [saving, setSaving] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const savingRef = useRef(false)
   const mealId = useId()
@@ -49,6 +55,21 @@ function ChangeLog({ log }: { log: LoggedFood }) {
     }
   }
 
+  async function remove() {
+    if (savingRef.current) return
+    savingRef.current = true
+    setRemoving(true)
+    setError(null)
+    try {
+      await removeLog(client, log.id)
+      navigate('/', { state: { removedLog: logRow(log) } })
+    } catch (failure) {
+      setError(messageFrom(failure, "We couldn't remove this food. Check your connection and try again."))
+      savingRef.current = false
+      setRemoving(false)
+    }
+  }
+
   return (
     <FoodDetail
       food={food}
@@ -61,6 +82,12 @@ function ChangeLog({ log }: { log: LoggedFood }) {
       error={error}
       onBack={() => navigate('/')}
       onSubmit={save}
+      secondaryAction={
+        <Button variant="secondary" onClick={remove} disabled={saving || removing} className="w-full">
+          <Trash2 aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
+          {removing ? 'Removing' : `Remove from ${mealPhrase(log.meal)}`}
+        </Button>
+      }
     >
       <MealPicker id={mealId} meal={meal} onChoose={setMeal} />
     </FoodDetail>

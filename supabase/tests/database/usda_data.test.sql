@@ -3,7 +3,7 @@
 -- new USDA release is imported, update them together with that migration.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(38);
 
 select is((select count(*)::int from public.usda_releases), 2, 'two USDA releases are loaded');
 select is((select count(*)::int from public.usda_foods), 7117, 'every kept food is loaded');
@@ -49,8 +49,11 @@ select is((select name from public.search_foods('curd') limit 1), 'Yogurt, plain
 select is((select name from public.search_foods('chicken breast') limit 1),
           'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
           '"chicken breast" finds broiler breast first, not a deli roll');
-select is((select name from public.search_foods('egg') limit 1), 'Egg, whole, raw, fresh', '"egg" finds a whole egg first');
-select is((select name from public.search_foods('eggs') limit 1), 'Egg, whole, raw, fresh', '"eggs" finds the same');
+select results_eq($$select name from public.search_foods('egg', 3)$$,
+                  array['Egg, whole, cooked, hard-boiled', 'Egg, white, raw, fresh', 'Egg, whole, cooked, scrambled'],
+                  '"egg" offers a boiled egg, egg white and scrambled egg first');
+select is((select name from public.search_foods('eggs') limit 1), 'Egg, whole, cooked, hard-boiled', '"eggs" finds the same');
+select is((select name from public.search_foods('anda') limit 1), 'Egg, whole, cooked, hard-boiled', '"anda" finds the same');
 select matches((select name from public.search_foods('moong dal') limit 1), '^Mung beans, mature seeds, cooked',
                '"moong dal" finds cooked mung beans');
 select matches((select name from public.search_foods('kala chana') limit 1), '^Chickpeas .*cooked',
@@ -59,13 +62,43 @@ select matches((select name from public.search_foods('beef') limit 1), '^Beef, c
                '"beef" finds plain beef first, not corned beef');
 select is((select name from public.search_foods('mooli') limit 1), 'Radishes, oriental, raw',
           '"mooli" finds the long white radish');
-select results_eq($$select name from public.search_foods('chicken', 2)$$,
+select results_eq($$select name from public.search_foods('chicken', 5)$$,
                   array['Chicken, broilers or fryers, meat only, raw',
-                        'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw'],
-                  '"chicken" offers skinless broiler meat, whole and then breast, as broilers are sold here');
+                        'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
+                        'Chicken, broilers or fryers, breast, meat and skin, raw',
+                        'Chicken, broilers or fryers, dark meat, thigh, meat only, raw',
+                        'Chicken, broilers or fryers, thigh, meat and skin, raw'],
+                  '"chicken" offers the raw broiler cuts sold here: whole, breast and thigh, each without skin first');
+select results_eq($$select name from public.search_foods('chicken breast', 2)$$,
+                  array['Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
+                        'Chicken, broilers or fryers, breast, meat and skin, raw'],
+                  '"chicken breast" offers the breast without skin, then with skin');
+select results_eq($$select name from public.search_foods('chicken thighs', 2)$$,
+                  array['Chicken, broilers or fryers, dark meat, thigh, meat only, raw',
+                        'Chicken, broilers or fryers, thigh, meat and skin, raw'],
+                  '"chicken thighs" offers the thigh without skin, then with skin');
+select is((select name from public.search_foods('black channa') limit 1),
+          'Chickpeas (garbanzo beans, bengal gram), mature seeds, cooked, boiled, without salt',
+          '"black channa", spelled with two n, finds chickpeas as "black chana" does');
 select is((select name from public.search_foods('salt') limit 1), 'Salt, table', '"salt" finds table salt, for the sodium');
 select is((select name from public.search_foods('red chilli powder') limit 1), 'Spices, pepper, red or cayenne',
           '"red chilli powder" finds plain ground red chilli, not the American chili powder blend');
+select is((select name from public.search_foods('egg whites') limit 1), 'Egg, white, raw, fresh',
+          '"egg whites" finds fresh egg white, not the dried powder');
+select is((select name from public.search_foods('white egg') limit 1), 'Egg, white, raw, fresh',
+          '"white egg" finds fresh egg white too, as dried forms come after fresh ones');
+select is((select name from public.search_foods('egg white') offset 1 limit 1), 'Egg, white, raw, frozen, pasteurized',
+          'after the pick, the other fresh egg whites come before the dried powder');
+select is((select name from public.search_foods('dried apricot') limit 1), 'Apricots, dried, sulfured, uncooked',
+          '"dried apricot" still finds dried apricots first');
+select is((select name from public.search_foods('scrambled eggs') limit 1), 'Egg, whole, cooked, scrambled',
+          '"scrambled eggs" finds scrambled egg, not the frozen mix');
+select is((select name from public.search_foods('hard-boiled egg') limit 1), 'Egg, whole, cooked, hard-boiled',
+          '"hard-boiled egg" finds it, whatever the punctuation');
+select is((select name from public.search_foods('hard boiled egg white') limit 1), 'Egg, white, raw, fresh',
+          '"hard boiled egg white" finds egg white, as USDA has no boiled one');
+select is((select name from public.search_foods('omelette') limit 1), 'Egg, whole, cooked, omelet',
+          '"omelette" finds the omelet');
 select is((select count(*)::int from public.search_foods('cauliflower') where name = 'Cauliflower, raw'), 1,
           '"cauliflower" shows raw cauliflower once, not again from the other USDA dataset');
 select matches((select name from public.search_foods('haakh') limit 1), '^Collards, ', '"haakh" finds collard greens');

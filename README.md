@@ -35,6 +35,7 @@ It runs in the browser and installs on a phone like an app.
 - Six questions work out a daily calorie and macro target from cited formulas.
 - Sign in with Google. Each person's food logs are private to them.
 - Log food by searching or from recent foods, in grams or household units such as piece, cup and katori.
+- Add a packaged food from the values on its label when search can't find it. A person's own foods are private to them.
 - Every food value comes from a named source and is stored per 100 g.
 
 ## Tech stack
@@ -145,28 +146,29 @@ Shumār is a single-page React app. The data lives in Supabase, and row-level se
 - **Loading:** `src/App.tsx` loads the signed-out pages (`src/firstRun/`) and the signed-in app (`src/SignedInApp.tsx`) as separate files, so each visitor downloads only the half they use.
 - **Signed out:** `src/firstRun/` holds the home page, the public sources and privacy pages, and the first-run questions. The answers stay on the device until sign-in and are wiped at sign-out.
 - **Calculations** live in `src/lib/`, apart from the screens: `nutrition.ts` (food values), `targets.ts` (daily targets) and `today.ts` (the day's totals). See How the numbers are worked out.
-- **Food search** is one database function, `search_foods(query)`: our own catalog first, then the everyday picks (`search_picks`, the USDA foods shown first for common searches), then other USDA foods. The app keeps the day's searches on the device.
+- **Food search** is one database function, `search_foods(query)`: the person's own foods first (`my_foods`, which row-level security keeps to them), then our own catalog, then the everyday picks (`search_picks`, the USDA foods shown first for common searches), then other USDA foods. The app keeps the day's searches on the device.
 - **Trends** read each day's calories, macros and sodium through one database function, `daily_totals(from, to)`, a month at most per call, so a month is at most 31 rows.
 - **Keys:** the app holds only the project address and the publishable key. `npm run build` writes the security headers from `scripts/security-headers.ts`.
-- **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each) with triggers in `supabase/migrations/20261027120000_storage_limits.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
-- **Your data:** the data download is one JSON file built in the browser from the person's own rows. Deleting an account calls `delete_my_account()`, which removes the account; the profile, logs and saved meals go with it through the cascade.
+- **Limits:** the database caps what one person can store (100 foods a day and 50,000 in all, 20 saved meals, 30 foods in each, 500 foods of their own) with triggers in `supabase/migrations/20261027120000_storage_limits.sql` and `20261029100000_my_foods.sql`, so a request made outside the app meets the same limits. Each limit raises its own error code, which `limitMessage` in `src/lib/logs.ts` turns into a plain message.
+- **Your data:** the data download is one JSON file built in the browser from the person's own rows, their own foods included. Deleting an account calls `delete_my_account()`, which removes the account; the profile, logs, saved meals and own foods go with it through the cascade.
 - **Installing:** `npm run build` writes `manifest.webmanifest` (`scripts/manifest.ts`) from `src/shell/site.ts`, with the app icons and the install sheet's pictures in `public/screens/`. `src/lib/install.ts` keeps the browser's install offer for the app's own install button (`src/components/InstallCard.tsx`) and works out which browsers can't install.
 - **Offline:** the build writes `sw.js` from `scripts/service-worker/`. It keeps this version's page, scripts, styles, Latin fonts and icons, opens every screen from them without a connection, and never answers a request for another site, so Supabase and sign-in always go to the network and nothing personal is stored. `src/lib/serviceWorker.ts` registers it in the built app only, never on the dev server, and tells `src/components/UpdateNotice.tsx` when a new version is ready.
 - **Search:** only the home page, the privacy policy and the sources page belong in search results. `npm run build` fills the page's title, description and share links from `src/shell/site.ts` and `SITE_URL`, writes `robots.txt` and `sitemap.xml`, and sends a noindex header with every other screen (`scripts/seo.ts`).
 
-| Table              | Holds                                                                         | Who can access it                             |
-| :----------------- | :---------------------------------------------------------------------------- | :-------------------------------------------- |
-| `kashmiri_foods`   | Our own food catalog, per 100 g, with a source for each food                  | Anyone can read; nobody can write via the API |
-| `food_units`       | Grams in one piece, cup or katori of a catalog food                           | Anyone can read; nobody can write via the API |
-| `user_logs`        | One row per food logged, with the nutrients at that moment                    | Only the person who logged it                 |
-| `profiles`         | Each person's first-run answers                                               | Only that person                              |
-| `saved_meals`      | A named group of foods a person adds in one tap                               | Only that person                              |
-| `saved_meal_foods` | The foods in a saved meal, with the amount and nutrients they were saved with | Only that person                              |
-| `usda_releases`    | Which USDA files are loaded, with each file's SHA-256                         | Anyone can read                               |
-| `usda_foods`       | About 7,100 USDA foods, per 100 g                                             | Signed-in people can read                     |
-| `usda_portions`    | USDA household portions in grams                                              | Signed-in people can read                     |
-| `search_synonyms`  | Local food words mapped to USDA wording                                       | Signed-in people can read                     |
-| `search_picks`     | Everyday searches and the USDA foods they show first                          | Signed-in people can read                     |
+| Table              | Holds                                                                          | Who can access it                             |
+| :----------------- | :----------------------------------------------------------------------------- | :-------------------------------------------- |
+| `kashmiri_foods`   | Our own food catalog, per 100 g, with a source for each food                   | Anyone can read; nobody can write via the API |
+| `food_units`       | Grams in one piece, cup or katori of a catalog food                            | Anyone can read; nobody can write via the API |
+| `user_logs`        | One row per food logged, with the nutrients at that moment                     | Only the person who logged it                 |
+| `profiles`         | Each person's first-run answers                                                | Only that person                              |
+| `saved_meals`      | A named group of foods a person adds in one tap                                | Only that person                              |
+| `saved_meal_foods` | The foods in a saved meal, with the amount and nutrients they were saved with  | Only that person                              |
+| `my_foods`         | A person's own foods, as their pack labels give them, per 100 g or per serving | Only that person                              |
+| `usda_releases`    | Which USDA files are loaded, with each file's SHA-256                          | Anyone can read                               |
+| `usda_foods`       | About 7,100 USDA foods, per 100 g                                              | Signed-in people can read                     |
+| `usda_portions`    | USDA household portions in grams                                               | Signed-in people can read                     |
+| `search_synonyms`  | Local food words mapped to USDA wording                                        | Signed-in people can read                     |
+| `search_picks`     | Everyday searches and the USDA foods they show first                           | Signed-in people can read                     |
 
 To import a new USDA release: update the file name and SHA-256 in `DATASETS` in `scripts/usda/import_usda.py`, run `python3 scripts/usda/import_usda.py supabase/migrations/<timestamp>_usda_foods_data.sql`, then update the expected counts in `supabase/tests/database/usda_data.test.sql`. The everyday picks name SR Legacy foods, and the same test checks each one is still loaded.
 
@@ -195,7 +197,7 @@ nutrient = value per 100 g × grams ÷ 100
 - A log keeps the values worked out when it was saved, so a later change to a food never rewrites anyone's history.
 - Values keep full precision and are rounded only for display: whole kcal and mg, macros to one decimal place.
 - The day's totals add up its logs. The sodium alert shows past 2,000 mg a day, the World Health Organization's limit for adults.
-- Values come only from named sources: USDA FoodData Central, and measured recipes for the Kashmiri catalog. The importer leaves out foods with a missing value and flags foods whose calories are more than 20% off their protein, carbs and fat at 4, 4 and 9 kcal per gram.
+- Values come only from named sources: USDA FoodData Central, and measured recipes for the Kashmiri catalog. A person's own foods come from their pack's label, are kept as the label prints them and are worked out per 100 g from there. The importer leaves out foods with a missing value and flags foods whose calories are more than 20% off their protein, carbs and fat at 4, 4 and 9 kcal per gram.
 
 ### Daily targets
 

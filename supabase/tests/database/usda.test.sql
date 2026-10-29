@@ -6,7 +6,7 @@
 -- They are placeholders, not nutrition data, and everything is rolled back.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(45);
 
 insert into public.usda_releases (id, dataset, file_name, file_sha256, imported_on)
 values ('kxtest-release', 'sr_legacy_food', 'kxtest.zip', repeat('a', 64), '2026-10-21');
@@ -21,7 +21,10 @@ values
   (990005, 'kxtest-release', 'Kxtest oil, teaseed', 'Test', 1, 1, 1, 1, 1, false),
   (990006, 'kxtest-release', 'Kxtest beverages, tea, brewed', 'Test', 1, 1, 1, 1, 1, false),
   -- The same name as 990004, as when Foundation Foods and SR Legacy both list a food.
-  (990007, 'kxtest-release', 'Kxtest yogurt, plain', 'Test', 2, 2, 2, 2, 2, false);
+  (990007, 'kxtest-release', 'Kxtest yogurt, plain', 'Test', 2, 2, 2, 2, 2, false),
+  -- A dried form with a shorter name than its fresh one, which on its own would put it first.
+  (990008, 'kxtest-release', 'Kxdry egg, white, dried', 'Test', 1, 1, 1, 1, 1, false),
+  (990009, 'kxtest-release', 'Kxdry egg, white, raw, fresh', 'Test', 1, 1, 1, 1, 1, false);
 
 insert into public.usda_portions (fdc_id, unit_name, grams)
 values (990001, '1 cup', 158);
@@ -100,10 +103,15 @@ select results_eq($$select name from public.search_foods('kxtest pick') where so
                   'picks come in their order, and no spelling guesses are added after them');
 select is((select name from public.search_foods('kxtest picks') where source = 'usda' limit 1), 'Kxtest yogurt, plain',
           'a plural finds the picks of its singular');
+select is((select name from public.search_foods('kxtest-pick!') where source = 'usda' limit 1), 'Kxtest yogurt, plain',
+          'picks are found by their letters alone, whatever the punctuation');
 select results_eq($$select source_id from public.search_foods('kxtest yogurt') where name = 'Kxtest yogurt, plain'$$,
                   array['990004'], 'a food with the same name as a pick is left out, so the pick shows once');
 select is((select count(*)::int from public.search_foods('kxtest gone') where source_id = '999999'), 0,
           'a pick whose food is not loaded is left out');
+select results_eq($$select name from public.search_foods('kxdry egg white')$$,
+                  array['Kxdry egg, white, raw, fresh', 'Kxdry egg, white, dried'],
+                  'a dried form comes after the fresh one that matches as well');
 select is((select count(*)::int from public.search_foods('kxtest rice') where source = 'usda'), 2,
           'every USDA food with the words is found');
 select is((select name from public.search_foods('kxtest chiken') where source = 'usda' limit 1), 'Kxtest chicken, breast, roasted',

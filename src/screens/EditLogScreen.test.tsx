@@ -39,7 +39,7 @@ function fakeClient(...results: Result[]) {
       then: (resolve: (value: Result) => unknown, reject: (reason: unknown) => unknown) =>
         Promise.resolve(result).then(resolve, reject),
     }
-    for (const name of ['select', 'eq', 'maybeSingle', 'update']) {
+    for (const name of ['select', 'eq', 'maybeSingle', 'update', 'delete']) {
       query[name] = (...args: unknown[]) => {
         calls.push([name, args])
         return query
@@ -127,6 +127,27 @@ describe('changing a logged food', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't save your changes.")
     expect(window.location.pathname).toBe('/log/edit/log-1')
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+  })
+
+  it('removes the food from its meal, then goes back to Today with it so Today can offer Undo', async () => {
+    const fake = renderScreen(
+      fakeClient({ data: row(), error: null }, { data: [{ id: 'log-1' }], error: null }),
+    )
+    await screen.findByRole('heading', { level: 1, name: 'Test tea' })
+    await userEvent.click(screen.getByRole('button', { name: 'Remove from breakfast' }))
+    expect(fake.queries[1].map(([name]) => name)).toContain('delete')
+    expect(fake.queries[1]).toContainEqual(['eq', ['id', 'log-1']])
+    expect(window.location.pathname).toBe('/')
+    expect(window.history.state).toEqual({ removedLog: row() })
+  })
+
+  it('stays open and explains when the food cannot be removed', async () => {
+    renderScreen(fakeClient({ data: row(), error: null }, { data: null, error: { message: 'offline' } }))
+    await screen.findByRole('heading', { level: 1, name: 'Test tea' })
+    await userEvent.click(screen.getByRole('button', { name: 'Remove from breakfast' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't remove this food.")
+    expect(window.location.pathname).toBe('/log/edit/log-1')
+    expect(screen.getByRole('button', { name: 'Remove from breakfast' })).toBeEnabled()
   })
 
   it('says so when the food is not there', async () => {

@@ -2,7 +2,7 @@ import { SITE_OWNER, SITE_REPO } from '../shell/site.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 
 /** The date at the top. Change it with any change to the words below. */
-export const PRIVACY_UPDATED = '24 October 2026'
+export const PRIVACY_UPDATED = '29 October 2026'
 /** How long a weekly backup is kept, as the security plan says. */
 export const BACKUP_DAYS = 30
 
@@ -24,6 +24,10 @@ const STORED = [
   [
     'The food you log: the food, how much, which meal, when, and its calories and macros',
     "To show your day and your trends. This is the app's whole purpose.",
+  ],
+  [
+    'The meals you save and the foods you add from a pack: their names, amounts and values',
+    'So you can add them again in a tap. Only you can see them.',
   ],
   [
     "Your theme choice, recent foods and the day's searches",
@@ -52,7 +56,10 @@ export function PrivacyScreen() {
           In short
         </h2>
         <ul className="m-0 flex list-none flex-col gap-2 p-0 text-body">
-          <li>Shumār stores your answers, your daily target and the food you log, and nothing else.</li>
+          <li>
+            Shumār stores your answers, your daily target, the food you log, and the meals and foods you save,
+            and nothing else.
+          </li>
           <li>Only you can see your logs. They are never sold, shared or used for ads.</li>
           <li>You sign in with Google. Shumār never sees your password.</li>
           <li>Your data is stored in India. There are no analytics and no tracking cookies.</li>

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthContext, type AppClient } from '../auth/context.ts'
@@ -332,48 +332,55 @@ describe('changing and removing foods', () => {
     return await screen.findByRole('region', { name: 'Meals' })
   }
 
-  it('lists each food with a way to change it', async () => {
-    renderToday()
-    const meals = await openBreakfast()
-    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
-    // The two identical teas show as one row, and Edit opens the later one.
-    expect(within(meals).getByRole('link', { name: 'Edit one Test tea' })).toHaveAttribute(
-      'href',
-      '/log/edit/4',
-    )
-    expect(within(meals).getByRole('link', { name: 'Edit Test bread' })).toHaveAttribute(
-      'href',
-      '/log/edit/2',
-    )
-    // Every meal's foods are listed, so dinner's rice can be removed too.
-    expect(within(meals).getByRole('button', { name: 'Remove Test rice' })).toBeInTheDocument()
+  /** Today as it opens after a food was removed on its edit page, which sends the food along. */
+  function arriveAfterRemoving(removed: ReturnType<typeof log>, options: FakeOptions = {}) {
+    window.history.replaceState({ removedLog: removed }, '')
+    return renderToday(fakeClient({ logs: day.filter((food) => food.id !== removed.id), ...options }))
+  }
+
+  afterEach(() => {
+    window.history.replaceState(null, '')
   })
 
-  it('shows the same food in the same amount once, with its count and their calories together', async () => {
+  it('opens each food to change it or remove it', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    // The two identical teas show as one row, which opens the later one.
+    expect(
+      within(meals).getByRole('link', {
+        name: 'Test tea, 2 times, 2 g protein · 90 kcal · 100 g each, change or remove one',
+      }),
+    ).toHaveAttribute('href', '/log/edit/4')
+    expect(
+      within(meals).getByRole('link', {
+        name: 'Test bread, 1 g protein · 240 kcal · 100 g, change or remove',
+      }),
+    ).toHaveAttribute('href', '/log/edit/2')
+    // Every meal's foods are listed, so dinner's rice opens too.
+    expect(within(meals).getByRole('link', { name: /^Test rice,/ })).toHaveAttribute('href', '/log/edit/3')
+    expect(within(meals).queryByRole('button', { name: /^Remove/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Tap a food to see all its values, change it or remove it.')).toBeInTheDocument()
+  })
+
+  it('shows the same food in the same amount once, with its count and their values together', async () => {
     renderToday()
     const meals = await openBreakfast()
     const tea = within(meals).getByText('Test tea').closest('li')
     expect(tea).toHaveTextContent('×2')
-    expect(tea).toHaveTextContent('100 g each 90 kcal')
-    await userEvent.click(within(meals).getByRole('button', { name: 'Remove one Test tea' }))
-    expect(screen.getByText('Removed')).toBeInTheDocument()
-    const single = within(meals).getByText('Test tea').closest('li')
-    expect(single).toHaveTextContent('100 g 45 kcal')
-    expect(single).not.toHaveTextContent('×')
-    expect(within(meals).getByRole('button', { name: 'Remove Test tea' })).toBeInTheDocument()
+    expect(tea).toHaveTextContent('2 g protein · 90 kcal · 100 g each')
+    // Sodium is for the meal and the day, not each food.
+    expect(tea).not.toHaveTextContent('Sodium')
   })
 
-  it('removes a food at once and puts it back exactly as it was with Undo', async () => {
-    const fake = renderToday()
+  it('says a food was removed on its page, and puts it back exactly as it was with Undo', async () => {
+    const fake = arriveAfterRemoving(log('2', 'breakfast', 'Test bread', '08:05', 240, 300))
     const meals = await openBreakfast()
-    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
-
-    expect(fake.removed).toHaveBeenCalledWith('2')
     expect(within(meals).queryByText('Test bread')).not.toBeInTheDocument()
-    expect(within(ring()).getByText('290')).toBeInTheDocument()
     expect(screen.getByText('Removed')).toBeInTheDocument()
     const undo = screen.getByRole('button', { name: 'Undo' })
-    expect(undo).toHaveFocus()
+    await waitFor(() => expect(undo).toHaveFocus())
+    // Offered once: a reload or going back and forward never offers it again.
+    expect(window.history.state).toBeNull()
 
     await userEvent.click(undo)
     expect(fake.inserted).toHaveBeenCalledWith(
@@ -390,30 +397,27 @@ describe('changing and removing foods', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
   })
 
-  it('brings the food back and explains when it cannot be removed', async () => {
-    renderToday(fakeClient({ failRemove: true }))
-    const meals = await openBreakfast()
-    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't remove this food.")
-    expect(within(meals).getByText('Test bread')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
-  })
-
   it('keeps Undo and explains when the food cannot be put back', async () => {
-    renderToday(fakeClient({ failRestore: true }))
-    const meals = await openBreakfast()
-    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test bread' }))
+    arriveAfterRemoving(log('2', 'breakfast', 'Test bread', '08:05', 240, 300), { failRestore: true })
+    await openBreakfast()
     await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't put this food back.")
     expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled()
   })
 
   it("shows the empty day after removing the day's only food", async () => {
-    renderToday(fakeClient({ logs: [log('3', 'dinner', 'Test rice', '20:45', 200)] }))
-    const meals = await screen.findByRole('region', { name: 'Meals' })
-    await userEvent.click(within(meals).getByRole('button', { name: 'Remove Test rice' }))
-    expect(screen.getByText('No meals yet today.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
+    window.history.replaceState({ removedLog: log('3', 'dinner', 'Test rice', '20:45', 200) }, '')
+    renderToday(fakeClient({ logs: [] }))
+    expect(await screen.findByText('No meals yet today.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus())
+  })
+
+  it('offers nothing for anything else left in the page history', async () => {
+    window.history.replaceState({ removedLog: { id: '2', food_name: 'Test bread' } }, '')
+    renderToday()
+    await openBreakfast()
+    expect(screen.queryByText('Removed')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
   })
 })
 
@@ -484,7 +488,7 @@ describe('on wide screens', () => {
       sodium_mg_per_100g: 140,
       flagged: false,
       verified: true,
-      units: [{ name: '1 egg', grams: 50 }],
+      units: [{ name: '1 large', grams: 50 }],
     }
     const fake = renderToday()
     // The search chains abortSignal() on the request, as the real client allows.
@@ -705,7 +709,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
       sodium_mg_per_100g: 140,
       flagged: false,
       verified: true,
-      units: [{ name: '1 egg', grams: 50 }],
+      units: [{ name: '1 large', grams: 50 }],
     }
     const fake = renderToday(fakeClient({ logs: [], savedMeals: [morningChai] }))
     fake.rpc.mockImplementation((name: string) => {
@@ -730,7 +734,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
         position: 3,
         food_name: 'Test egg',
         quantity: 1,
-        unit_name: '1 egg',
+        unit_name: '1 large',
         grams: 50,
         kcal: 75,
       }),

@@ -4,13 +4,14 @@ import { localDateKey } from './dates.ts'
 import { deviceStorage } from './deviceStorage.ts'
 
 /**
- * Food search: one call to the database's search_foods function, which looks in our own
- * Kashmiri catalog first and then in the imported USDA foods. Nothing here calls an outside API.
+ * Food search: one call to the database's search_foods function, which looks in the person's own
+ * foods first, then our Kashmiri catalog, then the imported USDA foods. Nothing here calls an outside API.
  * Every row is checked before the app uses it, and a search already made today is answered on
  * the device without asking the database again.
  */
 
-export type FoodSource = 'kashmiri' | 'usda'
+/** mine: a food the person added from its pack (src/lib/myFoods.ts). */
+export type FoodSource = 'kashmiri' | 'mine' | 'usda'
 
 export interface FoodUnit {
   name: string
@@ -38,8 +39,12 @@ const MAX_RESULTS = 20
 const MAX_KEPT_SEARCHES = 100
 /** Stored under the user cache prefix, so signing out clears it with everything else. */
 export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
-/** Raise this when the stored shape changes, so copies in the old shape are ignored. */
-const SEARCH_CACHE_VERSION = 1
+/**
+ * Raise this when the stored shape changes, or when a release changes the order search gives
+ * (as the egg picks and dried forms after fresh ones did, 29 October 2026), so copies kept before
+ * are ignored.
+ */
+const SEARCH_CACHE_VERSION = 2
 const GRAMS: FoodUnit = { name: 'g', grams: 1 }
 
 export class FoodSearchError extends Error {}
@@ -58,6 +63,17 @@ function text(value: unknown, maxLength: number): string | null {
   return typeof value === 'string' && value.trim() !== '' && value.length <= maxLength ? value : null
 }
 
+export function isFoodSource(value: unknown): value is FoodSource {
+  return value === 'kashmiri' || value === 'mine' || value === 'usda'
+}
+
+/**
+ * A unit in ounces or pounds ("4 oz", "1 fl oz"), which grams cover. Only the name before any
+ * brackets counts, so "1 cup (8 fl oz)" and "1 slice (1 oz)" stay.
+ */
+const IMPERIAL = /\b(oz|lbs?)\b/i
+const isImperial = (name: string) => IMPERIAL.test(name.replace(/\([^)]*\)/g, ''))
+
 function parseUnits(value: unknown): FoodUnit[] {
   const units: FoodUnit[] = [GRAMS]
   if (!Array.isArray(value)) return units
@@ -65,7 +81,7 @@ function parseUnits(value: unknown): FoodUnit[] {
     const unit = raw as { name?: unknown; grams?: unknown }
     const name = text(unit?.name, 60)
     const grams = number(unit?.grams, Number.MIN_VALUE, 5000)
-    if (name && grams !== null && name !== GRAMS.name) units.push({ name, grams })
+    if (name && grams !== null && name !== GRAMS.name && !isImperial(name)) units.push({ name, grams })
   }
   return units
 }
@@ -77,7 +93,7 @@ function parseUnits(value: unknown): FoodUnit[] {
 export function parseFood(value: unknown): FoodResult | null {
   const food = value as Partial<Record<keyof FoodResult, unknown>> | null
   const per100g = (food?.per100g ?? {}) as Record<string, unknown>
-  const source = food?.source === 'kashmiri' || food?.source === 'usda' ? food.source : null
+  const source = isFoodSource(food?.source) ? food.source : null
   const sourceId = text(food?.sourceId, 64)
   const name = text(food?.name, 200)
   const kcal = number(per100g.kcal, 0, 1000)
@@ -136,6 +152,11 @@ export function parseResults(rows: unknown): FoodResult[] {
 
 interface FoodSearch {
   search(query: string, signal?: AbortSignal): Promise<FoodResult[]>
+  /**
+   * Forgets every kept search, on the device too. After the person adds, changes or removes a food
+   * of their own, the searches kept today would show it wrongly.
+   */
+  forget(): void
 }
 
 type SearchStorage = Pick<Storage, 'getItem' | 'setItem'>
@@ -208,6 +229,8 @@ export function createFoodSearch(
   let day = localDateKey(now())
   const cache = readKeptSearches(storage, userId, day, cacheSize)
   const pending = new Map<string, Promise<FoodResult[]>>()
+  /** Counts the times everything was forgotten, so an answer asked for before that is not kept. */
+  let generation = 0
 
   function keepOnDevice() {
     const kept: KeptSearches = {
@@ -230,13 +253,16 @@ export function createFoodSearch(
   }
 
   async function fetchResults(query: string, signal?: AbortSignal): Promise<FoodResult[]> {
+    const asked = generation
     let request = client.rpc('search_foods', { query, max_results: MAX_RESULTS })
     if (signal) request = request.abortSignal(signal)
     const { data, error } = await request
     if (error) throw new FoodSearchError(error.message)
     const results = parseResults(data)
-    remember(query, results)
-    keepOnDevice()
+    if (asked === generation) {
+      remember(query, results)
+      keepOnDevice()
+    }
     return results
   }
 
@@ -259,6 +285,12 @@ export function createFoodSearch(
       const request = fetchResults(query, signal).finally(() => pending.delete(query))
       pending.set(query, request)
       return request
+    },
+    forget() {
+      generation += 1
+      cache.clear()
+      pending.clear()
+      keepOnDevice()
     },
   }
 }

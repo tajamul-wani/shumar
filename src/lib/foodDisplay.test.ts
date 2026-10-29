@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   amountLabel,
+  amountWithGrams,
   defaultQuantity,
   defaultUnit,
   formatNumber,
   isEstimate,
   nutrientsFor,
+  parseDecimal,
   parseQuantity,
   quantityStep,
   showsVerified,
-  sourceLabel,
+  shortUnitName,
+  sourceTag,
   unitHint,
   foodsLine,
   totalKcal,
@@ -52,16 +55,73 @@ describe('estimates and sources', () => {
     expect(showsVerified(food())).toBe(false)
   })
 
-  it('names the source the way the design does', () => {
-    expect(sourceLabel(food())).toBe('Ingredient')
-    expect(sourceLabel(food({ source: 'kashmiri' }))).toBe('Kashmiri')
+  it('tags a food only where the tag says something', () => {
+    expect(sourceTag(food())).toBeNull()
+    expect(sourceTag(food({ flagged: true }))).toBe('Estimate')
+    expect(sourceTag(food({ source: 'kashmiri' }))).toBe('Kashmiri')
+    expect(sourceTag(food({ source: 'kashmiri', verified: false }))).toBe('Estimate')
+    expect(sourceTag(food({ source: 'mine' }))).toBe('Yours')
+    expect(sourceTag(food({ source: 'mine', flagged: true }))).toBe('Yours')
   })
 })
 
 describe('units and amounts', () => {
-  it('starts on a household unit when there is one, otherwise grams', () => {
-    expect(defaultUnit(food())).toEqual({ name: '1 cup', grams: 160 })
-    expect(defaultUnit(food({ units: [g] }))).toEqual(g)
+  it('starts a weighed USDA food on grams, and one eaten whole on one of a usual size', () => {
+    expect(defaultUnit(food())).toEqual(g)
+    const sizes = [
+      g,
+      { name: '1 small', grams: 38 },
+      { name: '1 medium', grams: 44 },
+      { name: '1 large', grams: 50 },
+    ]
+    expect(defaultUnit(food({ name: 'Test banana, raw', units: sizes }))).toEqual({
+      name: '1 medium',
+      grams: 44,
+    })
+    expect(defaultUnit(food({ name: 'Egg, whole, raw', units: sizes }))).toEqual({
+      name: '1 large',
+      grams: 50,
+    })
+    // The description in brackets doesn't stop a size being found.
+    const long = { name: '1 medium (7" to 7-7/8" long)', grams: 118 }
+    expect(defaultUnit(food({ units: [g, { name: '1 cup', grams: 150 }, long] }))).toEqual(long)
+    expect(defaultUnit(food({ units: [g, { name: '1 small', grams: 38 }] }))).toEqual({
+      name: '1 small',
+      grams: 38,
+    })
+    const tomato = { name: '1 medium whole (2-3/5" dia)', grams: 123 }
+    expect(defaultUnit(food({ units: [g, { name: '1 slice', grams: 20 }, tomato] }))).toEqual(tomato)
+  })
+
+  it('starts on one item when USDA has a unit for it and no size', () => {
+    const shelled = { name: '1 egg, whole without shell', grams: 50 }
+    expect(defaultUnit(food({ name: 'Eggs, Grade A, Large, egg whole', units: [g, shelled] }))).toEqual(
+      shelled,
+    )
+    const date = { name: '1 date, pitted', grams: 24 }
+    expect(defaultUnit(food({ name: 'Dates, medjool', units: [g, date] }))).toEqual(date)
+    const orange = { name: '1 fruit (2-5/8" dia)', grams: 131 }
+    const units = [g, { name: '1 cup, sections', grams: 180 }, orange, { name: '1 large', grams: 184 }]
+    expect(defaultUnit(food({ name: 'Oranges, raw', units }))).toEqual(orange)
+    // A cup is not one item, and neither is another food's name.
+    expect(defaultUnit(food({ name: 'Test rice', units: [g, { name: '1 date', grams: 8 }] }))).toEqual(g)
+  })
+
+  it('starts on grams when one piece is more than a serving, or is the juice of a fruit', () => {
+    const melon = [g, { name: '1 melon (5-1/4" dia)', grams: 1000 }, { name: '1 large', grams: 1400 }]
+    expect(defaultUnit(food({ name: 'Melons, honeydew, raw', units: melon }))).toEqual(g)
+    expect(defaultUnit(food({ name: 'Test pie', units: [g, { name: '1 pie', grams: 1137 }] }))).toEqual(g)
+    const juice = [g, { name: '1 fruit yields', grams: 86 }]
+    expect(defaultUnit(food({ name: 'Orange juice, raw', units: juice }))).toEqual(g)
+  })
+
+  it("starts our own dishes and a person's own foods on their first unit, otherwise grams", () => {
+    expect(defaultUnit(food({ source: 'kashmiri', units: [g, katori] }))).toEqual(katori)
+    expect(defaultUnit(food({ source: 'mine', units: [g, { name: '1 serving', grams: 30 }] }))).toEqual({
+      name: '1 serving',
+      grams: 30,
+    })
+    expect(defaultUnit(food({ source: 'mine', units: [g] }))).toEqual(g)
   })
 
   it('starts on 100 g or 1 unit, and steps by 10 g or half a unit', () => {
@@ -74,9 +134,21 @@ describe('units and amounts', () => {
     [1, katori, '1 katori'],
     [2.5, katori, '2.5 katori'],
     [1, cup, '1 cup, chopped'],
-    [2, cup, '2 × 1 cup, chopped'],
+    [2, cup, '2 cups, chopped'],
+    [2, { name: '1 large', grams: 50 }, '2 large'],
+    [1, { name: '1 medium (7" to 7-7/8" long)', grams: 118 }, '1 medium'],
+    [3, { name: '1 slice', grams: 28 }, '3 slices'],
+    [2, { name: '1 NLEA serving', grams: 126 }, '2 × NLEA serving'],
+    [2, { name: '0.5 cup', grams: 80 }, '2 × 0.5 cup'],
   ])('reads %s of %o as "%s"', (quantity, unit, label) => {
     expect(amountLabel(quantity, unit)).toBe(label)
+  })
+
+  it('gives the weight with the amount, and drops the description in brackets', () => {
+    expect(amountWithGrams(2, { name: '1 large', grams: 50 })).toBe('2 large (100 g)')
+    expect(amountWithGrams(150, g)).toBe('150 g')
+    expect(amountWithGrams(1.5, katori)).toBe('1.5 katori (180 g)')
+    expect(shortUnitName('1 medium (3" dia)')).toBe('1 medium')
   })
 
   it('explains how heavy a unit is', () => {
@@ -123,6 +195,15 @@ describe('parseQuantity', () => {
 
   it.each(['', '0', '-1', 'abc', '1.2.3', '1e3', '2 cups'])('refuses "%s"', (input) => {
     expect(parseQuantity(input)).toBeNull()
+  })
+})
+
+describe('parseDecimal', () => {
+  it('reads zero too, for a label that gives 0 g of something', () => {
+    expect(parseDecimal('0')).toBe(0)
+    expect(parseDecimal('0,5')).toBe(0.5)
+    expect(parseDecimal('-1')).toBeNull()
+    expect(parseDecimal('')).toBeNull()
   })
 })
 

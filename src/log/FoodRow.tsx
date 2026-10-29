@@ -1,15 +1,15 @@
 import { Check, Plus } from 'lucide-react'
-import { AmountChip } from '../components/AmountChip.tsx'
 import {
   amountLabel,
-  formatNumber,
+  amountWithGrams,
   isEstimate,
   nutrientsFor,
   showsVerified,
-  sourceLabel,
+  sourceTag,
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { useSheetFill } from './fill.ts'
+import { FoodValues } from './FoodValues.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -26,8 +26,9 @@ interface FoodRowProps {
 }
 
 /**
- * One food in a list, on two clear lines: its name, then the amount as a chip, the calories in
- * bold and where the value comes from as a small tag. Tapping it opens the food.
+ * One food in a list, on two clear lines: its name, then its protein and calories for the amount
+ * shown (one piece for a food eaten whole, 100 g for one weighed, or the amount last used), and a
+ * small tag where it says something. Tapping it opens the food.
  */
 export function FoodRow({
   food,
@@ -39,30 +40,33 @@ export function FoodRow({
   busy = false,
 }: FoodRowProps) {
   const amount = amountLabel(quantity, unit)
-  const kcal = nutrientsFor(food, quantity, unit)?.kcal ?? 0
-  const estimate = isEstimate(food)
+  const values = nutrientsFor(food, quantity, unit)
   const fill = useSheetFill()
+  const tag = sourceTag(food)
   return (
     <li className="flex items-center gap-3 border-b border-koshur-border py-3">
       <button
         type="button"
         onClick={onOpen}
-        className={`flex min-h-11 min-w-0 flex-1 flex-col items-start gap-1.5 rounded-xl text-left ${FOCUS_RING}`}
+        className={`flex min-h-11 min-w-0 flex-1 flex-col items-start gap-1 rounded-xl text-left ${FOCUS_RING}`}
       >
         <span className="text-body-sm font-medium text-koshur-silk sm:text-body">{food.name}</span>
-        {/* The spaces between the parts keep them apart when read aloud; the gap spaces them on screen. */}
         <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-caption text-koshur-muted">
-          <AmountChip>{amount}</AmountChip>{' '}
-          <span className="whitespace-nowrap">
-            <span className="text-body-sm font-semibold text-koshur-silk">
-              {estimate ? 'about ' : ''}
-              {formatNumber(kcal)}
-            </span>{' '}
-            kcal
-          </span>{' '}
-          <span className="inline-flex h-5 items-center rounded-md border border-koshur-border px-1.5 whitespace-nowrap">
-            {estimate ? 'Estimate' : sourceLabel(food)}
-          </span>
+          {values && (
+            <FoodValues
+              nutrients={values}
+              amount={amountWithGrams(quantity, unit)}
+              about={isEstimate(food)}
+            />
+          )}
+          {tag && (
+            <>
+              {' '}
+              <span className="inline-flex h-5 items-center rounded-md border border-koshur-border px-1.5 whitespace-nowrap">
+                {tag}
+              </span>
+            </>
+          )}
           {showsVerified(food) && (
             <>
               {' '}

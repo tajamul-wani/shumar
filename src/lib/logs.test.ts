@@ -153,6 +153,10 @@ describe('parseFoodAmount', () => {
     })
   })
 
+  it("reads a logged food of the person's own", () => {
+    expect(parseFoodAmount({ ...row, food_source: 'mine' })?.foodSource).toBe('mine')
+  })
+
   it("refuses a row outside the tables' limits", () => {
     expect(parseFoodAmount({ ...row, food_source: 'off' })).toBeNull()
     expect(parseFoodAmount({ ...row, quantity: '0' })).toBeNull()
@@ -227,6 +231,7 @@ describe('limitMessage', () => {
     expect(limitMessage({ code: 'SH002' })).toBe('Your account holds up to 50,000 foods, and it is full.')
     expect(limitMessage({ code: 'SH003' })).toBe('You have 20 saved meals. Remove one to save another.')
     expect(limitMessage({ code: 'SH004' })).toBe('A saved meal holds up to 30 foods.')
+    expect(limitMessage({ code: 'SH005' })).toBe('You have 500 foods of your own. Remove one to add another.')
   })
 
   it('is null for any other error, or none', () => {

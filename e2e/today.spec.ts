@@ -88,7 +88,7 @@ for (const theme of ['dark', 'light'] as const) {
   })
 }
 
-test('a food is removed from Today, put back with Undo, and changed', async ({ page }) => {
+test('a food opens from Today to be removed, put back with Undo, and changed', async ({ page }) => {
   const user = await createTestUser('remove')
   const api = apiClient(user.session.access_token)
   const inserted = await api.from('user_logs').insert([
@@ -113,7 +113,13 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     expect(await scrollsSideways(page)).toBe(false)
     if (size) await page.setViewportSize(size)
 
-    await meals.getByRole('button', { name: 'Remove Test bread' }).click()
+    // Tapping a food opens it, with Remove from its meal under Save changes.
+    await meals.getByRole('link', { name: /^Test bread\b/ }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Test bread' })).toBeFocused()
+    const onPage = await accessibilityViolations(page)
+    expect(onPage, JSON.stringify(onPage, null, 2)).toEqual([])
+    await page.getByRole('button', { name: 'Remove from breakfast' }).click()
+    await expect(page).toHaveURL('/')
     await expect(page.getByRole('status').filter({ hasText: /^Removed/ })).toBeVisible()
     await expect(ring).toContainText('100kcal eaten')
     await expect(page.getByRole('button', { name: 'Undo' })).toBeFocused()
@@ -131,7 +137,7 @@ test('a food is removed from Today, put back with Undo, and changed', async ({ p
     await expect(ring).toContainText('300kcal eaten')
     await expect.poll(names).toEqual([{ food_name: 'Test bread' }, { food_name: 'Test tea' }])
 
-    await meals.getByRole('link', { name: 'Edit Test tea' }).click()
+    await meals.getByRole('link', { name: /^Test tea\b/ }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Test tea' })).toBeFocused()
     await page.getByRole('button', { name: 'Increase quantity' }).click()
     await page.getByRole('button', { name: 'Save changes' }).click()
@@ -246,7 +252,7 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
   }
 })
 
-test('the same food in the same amount shows once with its count, and Remove takes one away', async ({
+test('the same food in the same amount shows once with its count, and removing one takes one away', async ({
   page,
 }) => {
   const user = await createTestUser('group')
@@ -270,11 +276,13 @@ test('the same food in the same amount shows once with its count, and Remove tak
 
     const row = meals.getByRole('listitem').filter({ hasText: 'Test egg' }).last()
     await expect(row).toContainText('×3')
-    await expect(row).toContainText('40 g each 177 kcal')
+    await expect(row).toContainText('30 g protein · 177 kcal · 40 g each')
 
-    await row.getByRole('button', { name: 'Remove one Test egg' }).click()
+    await row.getByRole('link', { name: /change or remove one$/ }).click()
+    await page.getByRole('button', { name: 'Remove from breakfast' }).click()
+    await expect(page).toHaveURL('/')
     await expect(row).toContainText('×2')
-    await expect(row).toContainText('40 g each 118 kcal')
+    await expect(row).toContainText('20 g protein · 118 kcal · 40 g each')
     await expect
       .poll(async () => (await api.from('user_logs').select('id', { count: 'exact', head: true })).count)
       .toBe(2)

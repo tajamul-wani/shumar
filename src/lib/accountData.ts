@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AccountUser } from './account.ts'
 import type { LoggedFood } from './dayLogs.ts'
 import { toProfile, type FirstRunAnswers } from './firstRun.ts'
+import { per100g, type MyFood } from './myFoods.ts'
 import { dailyTargets } from './targets.ts'
 
 /**
@@ -16,6 +17,7 @@ export function buildExport(
   user: AccountUser,
   answers: FirstRunAnswers | null,
   logs: LoggedFood[],
+  myFoods: MyFood[],
   now: Date,
 ) {
   const profile = answers && toProfile(answers)
@@ -36,6 +38,14 @@ export function buildExport(
       unit: log.unitName,
       grams: log.grams,
       ...log.nutrients,
+    })),
+    myFoods: myFoods.map((food) => ({
+      name: food.name,
+      brand: food.brand,
+      labelGivesValuesPer: food.basis === 'serving' ? 'serving' : '100 g',
+      servingGrams: food.servingGrams,
+      label: food.label,
+      per100g: per100g(food),
     })),
   }
 }

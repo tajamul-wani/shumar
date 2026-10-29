@@ -1,6 +1,5 @@
 import { X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { AmountChip } from '../components/AmountChip.tsx'
 import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
@@ -139,9 +138,8 @@ function InMeal({ meal, foods, savedMeals, onSaved }: InMealProps) {
                 {food.foodName}
                 {entry.logs.length > 1 && <span className="text-koshur-muted"> ×{entry.logs.length}</span>}
               </span>{' '}
-              <AmountChip>{amount}</AmountChip>{' '}
               <span className="whitespace-nowrap text-koshur-muted">
-                {formatNumber(Math.round(entry.totals.kcal))} kcal
+                {amount} · {formatNumber(Math.round(entry.totals.kcal))} kcal
               </span>
             </li>
           )
