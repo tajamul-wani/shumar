@@ -39,8 +39,12 @@ const MAX_RESULTS = 20
 const MAX_KEPT_SEARCHES = 100
 /** Stored under the user cache prefix, so signing out clears it with everything else. */
 export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
-/** Raise this when the stored shape changes, so copies in the old shape are ignored. */
-const SEARCH_CACHE_VERSION = 1
+/**
+ * Raise this when the stored shape changes, or when a release changes the order search gives
+ * (as the egg picks and dried forms after fresh ones did, 29 October 2026), so copies kept before
+ * are ignored.
+ */
+const SEARCH_CACHE_VERSION = 2
 const GRAMS: FoodUnit = { name: 'g', grams: 1 }
 
 export class FoodSearchError extends Error {}

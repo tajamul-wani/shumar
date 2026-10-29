@@ -283,8 +283,12 @@ describe("keeping the day's searches", () => {
     ['text that is not JSON', '{'],
     ['an older shape', JSON.stringify({ version: 0, user: 'a', day: '2026-10-21', searches: [] })],
     [
+      'searches kept before a release changed the order',
+      JSON.stringify({ version: 1, user: 'a', day: '2026-10-21', searches: [['rice', []]] }),
+    ],
+    [
       'searches that are not a list',
-      JSON.stringify({ version: 1, user: 'a', day: '2026-10-21', searches: 5 }),
+      JSON.stringify({ version: 2, user: 'a', day: '2026-10-21', searches: 5 }),
     ],
   ])('ignores %s', async (_, stored) => {
     const storage = memoryStorage({ [SEARCH_CACHE_KEY]: stored })
