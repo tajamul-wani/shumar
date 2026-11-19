@@ -657,6 +657,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
     expect(within(popup).queryByRole('region', { name: 'Saved meals' })).not.toBeInTheDocument()
   })
 
+  // A long click-through in jsdom: 4 to 5 seconds on a small machine, the default limit, so it gets more time by name.
   it('saves what is in the meal under a name, and stops at 20 saved meals', async () => {
     const fake = renderToday()
     const meals = await screen.findByRole('region', { name: 'Meals' })
@@ -694,7 +695,7 @@ describe("yesterday's meal and saved meals in the popup", () => {
     expect(within(form).getByRole('alert')).toHaveTextContent(
       'You have 20 saved meals. Remove one to save another.',
     )
-  })
+  }, 20_000)
 
   it('adds a food to a saved meal through the search, and Cancel goes back to the meal', async () => {
     // A made-up food the search answers with.
