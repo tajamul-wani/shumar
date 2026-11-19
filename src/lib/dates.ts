@@ -1,8 +1,12 @@
 const DAY_HEADING = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
 
-/** The day as Shumār shows it at the top of a screen, for example "Saturday, 17 October". */
+/**
+ * The day as Shumār shows it at the top of a screen, for example "Saturday, 17 October". The day
+ * and month are joined by a non-breaking space, so a narrow screen breaks after the weekday and
+ * never leaves the month alone on a line (shumar-no-orphans).
+ */
 export function formatDayHeading(date: Date): string {
-  return DAY_HEADING.format(date)
+  return DAY_HEADING.format(date).replace(/ (\S+)$/, '\u00a0$1')
 }
 
 /**
