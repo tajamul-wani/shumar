@@ -36,6 +36,7 @@ async function fill(values: Record<string, string>) {
 const values = { Calories: '300', Protein: '20', Carbs: '2', Fat: '24', Sodium: '20' }
 
 describe('adding a food from its pack', () => {
+  // A long click-through in jsdom: 4 to 5 seconds on a small machine, the default limit, so it gets more time by name.
   it('starts from the search and saves the label as typed', async () => {
     const { onSave } = renderForm({ name: 'paneer' })
     expect(screen.getByRole('heading', { level: 1, name: 'Add a food from its pack' })).toBeInTheDocument()
@@ -50,8 +51,9 @@ describe('adding a food from its pack', () => {
       servingGrams: null,
       label: { kcal: 300, protein: 20, carbs: 2, fat: 24, sodiumMg: 20 },
     })
-  })
+  }, 20_000)
 
+  // A long click-through in jsdom: 4 to 5 seconds on a small machine, the default limit, so it gets more time by name.
   it('asks for what is missing and goes to the first of it', async () => {
     const { onSave } = renderForm()
     await userEvent.click(screen.getByRole('button', { name: 'Save food' }))
@@ -59,7 +61,7 @@ describe('adding a food from its pack', () => {
     expect(screen.getByLabelText('Name')).toHaveFocus()
     expect(screen.getByLabelText('Name')).toHaveAccessibleDescription('Give the food a name.')
     expect(screen.getByLabelText('Sodium')).toHaveAccessibleDescription('Enter the sodium from the label.')
-  })
+  }, 20_000)
 
   it('asks for the serving size when the label gives values per serving', async () => {
     const { onSave } = renderForm({ name: 'Test crackers' })

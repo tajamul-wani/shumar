@@ -92,12 +92,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main id="main" className="min-w-0 flex-1 px-4 pt-6 pb-clear-add-button lg:px-8 lg:pt-7 lg:pb-12">
         <div className="mx-auto flex max-w-320 flex-col gap-6">{children}</div>
+        {/* Today has its own add button, which opens the Add food popup instead of a screen. It sits
+            inside main so screen readers find it in a landmark; it is fixed, so it still floats. */}
+        {!onToday && !onLogFood && !onEditLog && !onQuestions && (
+          <AddButton label="Log food" href={LOG_FOOD_PATH} />
+        )}
       </main>
-
-      {/* Today has its own add button, which opens the Add food popup instead of a screen. */}
-      {!onToday && !onLogFood && !onEditLog && !onQuestions && (
-        <AddButton label="Log food" href={LOG_FOOD_PATH} />
-      )}
 
       <nav
         aria-label="Main"

@@ -91,6 +91,7 @@ afterEach(() => {
 })
 
 describe('setting a target after sign-in', () => {
+  // A long click-through in jsdom: 4 to 5 seconds on a small machine, the default limit, so it gets more time by name.
   it('goes from the card through the questions, saves the target and comes back to Today', async () => {
     const fake = fakeClient()
     renderApp(fake, '/')
@@ -128,7 +129,7 @@ describe('setting a target after sign-in', () => {
     expect(await screen.findByRole('heading', { name: 'Today with a target' })).toBeInTheDocument()
     // The device keeps nothing: these answers never went through it.
     expect(localStorage.length).toBe(0)
-  })
+  }, 20_000)
 
   it('waits for the saved answers when a question is reloaded, then shows it filled in', async () => {
     renderApp(fakeClient({ row: savedRow }), '/start/weight')

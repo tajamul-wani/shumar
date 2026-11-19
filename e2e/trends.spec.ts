@@ -141,6 +141,59 @@ test('the month view and moving between ranges', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'That week' })).toBeVisible()
 })
 
+/** Waits for colour changes still fading, which would be scanned half way between two colours. */
+const settled = (page: Page) =>
+  page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))
+
+test('a month on a phone is a picture, and Week opens a day', async ({ page }) => {
+  const user = await createTestUser('trends-room')
+  await saveTestProfile(user.session.access_token)
+  const { today } = recentDays()
+  await logFood(user, key(today), 'lunch', 1800, 90, 300)
+  await openTrends(page, user, 'dark')
+  await page.setViewportSize({ width: 360, height: 740 })
+  const calories = page.getByRole('region', { name: 'Calories' })
+  const openers = calories.getByRole('link', { name: /Open the day$/ })
+  const hint = calories.getByText('Switch to Week to open a day.')
+
+  // The round add button is inside the main landmark, not loose on the page.
+  await expect(page.locator('main').getByRole('link', { name: 'Log food' })).toBeVisible()
+
+  // About thirty bars are too close to tap one by one, so the month is a picture with a hint.
+  await page.getByRole('button', { name: 'Month' }).click()
+  await expect(openers).toHaveCount(0)
+  await expect(hint).toBeVisible()
+  await expect(calories.getByText(/: 1,800 kcal, under target$/)).toBeAttached()
+  await settled(page)
+  await checkScreen(page, 'trends, month on a phone')
+
+  // The week still opens a day, with a tap area as tall as the chart.
+  await page.getByRole('button', { name: 'Week' }).click()
+  await expect(hint).toHaveCount(0)
+  const first = openers.first()
+  await expect(first).toBeVisible()
+  const box = await first.boundingBox()
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(24)
+  await settled(page)
+  await checkScreen(page, 'trends, week on a phone')
+})
+
+test('a month on a wide screen opens a day from its bars', async ({ page }) => {
+  const user = await createTestUser('trends-wide')
+  await saveTestProfile(user.session.access_token)
+  const { today } = recentDays()
+  await logFood(user, key(today), 'lunch', 1800, 90, 300)
+  await openTrends(page, user, 'dark')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: 'Month' }).click()
+  const calories = page.getByRole('region', { name: 'Calories' })
+  await expect(calories.getByRole('link', { name: /Open the day$/ }).first()).toBeVisible()
+  await expect(calories.getByText('Switch to Week to open a day.')).toHaveCount(0)
+  await settled(page)
+  await checkScreen(page, 'trends, month on a wide screen')
+})
+
 test('a day address that is not a date goes back to Trends, and a day with nothing says so', async ({
   page,
 }) => {
