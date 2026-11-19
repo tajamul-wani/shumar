@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Link } from 'wouter'
 import { useAuth } from '../auth/context.ts'
 import { Alert } from '../components/Alert.tsx'
@@ -38,20 +38,50 @@ function chartTop(days: readonly DayBar[], target: number | null): number {
   return Math.max(target ?? 0, ...days.map((d) => d.kcal), 1) * 1.08
 }
 
-function barLabel(day: DayBar, target: number | null): string {
+function barLabel(day: DayBar, target: number | null, opens: boolean): string {
   const when = formatDayHeading(parseDateKey(day.date))
-  if (day.state === 'empty') return `${when}: nothing logged. Open the day`
+  const open = opens ? '. Open the day' : ''
+  if (day.state === 'empty') return `${when}: nothing logged${open}`
   const standing = target ? (day.over ? ', over target' : ', under target') : ''
-  return `${when}: ${formatNumber(Math.round(day.kcal))} kcal${standing}. Open the day`
+  return `${when}: ${formatNumber(Math.round(day.kcal))} kcal${standing}${open}`
 }
 
-/** One bar per day. Logged days open the day; the rest are drawn only. */
+/** WCAG 2.2 (2.5.8): a tap target is 24 px wide, or has room for a 24 px circle on its centre. */
+const TAP_SIZE = 24
+
+/**
+ * Whether each bar can be tapped on its own. A month on a phone packs about thirty bars into the
+ * screen, too close to hit one with a thumb, so there the bars are a picture and a day opens from
+ * the week. Measured from the real layout, so a tablet or desktop is decided by the room it has.
+ */
+function useTappableBars(chart: RefObject<HTMLDivElement | null>, count: number): boolean {
+  const [tappable, setTappable] = useState(true)
+  useLayoutEffect(() => {
+    const element = chart.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const gap = Number.parseFloat(getComputedStyle(element).columnGap) || 0
+      // The bars share the width equally.
+      const bar = (element.clientWidth - gap * (count - 1)) / count
+      setTappable(bar >= TAP_SIZE || bar / 2 + gap >= TAP_SIZE / 2)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [chart, count])
+  return tappable
+}
+
+/** One bar per day. A bar opens its day when it has room to be tapped, and is a picture when it has not. */
 function Chart({ summary, target }: { summary: RangeSummary; target: number | null }) {
   const top = chartTop(summary.days, target)
   const gap = summary.days.length > 7 ? 'gap-0.5 sm:gap-1' : 'gap-2 sm:gap-4'
+  const bars = useRef<HTMLDivElement>(null)
+  const tappable = useTappableBars(bars, summary.days.length)
   return (
     <div className="flex flex-col gap-2">
-      <div className={`relative flex h-45 items-end pt-2 lg:h-60 ${gap}`}>
+      <div ref={bars} className={`relative flex h-45 items-end pt-2 lg:h-60 ${gap}`}>
         {target && (
           <div
             aria-hidden="true"
@@ -67,13 +97,22 @@ function Chart({ summary, target }: { summary: RangeSummary; target: number | nu
             <div key={day.date} className="flex h-full min-w-0 flex-1 flex-col justify-end">
               {day.state === 'ahead' ? (
                 <span aria-hidden="true" className="block" />
-              ) : (
+              ) : tappable ? (
                 <Link
                   href={trendsDayPath(day.date)}
-                  aria-label={barLabel(day, target)}
-                  className={`block rounded-t transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring ${color}`}
-                  style={{ height }}
-                />
+                  aria-label={barLabel(day, target, true)}
+                  className="group flex h-full flex-col justify-end rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`block rounded-t transition-opacity group-hover:opacity-80 ${color}`}
+                    style={{ height }}
+                  />
+                </Link>
+              ) : (
+                <span className={`block rounded-t ${color}`} style={{ height }}>
+                  <span className="sr-only">{barLabel(day, target, false)}</span>
+                </span>
               )}
             </div>
           )
@@ -86,6 +125,7 @@ function Chart({ summary, target }: { summary: RangeSummary; target: number | nu
           </span>
         ))}
       </div>
+      {!tappable && <p className="m-0 text-caption text-koshur-muted">Switch to Week to open a day.</p>}
     </div>
   )
 }

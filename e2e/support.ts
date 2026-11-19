@@ -107,9 +107,11 @@ export function cspViolations(page: Page): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)
 }
 
-/** Serious and critical accessibility problems on the page as it is now. */
+/** Serious and critical accessibility problems on the page as it is now, by the WCAG 2.2 AA rules (tap target size included). */
 export async function accessibilityViolations(page: Page) {
-  const results = await new AxeBuilder({ page }).analyze()
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+    .analyze()
   return results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
 }
 
