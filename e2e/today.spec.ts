@@ -221,8 +221,9 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
 
     // A meal of the person's own.
-    await popup.getByRole('textbox', { name: 'Or name a meal' }).fill('Chai')
-    await popup.getByRole('textbox', { name: 'Or name a meal' }).press('Enter')
+    await popup.getByRole('button', { name: 'New meal' }).click()
+    await popup.getByRole('textbox', { name: 'Name your meal' }).fill('Chai')
+    await popup.getByRole('textbox', { name: 'Name your meal' }).press('Enter')
     await expect(popup.getByRole('button', { name: 'Chai', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
