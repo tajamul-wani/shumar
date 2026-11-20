@@ -15,6 +15,7 @@ function food(id: string): FoodResult {
     sourceId: id,
     name: `Test food ${id}`,
     per100g: { kcal: 100, protein: 1, carbs: 20, fat: 1, sodiumMg: 1 },
+    minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
     units: [
       { name: 'g', grams: 1 },
       { name: '1 cup', grams: 150 },

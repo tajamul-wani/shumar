@@ -11,6 +11,18 @@ export interface Nutrients {
   sodiumMg: number
 }
 
+/**
+ * Calcium and magnesium in mg and vitamin D in micrograms. null is "not listed": a food whose
+ * source gives no value, never a zero. They sit beside the totals and are not added up.
+ */
+export interface Minerals {
+  calciumMg: number | null
+  magnesiumMg: number | null
+  vitaminDMcg: number | null
+}
+
+export const NO_MINERALS: Minerals = { calciumMg: null, magnesiumMg: null, vitaminDMcg: null }
+
 export interface FoodUnit {
   name: string
   grams: number
@@ -43,6 +55,17 @@ export function scaleNutrients(per100g: Nutrients, grams: number): Nutrients {
     carbs: per100g.carbs * factor,
     fat: per100g.fat * factor,
     sodiumMg: per100g.sodiumMg * factor,
+  }
+}
+
+/** The three values for a given weight, from per-100 g values. Not listed stays not listed. */
+export function scaleMinerals(per100g: Minerals, grams: number): Minerals {
+  assertPositive(grams, 'Grams')
+  const scale = (value: number | null) => (value === null ? null : (value * grams) / 100)
+  return {
+    calciumMg: scale(per100g.calciumMg),
+    magnesiumMg: scale(per100g.magnesiumMg),
+    vitaminDMcg: scale(per100g.vitaminDMcg),
   }
 }
 

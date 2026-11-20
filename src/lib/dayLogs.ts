@@ -31,7 +31,7 @@ type LogsClient = Pick<SupabaseClient, 'from'>
 
 /** Only the columns the app shows, so each read stays small. */
 const LOG_COLUMNS =
-  'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg'
+  'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg, calcium_mg, magnesium_mg, vitamin_d_mcg'
 
 /** Checks one user_logs row against the table's own limits. Returns null if anything is off. */
 export function parseLoggedFood(value: unknown): LoggedFood | null {
@@ -117,6 +117,7 @@ export async function restoreLog(client: LogsClient, log: LoggedFood): Promise<L
  */
 export function foodFromLog(log: LoggedFood): { food: FoodResult; unit: FoodUnit; quantity: number } {
   const per100 = (value: number) => (value * 100) / log.grams
+  const per100OrNull = (value: number | null | undefined) => (value == null ? null : per100(value))
   const unit = log.unitName === GRAM.name ? GRAM : { name: log.unitName, grams: log.grams / log.quantity }
   const food: FoodResult = {
     source: log.foodSource,
@@ -128,6 +129,11 @@ export function foodFromLog(log: LoggedFood): { food: FoodResult; unit: FoodUnit
       carbs: per100(log.nutrients.carbs),
       fat: per100(log.nutrients.fat),
       sodiumMg: per100(log.nutrients.sodiumMg),
+    },
+    minerals: {
+      calciumMg: per100OrNull(log.minerals?.calciumMg),
+      magnesiumMg: per100OrNull(log.minerals?.magnesiumMg),
+      vitaminDMcg: per100OrNull(log.minerals?.vitaminDMcg),
     },
     units: unit === GRAM ? [GRAM] : [GRAM, unit],
     flagged: false,
@@ -159,6 +165,9 @@ export async function changeLog(client: LogsClient, log: LoggedFood, change: Log
       carbs: row.carbs,
       fat: row.fat,
       sodium_mg: row.sodium_mg,
+      calcium_mg: row.calcium_mg,
+      magnesium_mg: row.magnesium_mg,
+      vitamin_d_mcg: row.vitamin_d_mcg,
     })
     .eq('id', log.id)
     .select(LOG_COLUMNS)

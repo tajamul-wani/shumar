@@ -310,6 +310,9 @@ describe('a chosen food', () => {
       carbs: 67.2,
       fat: 0.72,
       sodium_mg: 2.4,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
     expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()

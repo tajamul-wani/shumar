@@ -74,6 +74,30 @@ describe('normalizeQuery', () => {
   })
 })
 
+describe('parseResults, calcium, magnesium and vitamin D', () => {
+  it('carries the three values, and keeps one USDA does not list as null', () => {
+    const [food] = parseResults([
+      row({ calcium_mg_per_100g: '50.00', magnesium_mg_per_100g: 10, vitamin_d_mcg_per_100g: null }),
+    ])
+    expect(food.minerals).toEqual({ calciumMg: 50, magnesiumMg: 10, vitaminDMcg: null })
+  })
+
+  it('reads a value beyond what a food can hold as not listed, and keeps the food', () => {
+    const [food] = parseResults([row({ calcium_mg_per_100g: 99999, magnesium_mg_per_100g: -1 })])
+    expect(food.minerals).toEqual({ calciumMg: null, magnesiumMg: null, vitaminDMcg: null })
+  })
+
+  it('keeps a food saved with no sodium: it counts as 0 and says it is not listed', () => {
+    const [food] = parseResults([row({ sodium_mg_per_100g: null })])
+    expect(food.per100g.sodiumMg).toBe(0)
+    expect(food.sodiumListed).toBe(false)
+  })
+
+  it('does not say a listed sodium is missing', () => {
+    expect(parseResults([row()])[0].sodiumListed).toBeUndefined()
+  })
+})
+
 describe('parseResults', () => {
   it('turns a row into a result, with grams first among the units', () => {
     expect(parseResults([row()])).toEqual([
@@ -82,6 +106,7 @@ describe('parseResults', () => {
         sourceId: '1001',
         name: 'Test food, cooked',
         per100g: { kcal: 120, protein: 3, carbs: 25, fat: 1, sodiumMg: 5 },
+        minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
         units: [
           { name: 'g', grams: 1 },
           { name: '1 cup', grams: 158 },

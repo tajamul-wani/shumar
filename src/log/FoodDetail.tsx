@@ -9,6 +9,7 @@ import {
   defaultQuantity,
   formatNumber,
   isEstimate,
+  mineralRows,
   nutrientsFor,
   parseQuantity,
   quantityStep,
@@ -128,6 +129,7 @@ export function FoodDetail({
   const quantity = parseQuantity(text)
   const step = quantityStep(unit)
   const values = quantity === null ? null : nutrientsFor(food, quantity, unit)
+  const minerals = quantity === null ? null : mineralRows(food, quantity, unit)
   const estimate = isEstimate(food)
   const hint = unitHint(unit)
   // Household units first (katori, cup, piece), then grams, as the design orders them.
@@ -270,6 +272,20 @@ export function FoodDetail({
                 </p>
               ))}
             </div>
+            {minerals && (
+              <dl className="m-0 flex flex-col gap-2.5 border-t border-koshur-border pt-4 text-body-sm">
+                {minerals.map((row) => (
+                  <div key={row.label} className="flex justify-between gap-4">
+                    <dt className="text-koshur-muted">{row.label}</dt>
+                    <dd
+                      className={`m-0 text-right ${row.value === null ? 'text-koshur-muted' : 'font-semibold text-koshur-silk'}`}
+                    >
+                      {row.value ?? 'Not listed'}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </>
         ) : (
           <p className="m-0 text-body-sm text-koshur-muted">Enter an amount to see the values.</p>

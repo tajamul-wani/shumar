@@ -22,6 +22,9 @@ function row(overrides: Record<string, unknown> = {}) {
     carbs: 4.5,
     fat: 2.25,
     sodium_mg: 300,
+    calcium_mg: null,
+    magnesium_mg: null,
+    vitamin_d_mcg: null,
     ...overrides,
   }
 }
@@ -108,6 +111,9 @@ describe('changing a logged food', () => {
       carbs: 9,
       fat: 4.5,
       sodium_mg: 600,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
     expect(window.location.pathname).toBe('/')
   })

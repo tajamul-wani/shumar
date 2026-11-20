@@ -1,6 +1,14 @@
 import type { FoodResult, FoodUnit } from './foodSearch.ts'
 import type { FoodAmount } from './logs.ts'
-import { gramsFor, roundForDisplay, scaleNutrients, type Nutrients } from './nutrition.ts'
+import {
+  NO_MINERALS,
+  gramsFor,
+  roundForDisplay,
+  scaleMinerals,
+  scaleNutrients,
+  type Minerals,
+  type Nutrients,
+} from './nutrition.ts'
 
 /**
  * How foods and amounts read in the log sheet. Kept apart from the screens so the wording and
@@ -133,6 +141,36 @@ export function unitHint(unit: FoodUnit): string | null {
 export function nutrientsFor(food: FoodResult, quantity: number, unit: FoodUnit): Nutrients | null {
   if (!Number.isFinite(quantity) || quantity <= 0) return null
   return roundForDisplay(scaleNutrients(food.per100g, gramsFor(quantity, unit)))
+}
+
+/** One row of the vitamins and minerals list: a name, and its amount or null where it is not listed. */
+export interface MineralRow {
+  label: string
+  /** For example "50 mg", or null for not listed. */
+  value: string | null
+}
+
+const oneDecimal = (value: number) => Math.round(value * 10) / 10
+
+/**
+ * Calcium, magnesium and vitamin D for an amount of a food, then sodium, for the list under the
+ * macros. A value the food does not list is null, never a zero. Null for an amount that can't be used.
+ */
+export function mineralRows(food: FoodResult, quantity: number, unit: FoodUnit): MineralRow[] | null {
+  if (!Number.isFinite(quantity) || quantity <= 0) return null
+  const grams = gramsFor(quantity, unit)
+  const minerals: Minerals = scaleMinerals(food.minerals ?? NO_MINERALS, grams)
+  const sodium = Math.round(scaleNutrients(food.per100g, grams).sodiumMg)
+  const mg = (value: number | null) => (value === null ? null : `${formatNumber(Math.round(value))} mg`)
+  return [
+    { label: 'Calcium', value: mg(minerals.calciumMg) },
+    { label: 'Magnesium', value: mg(minerals.magnesiumMg) },
+    {
+      label: 'Vitamin D',
+      value: minerals.vitaminDMcg === null ? null : `${formatNumber(oneDecimal(minerals.vitaminDMcg))} mcg`,
+    },
+    { label: 'Sodium', value: food.sodiumListed === false ? null : `${formatNumber(sodium)} mg` },
+  ]
 }
 
 /**
