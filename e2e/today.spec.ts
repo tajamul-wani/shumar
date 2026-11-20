@@ -375,6 +375,8 @@ for (const theme of ['dark', 'light'] as const) {
       // Saved under a name, then opened, grown by a food from the search, and trimmed by one.
       await inMeal.getByRole('textbox', { name: 'Name this meal' }).fill('Morning chai')
       await inMeal.getByRole('button', { name: 'Save as a meal' }).click()
+      // Yesterday, Saved meals and My foods are tabs: the saved meal is on its own.
+      await popup.getByRole('button', { name: 'Saved meals', exact: true }).click()
       const saved = popup.getByRole('region', { name: 'Saved meals' })
       await expect(saved).toContainText('Morning chai')
       await expect(saved).toContainText('300 kcal')

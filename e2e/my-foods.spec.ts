@@ -101,7 +101,7 @@ for (const theme of THEMES) {
 
       // Before any search, their foods are listed and added in one tap.
       await search.fill('')
-      await expect(popup.getByRole('heading', { name: 'Your foods' })).toBeVisible()
+      await expect(popup.getByRole('button', { name: 'My foods', pressed: true })).toBeVisible()
       await popup.getByRole('button', { name: 'Add 1 serving Kxtest paneer (Kxbrand)' }).click()
       await expect(lunch.getByRole('listitem')).toHaveCount(1)
       await expect(lunch).toContainText('×2')

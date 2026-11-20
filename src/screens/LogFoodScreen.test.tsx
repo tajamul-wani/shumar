@@ -506,7 +506,7 @@ describe('inside another screen', () => {
 describe("the person's own foods", () => {
   it('are listed before any search, and one is added in a tap', async () => {
     const fake = renderScreen(fakeClient({ myFoods: [cheeseRow] }))
-    expect(await screen.findByRole('heading', { name: 'Your foods' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'My foods' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Add 1 serving Test cheese (Test brand)' }))
     expect(fake.insert).toHaveBeenCalledWith(
       expect.objectContaining({
