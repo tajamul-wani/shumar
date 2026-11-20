@@ -213,9 +213,7 @@ describe('searching', () => {
   it('saves a food from its pack, then finds it first', async () => {
     const fake = renderScreen(fakeClient({ rows: [cheese], savedFood: cheeseRow }))
     await searchFor('cheese')
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
-    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Add your own food' }))
     await userEvent.click(screen.getByRole('button', { name: 'Per serving' }))
     for (const [label, value] of [
       ['Name', 'Test cheese'],
@@ -239,12 +237,13 @@ describe('searching', () => {
     expect(screen.getByText('Saved to your foods')).toBeInTheDocument()
   })
 
-  it('offers another food from its pack under the results', async () => {
+  it('offers a food from its pack right under the search box, before the results', async () => {
     renderScreen()
     await searchFor('rice')
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
-    )
+    const own = await screen.findByRole('button', { name: 'Add your own food' })
+    const results = screen.getByRole('list', { name: 'Search results' })
+    expect(own.compareDocumentPosition(results) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.click(own)
     expect(heading()).toHaveTextContent('Add a food from its pack')
   })
 
@@ -310,6 +309,9 @@ describe('a chosen food', () => {
       carbs: 67.2,
       fat: 0.72,
       sodium_mg: 2.4,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
     expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()
@@ -504,7 +506,7 @@ describe('inside another screen', () => {
 describe("the person's own foods", () => {
   it('are listed before any search, and one is added in a tap', async () => {
     const fake = renderScreen(fakeClient({ myFoods: [cheeseRow] }))
-    expect(await screen.findByRole('heading', { name: 'Your foods' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'My foods' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Add 1 serving Test cheese (Test brand)' }))
     expect(fake.insert).toHaveBeenCalledWith(
       expect.objectContaining({

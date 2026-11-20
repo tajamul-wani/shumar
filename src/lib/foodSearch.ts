@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { USER_CACHE_PREFIX } from './auth.ts'
 import { localDateKey } from './dates.ts'
 import { deviceStorage } from './deviceStorage.ts'
+import { NO_MINERALS, type Minerals } from './nutrition.ts'
 
 /**
  * Food search: one call to the database's search_foods function, which looks in the person's own
@@ -24,6 +25,10 @@ export interface FoodResult {
   name: string
   /** Per 100 g as eaten. Sodium in mg. */
   per100g: { kcal: number; protein: number; carbs: number; fat: number; sodiumMg: number }
+  /** Calcium, magnesium and vitamin D per 100 g. Not listed is null, never a zero. */
+  minerals?: Minerals
+  /** False for a food of the person's own saved without sodium: its sodium then counts as 0 but is not listed. */
+  sodiumListed?: boolean
   /** Always starts with grams, then the food's household units. */
   units: FoodUnit[]
   /** The values failed the Atwater check, so they may be less reliable. */
@@ -44,7 +49,7 @@ export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
  * (as the egg picks and dried forms after fresh ones did, 29 October 2026), so copies kept before
  * are ignored.
  */
-const SEARCH_CACHE_VERSION = 2
+const SEARCH_CACHE_VERSION = 3
 const GRAMS: FoodUnit = { name: 'g', grams: 1 }
 
 export class FoodSearchError extends Error {}
@@ -57,6 +62,15 @@ export function normalizeQuery(raw: string): string {
 function number(value: unknown, min: number, max: number): number | null {
   const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
   return typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max ? n : null
+}
+
+function parseMinerals(value: unknown): Minerals {
+  const minerals = (value ?? {}) as Record<string, unknown>
+  return {
+    calciumMg: number(minerals.calciumMg, 0, 10000),
+    magnesiumMg: number(minerals.magnesiumMg, 0, 5000),
+    vitaminDMcg: number(minerals.vitaminDMcg, 0, 5000),
+  }
 }
 
 function text(value: unknown, maxLength: number): string | null {
@@ -118,6 +132,8 @@ export function parseFood(value: unknown): FoodResult | null {
     sourceId,
     name,
     per100g: { kcal, protein, carbs, fat, sodiumMg },
+    minerals: food?.minerals === undefined ? NO_MINERALS : parseMinerals(food.minerals),
+    ...(food?.sodiumListed === false ? { sodiumListed: false } : {}),
     units: parseUnits(food?.units),
     flagged: food?.flagged === true,
     verified: food?.verified === true,
@@ -139,8 +155,15 @@ export function parseResults(rows: unknown): FoodResult[] {
         protein: row.protein_per_100g,
         carbs: row.carbs_per_100g,
         fat: row.fat_per_100g,
-        sodiumMg: row.sodium_mg_per_100g,
+        // A food of the person's own may have no sodium: it counts as 0 and says it is not listed.
+        sodiumMg: row.sodium_mg_per_100g ?? 0,
       },
+      minerals: {
+        calciumMg: row.calcium_mg_per_100g,
+        magnesiumMg: row.magnesium_mg_per_100g,
+        vitaminDMcg: row.vitamin_d_mcg_per_100g,
+      },
+      sodiumListed: row.sodium_mg_per_100g != null,
       units: row.units,
       flagged: row.flagged,
       verified: row.verified,

@@ -12,6 +12,8 @@
 
 Shumār shows "Added to lunch" and returns you to the search box, so you can add the next food. Tap **Done** when you finish.
 
+Under the calories and the protein, carbs and fat, you also see calcium, magnesium and vitamin D, and sodium, for the amount you chose. Where we have no value for a food, it says **Not listed**. That is not zero.
+
 Under **In lunch now** you see everything already in that meal and its calories.
 
 > **Tip:** Kashmiri foods come first in the results. Tags on each result tell you more: **Kashmiri**, **Verified**, **Estimate** (a typical value, since home recipes vary) and **Yours** (a food you added).
@@ -20,8 +22,9 @@ Under **In lunch now** you see everything already in that meal and its calories.
 
 If breakfast, lunch and the others don't fit, name a meal.
 
-1. In the **Add food** popup, type a name in **Or name a meal**, such as Chai.
-2. Press **Enter**.
+1. In the **Add food** popup, tap **New meal** at the end of the meal row.
+2. Type a name in **Name your meal**, such as Chai.
+3. Tap **Add meal**.
 
 Your meal appears on Today next to the others.
 
@@ -29,11 +32,12 @@ Your meal appears on Today next to the others.
 
 If a food isn't in the results, add it from its label. Only you can see the foods you add.
 
-1. In the results, tap **Add it from the pack**. If you already searched for it, its name fills in for you.
+1. Under the search box, tap **Add your own food**. If you already searched for it, its name fills in for you.
 2. Enter the **Name**, and the **Brand** if the pack has one.
 3. Choose **Per 100 g** or **Per serving**, as the label shows. For a serving, enter what **One serving is** in grams.
-4. Enter **Calories**, **Protein**, **Carbs**, **Fat** and **Sodium** from the label.
-5. Tap **Save food**.
+4. Enter **Calories**, **Protein**, **Carbs** and **Fat** from the label.
+5. If the label lists them, add **Sodium**, **Calcium**, **Magnesium** and **Vitamin D**. They are optional, so leave out any the pack does not list.
+6. Tap **Save food**.
 
 Your food now shows first when you search for it, tagged **Yours**. Open it to tap **Edit** or **Remove**. Foods you already logged stay on your days.
 
@@ -41,7 +45,7 @@ If the numbers on the label don't add up, Shumār shows "Check these numbers". T
 
 ## Add yesterday's meal again
 
-When you open the **Add food** popup, you see yesterday's matching meal, for example "Yesterday's lunch". Tap **Add all** to log all of it in one tap.
+Under the search box, three tabs hold your quick adds: **Yesterday**, **Saved meals** and **My foods**. On **Yesterday** you see yesterday's matching meal, for example "Yesterday's lunch". Tap **Add all** to log all of it in one tap.
 
 ## Save a meal you eat often
 
@@ -49,9 +53,9 @@ When you open the **Add food** popup, you see yesterday's matching meal, for exa
 2. Under **In lunch now**, type a name in **Name this meal**, such as Morning chai.
 3. Tap **Save as a meal**.
 
-Later, find it under **Saved meals** in the popup.
+Later, find it on the **Saved meals** tab in the popup.
 
-- To add it, tap the **+** next to its name.
+- To add it, tap **Add** next to its name.
 - To change it, tap its name to open it. Tap **Add a food** to grow it, or remove a food to trim it.
 - To delete it, open it and tap **Remove saved meal**.
 

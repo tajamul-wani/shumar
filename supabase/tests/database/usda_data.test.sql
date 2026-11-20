@@ -63,16 +63,16 @@ select matches((select name from public.search_foods('beef') limit 1), '^Beef, c
 select is((select name from public.search_foods('mooli') limit 1), 'Radishes, oriental, raw',
           '"mooli" finds the long white radish');
 select results_eq($$select name from public.search_foods('chicken', 5)$$,
-                  array['Chicken, broilers or fryers, meat only, raw',
-                        'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
+                  array['Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
+                        'Chicken, broilers or fryers, breast, meat only, cooked, roasted',
+                        'Chicken, broilers or fryers, meat only, raw',
                         'Chicken, broilers or fryers, breast, meat and skin, raw',
-                        'Chicken, broilers or fryers, dark meat, thigh, meat only, raw',
-                        'Chicken, broilers or fryers, thigh, meat and skin, raw'],
-                  '"chicken" offers the raw broiler cuts sold here: whole, breast and thigh, each without skin first');
+                        'Chicken, broilers or fryers, dark meat, thigh, meat only, raw'],
+                  '"chicken" offers the broiler breast first, raw then roasted, then the whole bird, the breast with skin and the thigh');
 select results_eq($$select name from public.search_foods('chicken breast', 2)$$,
                   array['Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
-                        'Chicken, broilers or fryers, breast, meat and skin, raw'],
-                  '"chicken breast" offers the breast without skin, then with skin');
+                        'Chicken, broilers or fryers, breast, meat only, cooked, roasted'],
+                  '"chicken breast" offers the breast without skin raw, then cooked and roasted');
 select results_eq($$select name from public.search_foods('chicken thighs', 2)$$,
                   array['Chicken, broilers or fryers, dark meat, thigh, meat only, raw',
                         'Chicken, broilers or fryers, thigh, meat and skin, raw'],

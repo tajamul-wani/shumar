@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
@@ -23,6 +23,7 @@ import { useSavedMeals, type SavedMealsState } from './useSavedMeals.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 const STEP = 'm-0 text-caption font-semibold tracking-wide text-koshur-muted uppercase'
+const MEAL_NAME_INPUT = `min-h-11 min-w-0 flex-1 rounded-xl border border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`
 const NAME_INPUT = `min-h-11 min-w-0 flex-1 basis-56 rounded-full border border-dashed border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`
 
 interface AddFoodDialogProps {
@@ -170,7 +171,9 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
   const nameRef = useRef<HTMLInputElement>(null)
   const headingId = useId()
   const nameId = useId()
+  const namePanelId = useId()
   const [name, setName] = useState('')
+  const [naming, setNaming] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const savedMeals = useSavedMeals()
   const [notice, setNotice] = useState<ToastMessage | null>(null)
@@ -217,6 +220,7 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
     }
     setNameError(null)
     setName('')
+    setNaming(false)
     onChangeMeal(next)
   }
 
@@ -227,6 +231,18 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
     }
   }
 
+  const mealFoods = logs.filter((log) => log.meal === meal)
+  const mealKcal = mealFoods.reduce((sum, log) => sum + log.nutrients.kcal, 0)
+  const mealSummary =
+    mealFoods.length === 0
+      ? 'Nothing added yet'
+      : `${mealFoods.length} ${mealFoods.length === 1 ? 'food' : 'foods'} · ${formatNumber(Math.round(mealKcal))} kcal`
+
+  // The name box takes focus as soon as it opens.
+  useEffect(() => {
+    if (naming) nameRef.current?.focus()
+  }, [naming])
+
   return (
     <dialog
       ref={ref}
@@ -235,86 +251,118 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
       className="fixed inset-0 m-0 flex h-auto max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-koshur-surface p-0 text-koshur-silk shadow-none backdrop:bg-koshur-base/70 open:flex lg:inset-auto lg:top-1/2 lg:left-1/2 lg:max-h-dvh lg:w-full lg:max-w-3xl lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl lg:border lg:border-koshur-border"
     >
       {
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-sheet pb-sheet sm:px-6 lg:pt-6 lg:pb-6">
-          <div className="flex items-center gap-3">
-            <h2 id={headingId} className="m-0 min-w-0 flex-1 text-title font-semibold">
-              Add food
-            </h2>
-            {/* A clear way out: a bordered button with its name, not a faint cross (Tajamul Wani, 28 October 2026). */}
-            <Button variant="secondary" size="small" onClick={onClose} className="shrink-0">
-              <X aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
-              Close
-            </Button>
-          </div>
+        <>
+          <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pt-sheet pb-sheet sm:px-6 lg:pt-6 lg:pb-6">
+            <div className="flex items-center gap-3">
+              <h2 id={headingId} className="m-0 min-w-0 flex-1 text-title font-semibold">
+                Add food
+              </h2>
+              {/* A clear way out: a bordered button with its name, not a faint cross (Tajamul Wani, 28 October 2026). */}
+              <Button variant="secondary" size="small" onClick={onClose} className="shrink-0">
+                <X aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
+                Close
+              </Button>
+            </div>
 
-          <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 border-0 p-0">
-            <legend className={`${STEP} p-0 pb-2.5`}>1. Which meal</legend>
-            <div className="flex flex-wrap items-center gap-2">
-              {MEALS.map((option) => (
-                <Chip key={option} pressed={option === meal} onClick={() => onChangeMeal(option)}>
-                  {MEAL_LABELS[option]}
+            <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 border-0 p-0">
+              <legend className={`${STEP} p-0 pb-2.5`}>1. Which meal</legend>
+              <div className="flex flex-wrap items-center gap-2">
+                {MEALS.map((option) => (
+                  <Chip key={option} pressed={option === meal} onClick={() => onChangeMeal(option)}>
+                    {MEAL_LABELS[option]}
+                  </Chip>
+                ))}
+                {ownMeals.map((own) => (
+                  <Chip key={own} pressed={own === meal} onClick={() => onChangeMeal(own)}>
+                    {own}
+                  </Chip>
+                ))}
+                <Chip
+                  pressed={naming}
+                  aria-expanded={naming}
+                  aria-controls={namePanelId}
+                  onClick={() => {
+                    setNameError(null)
+                    setNaming((open) => !open)
+                  }}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
+                  New meal
                 </Chip>
-              ))}
-              {ownMeals.map((own) => (
-                <Chip key={own} pressed={own === meal} onClick={() => onChangeMeal(own)}>
-                  {own}
-                </Chip>
-              ))}
-              <label htmlFor={nameId} className="sr-only">
-                Or name a meal
-              </label>
-              <input
-                ref={nameRef}
-                id={nameId}
-                type="text"
-                value={name}
-                onChange={(event) => {
-                  setNameError(null)
-                  setName(event.target.value)
-                }}
-                onKeyDown={onNameKey}
-                onBlur={() => name.trim() && nameMeal()}
-                placeholder="or name a meal, such as Chai"
-                maxLength={MAX_MEAL_NAME}
-                autoComplete="off"
-                className={NAME_INPUT}
+              </div>
+              {naming && (
+                <div
+                  id={namePanelId}
+                  className="flex flex-col gap-2 rounded-2xl border border-koshur-border p-4"
+                >
+                  <label htmlFor={nameId} className="text-body-sm font-semibold text-koshur-silk">
+                    Name your meal
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={nameRef}
+                      id={nameId}
+                      type="text"
+                      value={name}
+                      onChange={(event) => {
+                        setNameError(null)
+                        setName(event.target.value)
+                      }}
+                      onKeyDown={onNameKey}
+                      maxLength={MAX_MEAL_NAME}
+                      autoComplete="off"
+                      className={MEAL_NAME_INPUT}
+                    />
+                    <Button size="small" onClick={nameMeal} className="shrink-0">
+                      Add meal
+                    </Button>
+                  </div>
+                  <p className="m-0 text-caption text-koshur-muted">
+                    For example Chai, Pre-workout or Office lunch.
+                  </p>
+                </div>
+              )}
+              {nameError && (
+                <p role="alert" className="m-0 text-body-sm text-koshur-silk">
+                  {nameError}
+                </p>
+              )}
+            </fieldset>
+
+            <div className="flex min-w-0 flex-col gap-2.5">
+              <h3 className={STEP}>2. What you ate, for {mealLabel(meal).toLowerCase()}</h3>
+              <LogSheet
+                dialog
+                meal={meal}
+                onChooseMeal={onChangeMeal}
+                onAdded={onAdded}
+                savedMeals={savedMeals}
               />
             </div>
-            {nameError && (
-              <p role="alert" className="m-0 text-body-sm text-koshur-silk">
-                {nameError}
-              </p>
-            )}
-          </fieldset>
 
-          <div className="flex min-w-0 flex-col gap-2.5">
-            <h3 className={STEP}>2. What you ate, for {mealLabel(meal).toLowerCase()}</h3>
-            <LogSheet
-              dialog
+            <InMeal
               meal={meal}
-              onChooseMeal={onChangeMeal}
-              onAdded={onAdded}
+              foods={logs.filter((log) => log.meal === meal)}
               savedMeals={savedMeals}
+              onSaved={(savedName) => {
+                noticeId.current += 1
+                setNotice({ id: noticeId.current, text: `Saved ${savedName}`, tone: 'added' })
+              }}
             />
+            <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} inline />
           </div>
-
-          <InMeal
-            meal={meal}
-            foods={logs.filter((log) => log.meal === meal)}
-            savedMeals={savedMeals}
-            onSaved={(savedName) => {
-              noticeId.current += 1
-              setNotice({ id: noticeId.current, text: `Saved ${savedName}`, tone: 'added' })
-            }}
-          />
-          <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} inline />
-
-          <div className="flex justify-end">
-            <Button size="small" onClick={onClose}>
+          {/* Done stays in view with what the meal holds so far, however long the list above grows. */}
+          <div className="flex shrink-0 items-center gap-3 border-t border-koshur-border px-4 py-3 sm:px-6">
+            <p className="m-0 flex min-w-0 flex-1 flex-col">
+              <span className="text-body-sm font-semibold text-koshur-silk">{mealLabel(meal)}</span>
+              <span className="text-caption text-koshur-muted">{mealSummary}</span>
+            </p>
+            <Button size="small" onClick={onClose} className="shrink-0">
               Done
             </Button>
           </div>
-        </div>
+        </>
       }
     </dialog>
   )

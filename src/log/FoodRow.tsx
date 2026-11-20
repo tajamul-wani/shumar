@@ -1,4 +1,5 @@
-import { Check, Plus } from 'lucide-react'
+import { Check } from 'lucide-react'
+import { Button } from '../components/Button.tsx'
 import {
   amountLabel,
   amountWithGrams,
@@ -8,7 +9,6 @@ import {
   sourceTag,
 } from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
-import { useSheetFill } from './fill.ts'
 import { FoodValues } from './FoodValues.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
@@ -20,7 +20,7 @@ interface FoodRowProps {
   onOpen: () => void
   /** Recent foods add again in one tap, with the amount used last time. */
   onQuickAdd?: () => void
-  /** A plus that opens the food to choose the amount, as in the Add food popup: nothing is added until the person says so. */
+  /** An Add button that opens the food to choose the amount, as in the Add food popup: nothing is added until the person says so. */
   withPlus?: boolean
   busy?: boolean
 }
@@ -41,7 +41,6 @@ export function FoodRow({
 }: FoodRowProps) {
   const amount = amountLabel(quantity, unit)
   const values = nutrientsFor(food, quantity, unit)
-  const fill = useSheetFill()
   const tag = sourceTag(food)
   return (
     <li className="flex items-center gap-3 border-b border-koshur-border py-3">
@@ -79,15 +78,16 @@ export function FoodRow({
         </span>
       </button>
       {(onQuickAdd || withPlus) && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="small"
           onClick={onQuickAdd ?? onOpen}
           disabled={busy}
           aria-label={onQuickAdd ? `Add ${amount} ${food.name}` : `Add ${food.name}`}
-          className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border ${fill} text-deficit-ring disabled:opacity-60 ${FOCUS_RING}`}
+          className="shrink-0"
         >
-          <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
-        </button>
+          Add
+        </Button>
       )}
     </li>
   )

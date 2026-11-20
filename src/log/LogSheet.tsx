@@ -24,7 +24,7 @@ import { readRecentFoods, rememberFood, type RecentFood } from '../lib/recentFoo
 import type { SavedFood, SavedMeal } from '../lib/savedMeals.ts'
 import { FoodDetail } from './FoodDetail.tsx'
 import { FoodRow } from './FoodRow.tsx'
-import { FromPackCard, FromPackLink } from './FromPack.tsx'
+import { FromPackCard, FromPackStrip } from './FromPack.tsx'
 import { MyFoodForm } from './MyFoodForm.tsx'
 import { QuickAdds } from './QuickAdds.tsx'
 import { SavedMealView } from './SavedMealView.tsx'
@@ -103,7 +103,7 @@ function noMatch(query: string): string {
 interface SearchResultsProps {
   search: Exclude<FoodSearchState, { status: 'idle' }>
   onOpen: (chosen: Chosen) => void
-  /** In the popup each result has a plus that opens it, so the amount is always chosen before it is added. */
+  /** In the popup each result has an Add button that opens it, so the amount is always chosen before it is added. */
   withPlus: boolean
   /** Opens the form for a food from its pack, when search can't find the one wanted. */
   onAddFromPack: () => void
@@ -134,6 +134,7 @@ function SearchResults({ search, onOpen, withPlus, onAddFromPack }: SearchResult
   }
   return (
     <>
+      <FromPackStrip onAdd={onAddFromPack} />
       <p className="m-0 text-caption text-koshur-muted">
         Tap a food to see all its values and choose how much.
       </p>
@@ -152,7 +153,6 @@ function SearchResults({ search, onOpen, withPlus, onAddFromPack }: SearchResult
           )
         })}
       </ul>
-      <FromPackLink onClick={onAddFromPack}>Not the one? Add another from the pack</FromPackLink>
     </>
   )
 }

@@ -78,6 +78,7 @@ describe('parseLoggedFood', () => {
       unitName: 'cup',
       grams: 300,
       nutrients: { kcal: 90, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
+      minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
     })
   })
 
@@ -170,6 +171,9 @@ describe('removing and restoring', () => {
       carbs: 9,
       fat: 4.5,
       sodium_mg: 600,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
   })
 
@@ -212,6 +216,9 @@ describe('changing a log', () => {
       carbs: 13.5,
       fat: 6.75,
       sodium_mg: 900,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
     expect(call(calls, 'eq')).toEqual(['id', 'log-1'])
   })

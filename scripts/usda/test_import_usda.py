@@ -96,6 +96,31 @@ class LoadDatasetTest(unittest.TestCase):
         foods, summary = self.load([food("1", "No sodium"), food("2", "No protein")], nutrients)
         self.assertEqual((foods, summary.missing_value), ({}, 2))
 
+    def test_reads_calcium_magnesium_and_vitamin_d_when_listed(self):
+        nutrients = full("1") + [nutrient("1", "1087", "50"), nutrient("1", "1090", "12.345"), nutrient("1", "1114", "2.5")]
+        foods, summary = self.load([food("1", "A")], nutrients)
+        self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (Decimal("50.00"), Decimal("12.35"), Decimal("2.50")))
+        self.assertEqual((summary.with_calcium, summary.with_magnesium, summary.with_vitamin_d), (1, 1, 1))
+
+    def test_keeps_a_food_with_no_minerals_and_stores_them_as_not_listed(self):
+        foods, summary = self.load([food("1", "A")], full("1"))
+        self.assertEqual(len(foods), 1)
+        self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (None, None, None))
+        self.assertEqual((summary.with_calcium, summary.with_magnesium, summary.with_vitamin_d), (0, 0, 0))
+
+    def test_stores_an_unbelievable_mineral_value_as_not_listed_and_keeps_the_food(self):
+        nutrients = full("1") + [nutrient("1", "1087", "20000"), nutrient("1", "1090", "-1"), nutrient("1", "1114", "9999")]
+        foods, _ = self.load([food("1", "A")], nutrients)
+        self.assertEqual(len(foods), 1)
+        self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (None, None, None))
+
+    def test_writes_not_listed_as_null_in_the_migration(self):
+        nutrients = full("1") + [nutrient("1", "1087", "50")]
+        foods, summary = self.load([food("1", "A")], nutrients)
+        sql = imp.render_migration(list(foods.values()), [(DATASET, "a" * 64)], date(2026, 11, 20), summary)
+        self.assertIn("calcium_mg_per_100g, magnesium_mg_per_100g, vitamin_d_mcg_per_100g", sql)
+        self.assertIn(", 50.00, null, null)", sql)
+
     def test_leaves_out_us_only_categories_and_other_data_types(self):
         nutrients = full("1") + full("2")
         foods, summary = self.load([food("1", "Burger", category="2"), food("2", "Sample", data_type="sample_food")], nutrients)

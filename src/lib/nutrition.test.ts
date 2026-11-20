@@ -1,8 +1,41 @@
 import { describe, expect, it } from 'vitest'
-import { GRAM, gramsFor, roundForDisplay, scaleNutrients, sumNutrients, type Nutrients } from './nutrition.ts'
+import {
+  GRAM,
+  NO_MINERALS,
+  gramsFor,
+  roundForDisplay,
+  scaleMinerals,
+  scaleNutrients,
+  sumNutrients,
+  type Nutrients,
+} from './nutrition.ts'
 
 // Test fixture only, not real food data.
 const per100g: Nutrients = { kcal: 300, protein: 10, carbs: 50, fat: 6, sodiumMg: 400 }
+
+describe('scaleMinerals', () => {
+  // Test fixture only, not real food data.
+  it('scales calcium, magnesium and vitamin D to the grams eaten', () => {
+    expect(scaleMinerals({ calciumMg: 50, magnesiumMg: 10, vitaminDMcg: 2.2 }, 200)).toEqual({
+      calciumMg: 100,
+      magnesiumMg: 20,
+      vitaminDMcg: 4.4,
+    })
+  })
+
+  it('keeps not listed as not listed, never a zero', () => {
+    expect(scaleMinerals({ calciumMg: 50, magnesiumMg: null, vitaminDMcg: null }, 200)).toEqual({
+      calciumMg: 100,
+      magnesiumMg: null,
+      vitaminDMcg: null,
+    })
+    expect(scaleMinerals(NO_MINERALS, 100)).toEqual(NO_MINERALS)
+  })
+
+  it('refuses a weight of 0 or less, like the other nutrients do', () => {
+    expect(() => scaleMinerals(NO_MINERALS, 0)).toThrow(RangeError)
+  })
+})
 
 describe('gramsFor', () => {
   it('converts household units to grams', () => {

@@ -2,7 +2,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { localDateKey } from './dates.ts'
 import { isFoodSource, type FoodResult, type FoodSource, type FoodUnit } from './foodSearch.ts'
 import { isMeal, type Meal } from './meals.ts'
-import { gramsFor, scaleNutrients, type Nutrients } from './nutrition.ts'
+import {
+  NO_MINERALS,
+  gramsFor,
+  scaleMinerals,
+  scaleNutrients,
+  type Minerals,
+  type Nutrients,
+} from './nutrition.ts'
 
 /** The limits user_logs enforces, checked here first so people get a clear message. */
 export const MAX_QUANTITY = 10000
@@ -32,6 +39,9 @@ interface LogRow {
   carbs: number
   fat: number
   sodium_mg: number
+  calcium_mg: number | null
+  magnesium_mg: number | null
+  vitamin_d_mcg: number | null
 }
 
 export class LogError extends Error {}
@@ -66,6 +76,8 @@ export interface FoodAmount {
   grams: number
   /** The values saved with it. */
   nutrients: Nutrients
+  /** Calcium, magnesium and vitamin D saved with it: null where the food had no value. */
+  minerals?: Minerals
 }
 
 /** A number within limits, as a number or the text Postgres sends for numeric columns; null otherwise. */
@@ -93,6 +105,12 @@ export function parseFoodAmount(value: unknown): FoodAmount | null {
   const carbs = numberIn(row.carbs, 0, 1e5)
   const fat = numberIn(row.fat, 0, 1e5)
   const sodiumMg = numberIn(row.sodium_mg, 0, 1e7)
+  // Optional: a bad or missing value is "not listed", and the food is kept.
+  const minerals: Minerals = {
+    calciumMg: numberIn(row.calcium_mg, 0, 1e7),
+    magnesiumMg: numberIn(row.magnesium_mg, 0, 1e7),
+    vitaminDMcg: numberIn(row.vitamin_d_mcg, 0, 1e7),
+  }
   if (
     !foodName ||
     !foodSource ||
@@ -116,6 +134,7 @@ export function parseFoodAmount(value: unknown): FoodAmount | null {
     unitName,
     grams,
     nutrients: { kcal, protein, carbs, fat, sodiumMg },
+    minerals,
   }
 }
 
@@ -133,6 +152,9 @@ export function foodAmountColumns(food: FoodAmount) {
     carbs: food.nutrients.carbs,
     fat: food.nutrients.fat,
     sodium_mg: food.nutrients.sodiumMg,
+    calcium_mg: food.minerals?.calciumMg ?? null,
+    magnesium_mg: food.minerals?.magnesiumMg ?? null,
+    vitamin_d_mcg: food.minerals?.vitaminDMcg ?? null,
   }
 }
 
@@ -149,6 +171,8 @@ export function amountFor({ food, quantity, unit }: Pick<NewLog, 'food' | 'quant
   const grams = gramsFor(amount, unit)
   if (grams > MAX_LOG_GRAMS) throw new LogError('That is more than 20 kg. Check the amount and unit.')
   const values = scaleNutrients(food.per100g, grams)
+  const minerals = scaleMinerals(food.minerals ?? NO_MINERALS, grams)
+  const keep = (value: number | null) => (value === null ? null : twoPlaces(value))
   return {
     foodName: food.name,
     foodSource: food.source,
@@ -162,6 +186,11 @@ export function amountFor({ food, quantity, unit }: Pick<NewLog, 'food' | 'quant
       carbs: twoPlaces(values.carbs),
       fat: twoPlaces(values.fat),
       sodiumMg: twoPlaces(values.sodiumMg),
+    },
+    minerals: {
+      calciumMg: keep(minerals.calciumMg),
+      magnesiumMg: keep(minerals.magnesiumMg),
+      vitaminDMcg: keep(minerals.vitaminDMcg),
     },
   }
 }

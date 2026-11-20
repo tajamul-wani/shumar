@@ -81,6 +81,11 @@ NUTRIENTS = {
     "1005": "carbs",
     "1050": "carbs_summation",
     "1093": "sodium_mg",
+    # Optional: a food without them is kept, and shows "not listed". Calcium and magnesium are in mg,
+    # vitamin D (D2 plus D3, number 1114) in micrograms.
+    "1087": "calcium_mg",
+    "1090": "magnesium_mg",
+    "1114": "vitamin_d_mcg",
 }
 
 MAX_KCAL = 1000
@@ -88,6 +93,10 @@ MAX_KCAL = 1000
 MIN_CARBS_BY_DIFFERENCE = -1.0
 MAX_GRAMS = 100
 MAX_SODIUM_MG = 40000
+# Above these per 100 g a minerals or vitamin value is not believed, and is stored as not listed.
+MAX_CALCIUM_MG = 10000
+MAX_MAGNESIUM_MG = 5000
+MAX_VITAMIN_D_MCG = 5000
 MAX_PORTION_GRAMS = 5000
 MAX_NAME = 200
 MAX_UNIT = 60
@@ -107,6 +116,9 @@ class Food:
     sodium_mg: Decimal
     atwater_flag: bool
     portions: list[tuple[str, Decimal]] = field(default_factory=list)
+    calcium_mg: Decimal | None = None
+    magnesium_mg: Decimal | None = None
+    vitamin_d_mcg: Decimal | None = None
 
 
 @dataclass
@@ -117,10 +129,21 @@ class Summary:
     out_of_range: int = 0
     flagged: int = 0
     carbs_clamped: int = 0
+    with_calcium: int = 0
+    with_magnesium: int = 0
+    with_vitamin_d: int = 0
 
 
 def two_places(value: float | str) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def optional_amount(value: float | None, maximum: int) -> Decimal | None:
+    """A value USDA may not list: None when it is missing or beyond what a food can hold."""
+    if value is None:
+        return None
+    amount = two_places(value)
+    return amount if 0 <= amount <= maximum else None
 
 
 def atwater_flag(kcal: Decimal, protein: Decimal, carbs: Decimal, fat: Decimal) -> bool:
@@ -196,9 +219,16 @@ def load_dataset(path: Path, dataset: Dataset, summary: Summary) -> list[Food]:
                 continue
             flag = atwater_flag(kcal_d, protein_d, carbs_d, fat_d)
             summary.flagged += flag
+            calcium = optional_amount(v.get("calcium_mg"), MAX_CALCIUM_MG)
+            magnesium = optional_amount(v.get("magnesium_mg"), MAX_MAGNESIUM_MG)
+            vitamin_d = optional_amount(v.get("vitamin_d_mcg"), MAX_VITAMIN_D_MCG)
+            summary.with_calcium += calcium is not None
+            summary.with_magnesium += magnesium is not None
+            summary.with_vitamin_d += vitamin_d is not None
             foods[fdc_id] = Food(
                 int(fdc_id), dataset.release_id, name, category,
                 kcal_d, protein_d, carbs_d, fat_d, sodium_d, flag,
+                calcium_mg=calcium, magnesium_mg=magnesium, vitamin_d_mcg=vitamin_d,
             )
 
         seen: set[tuple[str, str]] = set()
@@ -225,6 +255,10 @@ def load_dataset(path: Path, dataset: Dataset, summary: Summary) -> list[Food]:
     return list(foods.values())
 
 
+def sql_number(value: Decimal | None) -> str:
+    return "null" if value is None else str(value)
+
+
 def sql_text(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
@@ -242,6 +276,7 @@ def render_migration(foods: list[Food], files: list[tuple[Dataset, str]], import
         f"-- Kept {summary.kept} foods with {len(portions)} portions. Left out: {summary.excluded_category} in US-only",
         f"-- categories, {summary.missing_value} with a missing value, {summary.out_of_range} out of range.",
         f"-- Flagged by the Atwater check: {summary.flagged}. Carbs slightly below zero stored as 0: {summary.carbs_clamped}.",
+        f"-- With a calcium value: {summary.with_calcium}. With magnesium: {summary.with_magnesium}. With vitamin D: {summary.with_vitamin_d}. The rest are stored as null (not listed).",
         "",
         "delete from public.usda_portions;",
         "delete from public.usda_foods;",
@@ -258,10 +293,12 @@ def render_migration(foods: list[Food], files: list[tuple[Dataset, str]], import
         lines += [
             "",
             "insert into public.usda_foods (fdc_id, release_id, name, category, kcal_per_100g, protein_per_100g,"
-            " carbs_per_100g, fat_per_100g, sodium_mg_per_100g, atwater_flag) values",
+            " carbs_per_100g, fat_per_100g, sodium_mg_per_100g, atwater_flag, calcium_mg_per_100g,"
+            " magnesium_mg_per_100g, vitamin_d_mcg_per_100g) values",
             ",\n".join(
                 f"  ({f.fdc_id}, {sql_text(f.release_id)}, {sql_text(f.name)}, {sql_text(f.category)}, {f.kcal}, "
-                f"{f.protein}, {f.carbs}, {f.fat}, {f.sodium_mg}, {'true' if f.atwater_flag else 'false'})"
+                f"{f.protein}, {f.carbs}, {f.fat}, {f.sodium_mg}, {'true' if f.atwater_flag else 'false'}, "
+                f"{sql_number(f.calcium_mg)}, {sql_number(f.magnesium_mg)}, {sql_number(f.vitamin_d_mcg)})"
                 for f in foods[start : start + BATCH]
             )
             + ";",
@@ -322,7 +359,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"Wrote {args.output}: {summary.kept} foods kept, {summary.excluded_category} in US-only categories, "
         f"{summary.missing_value} with a missing value, {summary.out_of_range} out of range, "
-        f"{summary.flagged} flagged by the Atwater check, {summary.carbs_clamped} with carbs slightly below zero stored as 0."
+        f"{summary.flagged} flagged by the Atwater check, {summary.carbs_clamped} with carbs slightly below zero stored as 0. "
+        f"With calcium: {summary.with_calcium}, magnesium: {summary.with_magnesium}, vitamin D: {summary.with_vitamin_d}."
     )
     return 0
 

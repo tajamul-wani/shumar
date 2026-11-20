@@ -12,6 +12,10 @@ A katori is a small bowl, often steel, used for serving food at home. When you p
 
 Your sodium for the day went over 2,000 mg. The alert names the food that added the most, so you can see where it came from.
 
+## What does Not listed mean?
+
+Some foods have no value for calcium, magnesium or vitamin D in our data. **Not listed** means we don't know it. It does not mean zero.
+
 ## Why does a food say Estimate?
 
 Some foods, such as home dishes, vary from kitchen to kitchen. **Estimate** means the value is a typical one, and your own dish may differ a little.

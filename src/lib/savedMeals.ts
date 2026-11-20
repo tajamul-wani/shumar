@@ -33,7 +33,7 @@ export interface SavedMeal {
 type SavedMealsClient = Pick<SupabaseClient, 'from'>
 
 const FOOD_COLUMNS =
-  'id, position, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg'
+  'id, position, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg, calcium_mg, magnesium_mg, vitamin_d_mcg'
 const COLUMNS = `id, name, saved_meal_foods (${FOOD_COLUMNS})`
 
 /** A saved meal's name as the database takes it: one line, no spaces around it, or null if unusable. */

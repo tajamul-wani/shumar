@@ -1,5 +1,4 @@
-import { Plus } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Button } from '../components/Button.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
 import { defaultQuantity, defaultUnit, foodsLine, formatNumber, totalKcal } from '../lib/foodDisplay.ts'
@@ -31,10 +30,14 @@ interface QuickAddsProps {
   onAddFromPack: () => void
 }
 
+type Tab = 'yesterday' | 'saved' | 'mine'
+
+const TAB_LABELS: Record<Tab, string> = { yesterday: 'Yesterday', saved: 'Saved meals', mine: 'My foods' }
+
 /**
- * The fastest ways to fill a meal, shown under the search while nothing is typed: what yesterday's
- * same meal held, added in one tap; the person's own foods; and their saved meals. Each is added
- * in one tap or opened.
+ * The fastest ways to fill a meal, shown under the search while nothing is typed, as three tabs so
+ * only one list shows at a time: what yesterday's same meal held, added in one tap; the person's
+ * saved meals; and their own foods. A tab shows only when it has something in it.
  */
 export function QuickAdds({
   meal,
@@ -55,9 +58,36 @@ export function QuickAdds({
   const fill = useSheetFill()
   const phrase = mealPhrase(meal)
   const repeat = yesterday.filter((log) => log.meal === meal)
+  const [chosen, setChosen] = useState<Tab | null>(null)
+  const available: Tab[] = []
+  if (repeat.length > 0) available.push('yesterday')
+  if (saved && saved.length > 0) available.push('saved')
+  if (mine && mine.length > 0) available.push('mine')
+  if (available.length === 0) return null
+  const tab = chosen && available.includes(chosen) ? chosen : available[0]
   return (
     <>
-      {repeat.length > 0 && (
+      <fieldset
+        className={`m-0 grid grid-flow-col auto-cols-fr gap-1 rounded-xl border border-koshur-border ${fill} p-1`}
+      >
+        <legend className="sr-only">Quick adds</legend>
+        {available.map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={option === tab}
+            onClick={() => setChosen(option)}
+            className={`min-h-11 rounded-lg px-2 text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring ${
+              option === tab
+                ? 'bg-deficit-ring font-semibold text-koshur-surface dark:text-koshur-base'
+                : 'font-medium text-koshur-muted hover:text-koshur-silk'
+            }`}
+          >
+            {TAB_LABELS[option]}
+          </button>
+        ))}
+      </fieldset>
+      {tab === 'yesterday' && (
         <section aria-labelledby={yesterdayId} className="flex flex-col gap-2">
           <h3 id={yesterdayId} className={`${EYEBROW} flex justify-between gap-3`}>
             <span>Yesterday's {phrase}</span>
@@ -82,10 +112,10 @@ export function QuickAdds({
           </div>
         </section>
       )}
-      {mine && mine.length > 0 && (
+      {tab === 'mine' && mine && (
         <section aria-labelledby={mineId} className="flex flex-col gap-1.5">
-          <h3 id={mineId} className={EYEBROW}>
-            Your foods
+          <h3 id={mineId} className="sr-only">
+            My foods
           </h3>
           <ul className="m-0 flex list-none flex-col p-0">
             {mine.map((own) => {
@@ -108,9 +138,9 @@ export function QuickAdds({
           <FromPackLink onClick={onAddFromPack}>Add a food from its pack</FromPackLink>
         </section>
       )}
-      {saved && saved.length > 0 && (
+      {tab === 'saved' && saved && (
         <section aria-labelledby={savedId} className="flex flex-col gap-1.5">
-          <h3 id={savedId} className={EYEBROW}>
+          <h3 id={savedId} className="sr-only">
             Saved meals
           </h3>
           <ul className="m-0 flex list-none flex-col p-0">
@@ -133,15 +163,16 @@ export function QuickAdds({
                     <span>{foodsLine(entry.foods)}</span>
                   </span>
                 </button>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="small"
                   onClick={() => onAddSaved(entry)}
                   disabled={busy}
                   aria-label={`Add ${entry.name} to ${phrase}`}
-                  className={`flex size-11 shrink-0 items-center justify-center rounded-xl border border-koshur-border ${fill} text-deficit-ring disabled:opacity-60 ${FOCUS_RING}`}
+                  className="shrink-0"
                 >
-                  <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4 sm:size-5" />
-                </button>
+                  Add
+                </Button>
               </li>
             ))}
           </ul>

@@ -53,6 +53,9 @@ describe('buildLogRow', () => {
       carbs: 89.6,
       fat: 0.96,
       sodium_mg: 3.2,
+      calcium_mg: null,
+      magnesium_mg: null,
+      vitamin_d_mcg: null,
     })
   })
 
@@ -87,6 +90,31 @@ function fakeClient(error: { message: string } | null) {
   const from = vi.fn<(table: string) => unknown>(() => ({ insert }))
   return { client: { from } as unknown as Parameters<typeof saveLog>[0], from, insert }
 }
+
+describe('calcium, magnesium and vitamin D in a log', () => {
+  const withMinerals = (minerals: FoodResult['minerals']) => {
+    const base = log({ quantity: 2 })
+    return { ...base, food: { ...base.food, minerals } }
+  }
+
+  it('scales them to the amount and keeps two decimals, with not listed as null', () => {
+    const row = buildLogRow(withMinerals({ calciumMg: 10, magnesiumMg: null, vitaminDMcg: 1.255 }))
+    expect([row.calcium_mg, row.magnesium_mg, row.vitamin_d_mcg]).toEqual([32, null, 4.02])
+  })
+
+  it('stores a food with none as not listed', () => {
+    const row = buildLogRow(log({ quantity: 2 }))
+    expect([row.calcium_mg, row.magnesium_mg, row.vitamin_d_mcg]).toEqual([null, null, null])
+  })
+
+  it('reads them back from a row, with a bad or missing value as not listed', () => {
+    const amount = parseFoodAmount({
+      ...buildLogRow(withMinerals({ calciumMg: 10, magnesiumMg: 5, vitaminDMcg: 1 })),
+      magnesium_mg: -3,
+    })
+    expect(amount?.minerals).toEqual({ calciumMg: 32, magnesiumMg: null, vitaminDMcg: 3.2 })
+  })
+})
 
 describe('saveLog', () => {
   it('inserts the row into user_logs', async () => {
@@ -150,6 +178,7 @@ describe('parseFoodAmount', () => {
       unitName: 'cup',
       grams: 300,
       nutrients: { kcal: 90, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
+      minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
     })
   })
 
