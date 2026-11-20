@@ -49,7 +49,16 @@ describe('adding a food from its pack', () => {
       brand: 'Test brand',
       basis: '100g',
       servingGrams: null,
-      label: { kcal: 300, protein: 20, carbs: 2, fat: 24, sodiumMg: 20 },
+      label: {
+        kcal: 300,
+        protein: 20,
+        carbs: 2,
+        fat: 24,
+        sodiumMg: 20,
+        calciumMg: null,
+        magnesiumMg: null,
+        vitaminDMcg: null,
+      },
     })
   }, 20_000)
 
@@ -60,7 +69,59 @@ describe('adding a food from its pack', () => {
     expect(onSave).not.toHaveBeenCalled()
     expect(screen.getByLabelText('Name')).toHaveFocus()
     expect(screen.getByLabelText('Name')).toHaveAccessibleDescription('Give the food a name.')
-    expect(screen.getByLabelText('Sodium')).toHaveAccessibleDescription('Enter the sodium from the label.')
+    expect(screen.getByLabelText('Calories')).toHaveAccessibleDescription(
+      'Enter the calories from the label.',
+    )
+    // Sodium, calcium, magnesium and vitamin D are optional, so leaving them empty is no problem.
+    expect(screen.getByLabelText('Sodium')).not.toHaveAttribute('aria-invalid')
+    expect(screen.getByLabelText('Vitamin D')).not.toHaveAttribute('aria-invalid')
+  }, 20_000)
+
+  it('saves with the optional values left empty, as not listed', async () => {
+    const { onSave } = renderForm({ name: 'Plain pack' })
+    await fill({ Calories: '300', Protein: '20', Carbs: '2', Fat: '24' })
+    await userEvent.click(screen.getByRole('button', { name: 'Save food' }))
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: {
+          kcal: 300,
+          protein: 20,
+          carbs: 2,
+          fat: 24,
+          sodiumMg: null,
+          calciumMg: null,
+          magnesiumMg: null,
+          vitaminDMcg: null,
+        },
+      }),
+    )
+  })
+
+  it('keeps the optional values the pack lists, and refuses one that is too big', async () => {
+    const { onSave } = renderForm({ name: 'Full pack' })
+    await fill({ Calories: '300', Protein: '20', Carbs: '2', Fat: '24', Calcium: '60', 'Vitamin D': '1.5' })
+    await userEvent.click(screen.getByRole('button', { name: 'Save food' }))
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: {
+          kcal: 300,
+          protein: 20,
+          carbs: 2,
+          fat: 24,
+          sodiumMg: null,
+          calciumMg: 60,
+          magnesiumMg: null,
+          vitaminDMcg: 1.5,
+        },
+      }),
+    )
+    onSave.mockClear()
+    await fill({ Magnesium: '9000' })
+    await userEvent.click(screen.getByRole('button', { name: 'Save food' }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Magnesium')).toHaveAccessibleDescription(
+      'That is over 5,000 mg of magnesium per 100 g. Check that it is in mg.',
+    )
   }, 20_000)
 
   it('asks for the serving size when the label gives values per serving', async () => {

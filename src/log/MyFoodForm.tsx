@@ -28,8 +28,19 @@ const ORDER: DraftProblem[] = [
   'carbs',
   'fat',
   'sodiumMg',
+  'calciumMg',
+  'magnesiumMg',
+  'vitaminDMcg',
   'macros',
 ]
+
+/** Optional: the pack may not list them. */
+const OPTIONAL = [
+  { key: 'sodiumMg', label: 'Sodium', suffix: 'mg' },
+  { key: 'calciumMg', label: 'Calcium', suffix: 'mg' },
+  { key: 'magnesiumMg', label: 'Magnesium', suffix: 'mg' },
+  { key: 'vitaminDMcg', label: 'Vitamin D', suffix: 'mcg' },
+] as const
 
 const MACROS = [
   { key: 'protein', label: 'Protein', dot: 'bg-macro-protein' },
@@ -245,16 +256,26 @@ export function MyFoodForm({
               dot={macro.dot}
             />
           ))}
-          <Field
-            id={ids.sodiumMg}
-            label="Sodium"
-            value={draft.sodiumMg}
-            onChange={(value) => change('sodiumMg', value)}
-            problem={problems.sodiumMg}
-            suffix="mg"
-          />
         </div>
         {problems.macros && <Alert>{problems.macros}</Alert>}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-caption text-koshur-muted">Optional, if the pack lists them</p>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
+          {OPTIONAL.map((item) => (
+            <Field
+              key={item.key}
+              id={ids[item.key]}
+              label={item.label}
+              value={draft[item.key]}
+              onChange={(value) => change(item.key, value)}
+              problem={problems[item.key]}
+              suffix={item.suffix}
+              placeholder="Optional"
+            />
+          ))}
+        </div>
       </div>
 
       <p className="m-0 flex items-center gap-1.5 text-caption text-koshur-muted">

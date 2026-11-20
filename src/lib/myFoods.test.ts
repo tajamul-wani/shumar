@@ -28,7 +28,16 @@ const cheese: MyFood = {
   brand: 'Test brand',
   basis: '100g',
   servingGrams: null,
-  label: { kcal: 300, protein: 20, carbs: 2, fat: 24, sodiumMg: 20 },
+  label: {
+    kcal: 300,
+    protein: 20,
+    carbs: 2,
+    fat: 24,
+    sodiumMg: 20,
+    calciumMg: null,
+    magnesiumMg: null,
+    vitaminDMcg: null,
+  },
 }
 const crackers: MyFood = {
   id: 'm2',
@@ -36,7 +45,16 @@ const crackers: MyFood = {
   brand: null,
   basis: 'serving',
   servingGrams: 25,
-  label: { kcal: 120, protein: 2, carbs: 16, fat: 5, sodiumMg: 200 },
+  label: {
+    kcal: 120,
+    protein: 2,
+    carbs: 16,
+    fat: 5,
+    sodiumMg: 200,
+    calciumMg: null,
+    magnesiumMg: null,
+    vitaminDMcg: null,
+  },
 }
 
 const filled: MyFoodDraft = {
@@ -61,7 +79,10 @@ function row(food: MyFood) {
     protein: String(food.label.protein),
     carbs: String(food.label.carbs),
     fat: String(food.label.fat),
-    sodium_mg: String(food.label.sodiumMg),
+    sodium_mg: food.label.sodiumMg === null ? null : String(food.label.sodiumMg),
+    calcium_mg: food.label.calciumMg === null ? null : String(food.label.calciumMg),
+    magnesium_mg: food.label.magnesiumMg === null ? null : String(food.label.magnesiumMg),
+    vitamin_d_mcg: food.label.vitaminDMcg === null ? null : String(food.label.vitaminDMcg),
   }
 }
 
@@ -96,7 +117,16 @@ describe('reading the form', () => {
         brand: 'Test brand',
         basis: '100g',
         servingGrams: null,
-        label: { kcal: 300, protein: 20, carbs: 2, fat: 24, sodiumMg: 20 },
+        label: {
+          kcal: 300,
+          protein: 20,
+          carbs: 2,
+          fat: 24,
+          sodiumMg: 20,
+          calciumMg: null,
+          magnesiumMg: null,
+          vitaminDMcg: null,
+        },
       },
       problems: null,
     })
@@ -119,18 +149,26 @@ describe('reading the form', () => {
       brand: null,
       basis: 'serving',
       servingGrams: 25,
-      label: { kcal: 120, protein: 2.5, carbs: 16, fat: 0, sodiumMg: 1000 },
+      label: {
+        kcal: 120,
+        protein: 2.5,
+        carbs: 16,
+        fat: 0,
+        sodiumMg: 1000,
+        calciumMg: null,
+        magnesiumMg: null,
+        vitaminDMcg: null,
+      },
     })
   })
 
-  it('asks for every value from the label, and never fills one in', () => {
+  it('asks for the values every label has, and never fills one in', () => {
     expect(readDraft(EMPTY_DRAFT).problems).toEqual({
       name: 'Give the food a name.',
       kcal: 'Enter the calories from the label.',
       protein: 'Enter the protein from the label.',
       carbs: 'Enter the carbs from the label.',
       fat: 'Enter the fat from the label.',
-      sodiumMg: 'Enter the sodium from the label.',
     })
   })
 
@@ -185,6 +223,9 @@ describe('reading the form', () => {
       carbs: '16',
       fat: '5',
       sodiumMg: '200',
+      calciumMg: '',
+      magnesiumMg: '',
+      vitaminDMcg: '',
     })
     expect(toDraft({ ...cheese, label: { ...cheese.label, fat: 24.456 } }).fat).toBe('24.46')
     expect(readDraft(toDraft(crackers)).food).toEqual({
@@ -204,7 +245,7 @@ describe('reading the form', () => {
 describe('the values per 100 g', () => {
   it('scale a serving to 100 g, and keep 100 g as it is', () => {
     expect(per100g(crackers)).toEqual({ kcal: 480, protein: 8, carbs: 64, fat: 20, sodiumMg: 800 })
-    expect(per100g(cheese)).toEqual(cheese.label)
+    expect(per100g(cheese)).toEqual({ kcal: 300, protein: 20, carbs: 2, fat: 24, sodiumMg: 20 })
   })
 })
 
@@ -231,6 +272,7 @@ describe('a food of their own in search', () => {
       sourceId: 'm2',
       name: 'Test crackers',
       per100g: { kcal: 480, protein: 8, carbs: 64, fat: 20, sodiumMg: 800 },
+      minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
       units: [
         { name: 'g', grams: 1 },
         { name: SERVING_UNIT, grams: 25 },
@@ -292,6 +334,9 @@ describe('reading and saving foods of their own', () => {
           carbs: 2,
           fat: 24,
           sodium_mg: 20,
+          calcium_mg: null,
+          magnesium_mg: null,
+          vitamin_d_mcg: null,
         },
       ],
     })

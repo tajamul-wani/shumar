@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseDecimal } from './foodDisplay.ts'
 import type { FoodResult, FoodUnit } from './foodSearch.ts'
 import { LogError, limitMessage, numberIn, textUpTo } from './logs.ts'
-import type { Nutrients } from './nutrition.ts'
+import type { Minerals, Nutrients } from './nutrition.ts'
 
 /**
  * A person's own foods, added from the label on a pack when search can't find them. Row-level
@@ -21,6 +21,25 @@ export const SERVING_UNIT = '1 serving'
 /** What the label's values are for: 100 g, or one serving. */
 export type LabelBasis = '100g' | 'serving'
 
+/**
+ * What a label prints. Calories, protein, carbs and fat are always there; sodium, calcium,
+ * magnesium and vitamin D are optional, and null when the pack lists none (never a zero).
+ */
+export interface LabelValues {
+  kcal: number
+  protein: number
+  carbs: number
+  fat: number
+  /** In mg. */
+  sodiumMg: number | null
+  /** In mg. */
+  calciumMg: number | null
+  /** In mg. */
+  magnesiumMg: number | null
+  /** In micrograms. */
+  vitaminDMcg: number | null
+}
+
 /** A food as its label gives it. */
 export interface MyFoodInput {
   name: string
@@ -28,8 +47,8 @@ export interface MyFoodInput {
   basis: LabelBasis
   /** Grams in one serving, when the label's values are per serving. */
   servingGrams: number | null
-  /** As the label prints them, for 100 g or for one serving. Sodium in mg. */
-  label: Nutrients
+  /** As the label prints them, for 100 g or for one serving. */
+  label: LabelValues
 }
 
 export interface MyFood extends MyFoodInput {
@@ -47,6 +66,9 @@ export interface MyFoodDraft {
   carbs: string
   fat: string
   sodiumMg: string
+  calciumMg: string
+  magnesiumMg: string
+  vitaminDMcg: string
 }
 
 /** Where a problem in the form shows: beside a field, or under the protein, carbs and fat together. */
@@ -65,14 +87,28 @@ export const EMPTY_DRAFT: MyFoodDraft = {
   carbs: '',
   fat: '',
   sodiumMg: '',
+  calciumMg: '',
+  magnesiumMg: '',
+  vitaminDMcg: '',
 }
 
+/** Always on a label. */
 const VALUE_FIELDS = [
   ['kcal', 'calories'],
   ['protein', 'protein'],
   ['carbs', 'carbs'],
   ['fat', 'fat'],
-  ['sodiumMg', 'sodium'],
+] as const
+
+/**
+ * Optional: left empty when the pack lists nothing. The most a food can hold per 100 g, as the
+ * database holds to it, and the unit to check when a value looks too big.
+ */
+const OPTIONAL_FIELDS = [
+  { field: 'sodiumMg', word: 'sodium', unit: 'mg', max: 40000 },
+  { field: 'calciumMg', word: 'calcium', unit: 'mg', max: 10000 },
+  { field: 'magnesiumMg', word: 'magnesium', unit: 'mg', max: 5000 },
+  { field: 'vitaminDMcg', word: 'vitamin D', unit: 'mcg', max: 5000 },
 ] as const
 
 /** One line, single spaces, no spaces around it: how names and brands are kept. */
@@ -97,6 +133,9 @@ export function toDraft(food: MyFoodInput): MyFoodDraft {
     carbs: draftNumber(food.label.carbs),
     fat: draftNumber(food.label.fat),
     sodiumMg: draftNumber(food.label.sodiumMg),
+    calciumMg: draftNumber(food.label.calciumMg),
+    magnesiumMg: draftNumber(food.label.magnesiumMg),
+    vitaminDMcg: draftNumber(food.label.vitaminDMcg),
   }
 }
 
@@ -105,7 +144,7 @@ function basisGrams(food: Pick<MyFoodInput, 'basis' | 'servingGrams'>): number {
   return food.basis === 'serving' && food.servingGrams ? food.servingGrams : 100
 }
 
-/** The label's values worked out per 100 g, at full precision. */
+/** The label's values worked out per 100 g, at full precision. Sodium the pack did not list counts as 0. */
 export function per100g(food: MyFoodInput): Nutrients {
   const scale = 100 / basisGrams(food)
   const { kcal, protein, carbs, fat, sodiumMg } = food.label
@@ -114,7 +153,18 @@ export function per100g(food: MyFoodInput): Nutrients {
     protein: protein * scale,
     carbs: carbs * scale,
     fat: fat * scale,
-    sodiumMg: sodiumMg * scale,
+    sodiumMg: (sodiumMg ?? 0) * scale,
+  }
+}
+
+/** Calcium, magnesium and vitamin D per 100 g, null where the pack lists none. */
+export function mineralsPer100g(food: MyFoodInput): Minerals {
+  const scale = 100 / basisGrams(food)
+  const per100 = (value: number | null) => (value === null ? null : value * scale)
+  return {
+    calciumMg: per100(food.label.calciumMg),
+    magnesiumMg: per100(food.label.magnesiumMg),
+    vitaminDMcg: per100(food.label.vitaminDMcg),
   }
 }
 
@@ -140,11 +190,19 @@ export function readDraft(draft: MyFoodDraft): DraftCheck {
     }
   }
 
-  const label: Partial<Nutrients> = {}
+  const label: Partial<LabelValues> = {}
   for (const [field, word] of VALUE_FIELDS) {
     const text = draft[field].trim()
     const value = parseDecimal(text)
     if (!text) problems[field] = `Enter the ${word} from the label.`
+    else if (value === null) problems[field] = 'Use a number, such as 12.5.'
+    else label[field] = value
+  }
+  // Optional: empty means the pack lists none, which is kept as not listed and never as 0.
+  for (const { field } of OPTIONAL_FIELDS) {
+    const text = draft[field].trim()
+    const value = parseDecimal(text)
+    if (!text) label[field] = null
     else if (value === null) problems[field] = 'Use a number, such as 12.5.'
     else label[field] = value
   }
@@ -163,14 +221,18 @@ export function readDraft(draft: MyFoodDraft): DraftCheck {
     ) {
       problems.macros = 'Protein, carbs and fat weigh more than the food itself. Check the label.'
     }
-    if (label.sodiumMg !== undefined && label.sodiumMg * scale > 40000) {
-      problems.sodiumMg = 'That is over 40,000 mg of sodium per 100 g. Check that it is in mg.'
+    for (const { field, word, unit, max } of OPTIONAL_FIELDS) {
+      const value = label[field]
+      if (value != null && value * scale > max) {
+        problems[field] =
+          `That is over ${max.toLocaleString('en-US')} ${unit} of ${word} per 100 g. Check that it is in ${unit}.`
+      }
     }
   }
 
   if (Object.keys(problems).length > 0) return { food: null, problems }
   return {
-    food: { name, brand: brand || null, basis: draft.basis, servingGrams, label: label as Nutrients },
+    food: { name, brand: brand || null, basis: draft.basis, servingGrams, label: label as LabelValues },
     problems: null,
   }
 }
@@ -201,6 +263,8 @@ export function toFoodResult(food: MyFood): FoodResult {
     sourceId: food.id,
     name: displayName(food),
     per100g: per100g(food),
+    minerals: mineralsPer100g(food),
+    ...(food.label.sodiumMg === null ? { sodiumListed: false } : {}),
     units,
     flagged: caloriesMismatch(food) !== null,
     verified: true,
@@ -219,7 +283,18 @@ export function parseMyFood(value: unknown): MyFood | null {
   const protein = numberIn(row.protein, 0, 1e5)
   const carbs = numberIn(row.carbs, 0, 1e5)
   const fat = numberIn(row.fat, 0, 1e5)
-  const sodiumMg = numberIn(row.sodium_mg, 0, 1e7)
+  // The four optional values: null when the pack listed none, and a bad one rejects the row.
+  const optional = (raw: unknown) => (raw == null ? null : numberIn(raw, 0, 1e7))
+  const sodiumMg = optional(row.sodium_mg)
+  const calciumMg = optional(row.calcium_mg)
+  const magnesiumMg = optional(row.magnesium_mg)
+  const vitaminDMcg = optional(row.vitamin_d_mcg)
+  const badOptional = [
+    [row.sodium_mg, sodiumMg],
+    [row.calcium_mg, calciumMg],
+    [row.magnesium_mg, magnesiumMg],
+    [row.vitamin_d_mcg, vitaminDMcg],
+  ].some(([raw, parsed]) => raw != null && parsed === null)
   if (
     !id ||
     !name ||
@@ -230,19 +305,29 @@ export function parseMyFood(value: unknown): MyFood | null {
     protein === null ||
     carbs === null ||
     fat === null ||
-    sodiumMg === null
+    badOptional
   ) {
     return null
   }
-  return { id, name, brand, basis, servingGrams, label: { kcal, protein, carbs, fat, sodiumMg } }
+  return {
+    id,
+    name,
+    brand,
+    basis,
+    servingGrams,
+    label: { kcal, protein, carbs, fat, sodiumMg, calciumMg, magnesiumMg, vitaminDMcg },
+  }
 }
 
 type MyFoodsClient = Pick<SupabaseClient, 'from'>
 
-const COLUMNS = 'id, name, brand, label_basis, serving_grams, kcal, protein, carbs, fat, sodium_mg'
+const COLUMNS =
+  'id, name, brand, label_basis, serving_grams, kcal, protein, carbs, fat, sodium_mg, calcium_mg, magnesium_mg, vitamin_d_mcg'
 
 /** Stored to two decimal places, as the table's columns hold them. */
 const twoPlaces = (value: number) => Math.round(value * 100) / 100
+
+const optionalTwoPlaces = (value: number | null) => (value === null ? null : twoPlaces(value))
 
 function columns(food: MyFoodInput) {
   return {
@@ -254,7 +339,10 @@ function columns(food: MyFoodInput) {
     protein: twoPlaces(food.label.protein),
     carbs: twoPlaces(food.label.carbs),
     fat: twoPlaces(food.label.fat),
-    sodium_mg: twoPlaces(food.label.sodiumMg),
+    sodium_mg: optionalTwoPlaces(food.label.sodiumMg),
+    calcium_mg: optionalTwoPlaces(food.label.calciumMg),
+    magnesium_mg: optionalTwoPlaces(food.label.magnesiumMg),
+    vitamin_d_mcg: optionalTwoPlaces(food.label.vitaminDMcg),
   }
 }
 

@@ -77,7 +77,16 @@ describe('the data download', () => {
       brand: 'Test brand',
       basis: 'serving',
       servingGrams: 25,
-      label: { kcal: 120, protein: 2, carbs: 16, fat: 5, sodiumMg: 200 },
+      label: {
+        kcal: 120,
+        protein: 2,
+        carbs: 16,
+        fat: 5,
+        sodiumMg: 200,
+        calciumMg: null,
+        magnesiumMg: null,
+        vitaminDMcg: null,
+      },
     }
     const file = buildExport(user, answers, [], [crackers], new Date())
     expect(file.myFoods).toEqual([
@@ -86,14 +95,26 @@ describe('the data download', () => {
         brand: 'Test brand',
         labelGivesValuesPer: 'serving',
         servingGrams: 25,
-        label: { kcal: 120, protein: 2, carbs: 16, fat: 5, sodiumMg: 200 },
+        label: {
+          kcal: 120,
+          protein: 2,
+          carbs: 16,
+          fat: 5,
+          sodiumMg: 200,
+          calciumMg: null,
+          magnesiumMg: null,
+          vitaminDMcg: null,
+        },
         per100g: { kcal: 480, protein: 8, carbs: 64, fat: 20, sodiumMg: 800 },
       },
     ])
     expect(
       buildExport(user, answers, [], [{ ...crackers, basis: '100g', servingGrams: null }], new Date())
         .myFoods[0],
-    ).toMatchObject({ labelGivesValuesPer: '100 g', per100g: crackers.label })
+    ).toMatchObject({
+      labelGivesValuesPer: '100 g',
+      per100g: { kcal: 120, protein: 2, carbs: 16, fat: 5, sodiumMg: 200 },
+    })
   })
 
   it('names the file for the day it was made', () => {
