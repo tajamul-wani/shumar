@@ -213,9 +213,7 @@ describe('searching', () => {
   it('saves a food from its pack, then finds it first', async () => {
     const fake = renderScreen(fakeClient({ rows: [cheese], savedFood: cheeseRow }))
     await searchFor('cheese')
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
-    )
+    await userEvent.click(await screen.findByRole('button', { name: 'Add your own food' }))
     await userEvent.click(screen.getByRole('button', { name: 'Per serving' }))
     for (const [label, value] of [
       ['Name', 'Test cheese'],
@@ -239,12 +237,13 @@ describe('searching', () => {
     expect(screen.getByText('Saved to your foods')).toBeInTheDocument()
   })
 
-  it('offers another food from its pack under the results', async () => {
+  it('offers a food from its pack right under the search box, before the results', async () => {
     renderScreen()
     await searchFor('rice')
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Not the one? Add another from the pack' }),
-    )
+    const own = await screen.findByRole('button', { name: 'Add your own food' })
+    const results = screen.getByRole('list', { name: 'Search results' })
+    expect(own.compareDocumentPosition(results) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    await userEvent.click(own)
     expect(heading()).toHaveTextContent('Add a food from its pack')
   })
 

@@ -24,6 +24,28 @@ export function FromPackLink({ onClick, children }: { onClick: () => void; child
   )
 }
 
+/**
+ * Under the search box while results show, so adding a food from its pack never means scrolling
+ * past the results to find it (Tajamul Wani, 20 November 2026).
+ */
+export function FromPackStrip({ onAdd }: { onAdd: () => void }) {
+  const fill = useSheetFill()
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-xl border border-koshur-border ${fill} py-1 pr-1.5 pl-4`}
+    >
+      <span className="text-body-sm text-koshur-muted">Not finding it?</span>
+      <button
+        type="button"
+        onClick={onAdd}
+        className={`min-h-11 rounded-xl px-3 text-body-sm font-semibold text-deficit-ring hover:underline ${FOCUS_RING}`}
+      >
+        Add your own food
+      </button>
+    </div>
+  )
+}
+
 /** When a search finds nothing: the food can be added from the values on its pack. */
 export function FromPackCard({ query, onAdd }: { query: string; onAdd: () => void }) {
   const fill = useSheetFill()
