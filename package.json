@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:db": "supabase test db",
     "test:e2e": "playwright test",
+    "test:e2e:desktop": "playwright test --project=desktop",
     "test:backup": "bash scripts/backup/test-backup.sh",
     "backup": "bash scripts/backup/backup.sh",
     "restore": "bash scripts/backup/restore.sh",
