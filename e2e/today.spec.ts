@@ -149,7 +149,7 @@ test('a food opens from Today to be removed, put back with Undo, and changed', a
   }
 })
 
-test('the Add food popup: pick a meal, search, add, name a meal of your own, and Done', async ({ page }) => {
+test('the Add food popup: pick a meal, search, add, name a meal of your own, and Close', async ({ page }) => {
   const user = await createTestUser('popup')
   const api = apiClient(user.session.access_token)
   try {
@@ -169,8 +169,8 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     const popup = page.getByRole('dialog', { name: 'Add food' })
     await expect(popup).toBeVisible()
     await expect(popup.getByRole('searchbox', { name: 'Search foods' })).toBeFocused()
-    // On phones and tablets it fills the screen, with a clear Close button (Tajamul Wani, 28 October 2026).
-    await expect(popup.getByRole('button', { name: 'Close' })).toHaveText('Close')
+    // On phones and tablets it fills the screen, with a circular Close button (Tajamul Wani, 21 November 2026).
+    await expect(popup.getByRole('button', { name: 'Close' })).toBeVisible()
     if (!wide) {
       const viewport = page.viewportSize()
       expect(await popup.boundingBox()).toEqual({
@@ -221,9 +221,9 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
     await expect(meals.getByRole('article', { name: 'Lunch' }).getByRole('listitem')).toHaveCount(2)
 
     // A meal of the person's own.
-    await popup.getByRole('button', { name: 'New meal' }).click()
-    await popup.getByRole('textbox', { name: 'Name your meal' }).fill('Chai')
-    await popup.getByRole('textbox', { name: 'Name your meal' }).press('Enter')
+    await popup.getByRole('button', { name: 'Custom slot' }).click()
+    await popup.getByRole('textbox', { name: 'Name your meal slot' }).fill('Chai')
+    await popup.getByRole('textbox', { name: 'Name your meal slot' }).press('Enter')
     await expect(popup.getByRole('button', { name: 'Chai', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -239,7 +239,7 @@ test('the Add food popup: pick a meal, search, add, name a meal of your own, and
 
     const blocking = await accessibilityViolations(page)
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
-    await popup.getByRole('button', { name: 'Done' }).click()
+    await popup.getByRole('button', { name: 'Close' }).click()
     await expect(popup).toBeHidden()
     await expect(meals.getByRole('article')).toHaveCount(2)
     await expect(meals.getByRole('article', { name: 'Lunch' })).toContainText(/\d{1,2}:\d{2}/)
@@ -369,14 +369,18 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(block).toContainText('Test tea 1 g, Test bread 1 g')
       await expect(block).toContainText('300 kcal')
       await block.getByRole('button', { name: "Add all of yesterday's breakfast" }).click()
-      const inMeal = popup.getByRole('region', { name: /^In breakfast now/ })
-      await expect(inMeal.getByRole('listitem')).toHaveCount(2)
-      await expect(meals.getByRole('article', { name: 'Breakfast' }).getByRole('listitem')).toHaveCount(2)
+      await popup.getByRole('button', { name: 'Close' }).click()
+      const breakfast = meals.getByRole('article', { name: 'Breakfast' })
+      await expect(breakfast.getByRole('listitem')).toHaveCount(2)
 
-      // Saved under a name, then opened, grown by a food from the search, and trimmed by one.
-      await inMeal.getByRole('textbox', { name: 'Name this meal' }).fill('Morning chai')
-      await inMeal.getByRole('button', { name: 'Save as a meal' }).click()
-      // Yesterday, Saved meals and My foods are tabs: the saved meal is on its own.
+      // Saved under a name from the meal card, then opened from popup's Saved meals tab, grown by a food from search, and trimmed by one.
+      await breakfast.getByRole('button', { name: 'Save as combo' }).click()
+      await breakfast.getByRole('textbox', { name: 'Name this combo' }).fill('Morning chai')
+      await breakfast.getByRole('button', { name: 'Save combo' }).click()
+      await expect(breakfast).toContainText('Saved Morning chai')
+
+      // Open popup to check Saved meals tab.
+      await meals.getByRole('button', { name: 'Add to breakfast' }).click()
       await popup.getByRole('button', { name: 'Saved meals', exact: true }).click()
       const saved = popup.getByRole('region', { name: 'Saved meals' })
       await expect(saved).toContainText('Morning chai')
@@ -414,7 +418,7 @@ for (const theme of ['dark', 'light'] as const) {
       await saved.getByRole('button', { name: /^Morning chai/ }).click()
       await popup.getByRole('button', { name: 'Remove saved meal' }).click()
       await expect(popup.getByRole('region', { name: 'Saved meals' })).toBeHidden()
-      await popup.getByRole('button', { name: 'Done' }).click()
+      await popup.getByRole('button', { name: 'Close' }).click()
       expect(await cspViolations(page)).toEqual([])
       const left = await api.from('saved_meals').select('id')
       expect(left.data).toEqual([])

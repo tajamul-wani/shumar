@@ -2,159 +2,37 @@ import { Plus, X } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
-import { Toast, type ToastMessage } from '../components/Toast.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
-import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
-import { LogError } from '../lib/logs.ts'
-import { MAX_SAVED_MEAL_NAME } from '../lib/savedMeals.ts'
 import {
   MAX_MEAL_NAME,
   MEALS,
   MEAL_LABELS,
   isFixedMeal,
   mealLabel,
-  mealPhrase,
   normalizeMealName,
   type Meal,
 } from '../lib/meals.ts'
-import { groupMealFoods } from '../lib/today.ts'
 import { LogSheet } from './LogSheet.tsx'
-import { useSavedMeals, type SavedMealsState } from './useSavedMeals.ts'
+import { useSavedMeals } from './useSavedMeals.ts'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 const STEP = 'm-0 text-caption font-semibold tracking-wide text-koshur-muted uppercase'
 const MEAL_NAME_INPUT = `min-h-11 min-w-0 flex-1 rounded-xl border border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`
-const NAME_INPUT = `min-h-11 min-w-0 flex-1 basis-56 rounded-full border border-dashed border-koshur-border bg-transparent px-4 text-body-sm text-koshur-silk placeholder:text-koshur-muted ${FOCUS_RING}`
 
 interface AddFoodDialogProps {
   /** The meal to open on, or null while the popup is closed. */
   meal: Meal | null
-  /** Today's logs, for the list of what is in the meal so far. */
-  logs: readonly LoggedFood[]
+  /** Today's logs. */
+  logs?: readonly LoggedFood[]
   onChangeMeal: (meal: Meal) => void
   onAdded: () => void
   onClose: () => void
 }
 
-interface SaveMealFormProps {
-  foods: readonly LoggedFood[]
-  savedMeals: SavedMealsState
-  onSaved: (name: string) => void
-}
-
-/** Saves what is in the meal right now under a name, so it can be added in one tap another day. */
-function SaveMealForm({ foods, savedMeals, onSaved }: SaveMealFormProps) {
-  const nameId = useId()
-  const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    if (saving) return
-    setSaving(true)
-    setError(null)
-    try {
-      const saved = await savedMeals.save(name, foods)
-      setName('')
-      onSaved(saved.name)
-    } catch (failure) {
-      setError(
-        failure instanceof LogError
-          ? failure.message
-          : "We couldn't save this meal. Check your connection and try again.",
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor={nameId} className="sr-only">
-          Name this meal
-        </label>
-        <input
-          id={nameId}
-          type="text"
-          value={name}
-          onChange={(event) => {
-            setError(null)
-            setName(event.target.value)
-          }}
-          onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              void save()
-            }
-          }}
-          placeholder="Name this meal, such as Morning chai"
-          maxLength={MAX_SAVED_MEAL_NAME}
-          autoComplete="off"
-          className={NAME_INPUT}
-        />
-        <Button variant="secondary" size="small" disabled={saving} onClick={() => void save()}>
-          {saving ? 'Saving' : 'Save as a meal'}
-        </Button>
-      </div>
-      {error && (
-        <p role="alert" className="m-0 text-body-sm text-koshur-silk">
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
-
-interface InMealProps {
-  meal: Meal
-  foods: readonly LoggedFood[]
-  savedMeals: SavedMealsState
-  onSaved: (name: string) => void
-}
-
-/** What has gone into the meal so far, at the foot of the popup: never under the search box. */
-function InMeal({ meal, foods, savedMeals, onSaved }: InMealProps) {
-  const headingId = useId()
-  if (foods.length === 0) return null
-  const kcal = foods.reduce((sum, log) => sum + log.nutrients.kcal, 0)
-  return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2 border-t border-koshur-border pt-4">
-      <h3 id={headingId} className={`${STEP} flex justify-between gap-3`}>
-        <span>In {mealPhrase(meal)} now</span>
-        <span className="tracking-normal text-koshur-silk normal-case">
-          {formatNumber(Math.round(kcal))} kcal
-        </span>
-      </h3>
-      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-        {groupMealFoods(foods).map((entry) => {
-          const food = entry.logs[entry.logs.length - 1]
-          const amount = amountLabel(food.quantity, {
-            name: food.unitName,
-            grams: food.grams / food.quantity,
-          })
-          return (
-            <li key={entry.logs[0].id} className="flex items-center gap-3 text-body-sm">
-              <span className="min-w-0 flex-1 text-koshur-silk">
-                {food.foodName}
-                {entry.logs.length > 1 && <span className="text-koshur-muted"> ×{entry.logs.length}</span>}
-              </span>{' '}
-              <span className="whitespace-nowrap text-koshur-muted">
-                {amount} · {formatNumber(Math.round(entry.totals.kcal))} kcal
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      <SaveMealForm foods={foods} savedMeals={savedMeals} onSaved={onSaved} />
-    </section>
-  )
-}
-
 /**
  * The Add food popup: a dialog in the middle of a wide screen, a sheet from the bottom on a phone.
  * Step 1 picks the meal as a tag or names a new one, step 2 is the search. It stays open for the
- * next food and closes with Done, Escape or the cross.
+ * next food and closes with Escape or the cross.
  */
 export function AddFoodDialog({ meal, logs, onChangeMeal, onAdded, onClose }: AddFoodDialogProps) {
   if (meal === null) return null
@@ -166,7 +44,7 @@ export function AddFoodDialog({ meal, logs, onChangeMeal, onAdded, onClose }: Ad
 type OpenDialogProps = Omit<AddFoodDialogProps, 'meal'> & { meal: Meal }
 
 /** The popup while it is open. It is taken down entirely when closed, so nothing lingers behind the page. */
-function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogProps) {
+function OpenDialog({ meal, logs = [], onChangeMeal, onAdded, onClose }: OpenDialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const headingId = useId()
@@ -176,8 +54,6 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
   const [naming, setNaming] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const savedMeals = useSavedMeals()
-  const [notice, setNotice] = useState<ToastMessage | null>(null)
-  const noticeId = useRef(0)
 
   // Closing the dialog ourselves (when it is taken down, or when React re-runs the effect in
   // development) fires a close event too; that one must not count as the person closing it.
@@ -231,13 +107,6 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
     }
   }
 
-  const mealFoods = logs.filter((log) => log.meal === meal)
-  const mealKcal = mealFoods.reduce((sum, log) => sum + log.nutrients.kcal, 0)
-  const mealSummary =
-    mealFoods.length === 0
-      ? 'Nothing added yet'
-      : `${mealFoods.length} ${mealFoods.length === 1 ? 'food' : 'foods'} · ${formatNumber(Math.round(mealKcal))} kcal`
-
   // The name box takes focus as soon as it opens.
   useEffect(() => {
     if (naming) nameRef.current?.focus()
@@ -257,27 +126,36 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
               <h2 id={headingId} className="m-0 min-w-0 flex-1 text-title font-semibold">
                 Add food
               </h2>
-              {/* A clear way out: a bordered button with its name, not a faint cross (Tajamul Wani, 28 October 2026). */}
-              <Button variant="secondary" size="small" onClick={onClose} className="shrink-0">
-                <X aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
-                Close
-              </Button>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className={`flex size-11 shrink-0 items-center justify-center rounded-full border border-koshur-border bg-transparent text-koshur-silk transition hover:border-deficit-ring hover:text-deficit-ring ${FOCUS_RING}`}
+              >
+                <X aria-hidden="true" size={20} strokeWidth={2} className="size-5" />
+              </button>
             </div>
 
             <fieldset className="m-0 flex min-w-0 flex-col gap-2.5 border-0 p-0">
               <legend className={`${STEP} p-0 pb-2.5`}>1. Which meal</legend>
               <div className="flex flex-wrap items-center gap-2">
                 {MEALS.map((option) => (
-                  <Chip key={option} pressed={option === meal} onClick={() => onChangeMeal(option)}>
+                  <Chip
+                    key={option}
+                    size="small"
+                    pressed={option === meal}
+                    onClick={() => onChangeMeal(option)}
+                  >
                     {MEAL_LABELS[option]}
                   </Chip>
                 ))}
                 {ownMeals.map((own) => (
-                  <Chip key={own} pressed={own === meal} onClick={() => onChangeMeal(own)}>
+                  <Chip key={own} size="small" pressed={own === meal} onClick={() => onChangeMeal(own)}>
                     {own}
                   </Chip>
                 ))}
                 <Chip
+                  size="small"
                   pressed={naming}
                   aria-expanded={naming}
                   aria-controls={namePanelId}
@@ -287,8 +165,8 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
                   }}
                   className="inline-flex items-center gap-1.5"
                 >
-                  <Plus aria-hidden="true" size={20} strokeWidth={2} className="size-4" />
-                  New meal
+                  <Plus aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+                  Custom slot
                 </Chip>
               </div>
               {naming && (
@@ -297,7 +175,7 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
                   className="flex flex-col gap-2 rounded-2xl border border-koshur-border p-4"
                 >
                   <label htmlFor={nameId} className="text-body-sm font-semibold text-koshur-silk">
-                    Name your meal
+                    Name your meal slot
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -315,11 +193,11 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
                       className={MEAL_NAME_INPUT}
                     />
                     <Button size="small" onClick={nameMeal} className="shrink-0">
-                      Add meal
+                      Add slot
                     </Button>
                   </div>
                   <p className="m-0 text-caption text-koshur-muted">
-                    For example Chai, Pre-workout or Office lunch.
+                    For example Chai, Pre-workout or Sehri.
                   </p>
                 </div>
               )}
@@ -340,27 +218,6 @@ function OpenDialog({ meal, logs, onChangeMeal, onAdded, onClose }: OpenDialogPr
                 savedMeals={savedMeals}
               />
             </div>
-
-            <InMeal
-              meal={meal}
-              foods={logs.filter((log) => log.meal === meal)}
-              savedMeals={savedMeals}
-              onSaved={(savedName) => {
-                noticeId.current += 1
-                setNotice({ id: noticeId.current, text: `Saved ${savedName}`, tone: 'added' })
-              }}
-            />
-            <Toast message={notice} duration={5000} onDismiss={() => setNotice(null)} inline />
-          </div>
-          {/* Done stays in view with what the meal holds so far, however long the list above grows. */}
-          <div className="flex shrink-0 items-center gap-3 border-t border-koshur-border px-4 py-3 sm:px-6">
-            <p className="m-0 flex min-w-0 flex-1 flex-col">
-              <span className="text-body-sm font-semibold text-koshur-silk">{mealLabel(meal)}</span>
-              <span className="text-caption text-koshur-muted">{mealSummary}</span>
-            </p>
-            <Button size="small" onClick={onClose} className="shrink-0">
-              Done
-            </Button>
           </div>
         </>
       }

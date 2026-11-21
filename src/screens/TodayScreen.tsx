@@ -18,6 +18,7 @@ import { furthestBehind, sodiumAlert, summarizeDay } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
 import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
 import { AddFoodDialog } from '../log/AddFoodDialog.tsx'
+import { useSavedMeals } from '../log/useSavedMeals.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { HeroCard } from '../today/HeroCard.tsx'
 import { MealCards } from '../today/MealCards.tsx'
@@ -85,6 +86,7 @@ export function TodayScreen() {
   const [today] = useState(() => new Date())
   const { client } = useAuth()
   const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
+  const savedMeals = useSavedMeals()
   // The meal the Add food popup is open on, or null while it is closed.
   const [adding, setAdding] = useState<Meal | null>(null)
   const openAddFood = (meal?: Meal) => setAdding(meal ?? defaultMeal(new Date()))
@@ -199,6 +201,7 @@ export function TodayScreen() {
             showTimes
             editable
             onAdd={openAddFood}
+            onSaveCombo={savedMeals.save}
             headingRef={mealsHeadingRef}
           />
         ) : (
@@ -226,9 +229,7 @@ export function TodayScreen() {
           <div className="mb-4 lg:hidden">
             <Logo decorative className="h-8 w-auto" />
           </div>
-          <p className="m-0 text-body text-balance! text-koshur-muted lg:text-body-sm">
-            {formatDayHeading(today)}
-          </p>
+          <p className="m-0 text-body text-koshur-muted lg:text-body-sm">{formatDayHeading(today)}</p>
           <h1
             tabIndex={-1}
             className="sr-only m-0 text-heading font-semibold focus:outline-none lg:not-sr-only"

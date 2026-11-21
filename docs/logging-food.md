@@ -20,11 +20,11 @@ Under **In lunch now** you see everything already in that meal and its calories.
 
 ## Log a meal of your own
 
-If breakfast, lunch and the others don't fit, name a meal.
+If breakfast, lunch and the others don't fit, name a custom slot.
 
-1. In the **Add food** popup, tap **New meal** at the end of the meal row.
-2. Type a name in **Name your meal**, such as Chai.
-3. Tap **Add meal**.
+1. In the **Add food** popup, tap **Custom slot** at the end of the meal row.
+2. Type a name in **Name your meal slot**, such as Chai.
+3. Tap **Add slot**.
 
 Your meal appears on Today next to the others.
 
@@ -34,7 +34,7 @@ If a food isn't in the results, add it from its label. Only you can see the food
 
 1. Under the search box, tap **Add your own food**. If you already searched for it, its name fills in for you.
 2. Enter the **Name**, and the **Brand** if the pack has one.
-3. Choose **Per 100 g** or **Per serving**, as the label shows. For a serving, enter what **One serving is** in grams.
+3. Choose **Per 100 g / ml** or **Per serving**, as the label shows. For a serving, enter what **One serving is** in grams or ml.
 4. Enter **Calories**, **Protein**, **Carbs** and **Fat** from the label.
 5. If the label lists them, add **Sodium**, **Calcium**, **Magnesium** and **Vitamin D**. They are optional, so leave out any the pack does not list.
 6. Tap **Save food**.
@@ -45,15 +45,18 @@ If the numbers on the label don't add up, Shumār shows "Check these numbers". T
 
 ## Add yesterday's meal again
 
-Under the search box, three tabs hold your quick adds: **Yesterday**, **Saved meals** and **My foods**. On **Yesterday** you see yesterday's matching meal, for example "Yesterday's lunch". Tap **Add all** to log all of it in one tap.
+Under the search box, three tabs hold your quick adds: **Yesterday**, **Saved meals** and **My foods**. On **Yesterday** you see yesterday's matching meal, for example "Yesterday's lunch". Tap **Check yesterday's lunch** to reveal the foods eaten yesterday, or tap **Add all** to log all of it in one tap.
 
 ## Save a meal you eat often
 
-1. Add the foods to a meal.
-2. Under **In lunch now**, type a name in **Name this meal**, such as Morning chai.
-3. Tap **Save as a meal**.
+Save a meal you eat regularly as a combo so you can log it again in one tap.
 
-Later, find it on the **Saved meals** tab in the popup.
+1. On the **Today** tab, go to the meal card (such as Breakfast or Lunch) where your foods are logged.
+2. Tap **Save as combo**.
+3. Type a name in **Name this combo**, such as Daily breakfast or Morning chai.
+4. Tap **Save combo**.
+
+Later, find it on the **Saved meals** tab in the **Add food** popup.
 
 - To add it, tap **Add** next to its name.
 - To change it, tap its name to open it. Tap **Add a food** to grow it, or remove a food to trim it.

@@ -1,9 +1,12 @@
-import { ChevronRight, Plus } from 'lucide-react'
-import { useId, type Ref } from 'react'
+import { Bookmark, ChevronRight, Plus } from 'lucide-react'
+import { useId, useState, type Ref } from 'react'
 import { Link } from 'wouter'
+import { Button } from '../components/Button.tsx'
 import { formatMealTime } from '../lib/dates.ts'
 import { amountWithGrams } from '../lib/foodDisplay.ts'
+import { LogError, type FoodAmount } from '../lib/logs.ts'
 import { mealLabel, mealPhrase, type Meal } from '../lib/meals.ts'
+import { MAX_SAVED_MEAL_NAME, type SavedMeal } from '../lib/savedMeals.ts'
 import { biggestMeal, groupMealFoods, type FoodEntry, type MealGroup } from '../lib/today.ts'
 import { FoodValues } from '../log/FoodValues.tsx'
 import { editLogPath } from '../shell/nav.ts'
@@ -75,15 +78,48 @@ interface MealCardProps {
   showTime: boolean
   editable: boolean
   onAdd?: (meal: Meal) => void
+  onSaveCombo?: (name: string, foods: readonly FoodAmount[]) => Promise<SavedMeal>
 }
 
 /**
  * A meal as a card: its name as a bordered tag, the time of its first food, its calories and share
- * of the day, a bar of its macros, every food listed, and a way to add to it.
+ * of the day, a bar of its macros, every food listed, a way to add to it, and a way to save it as a combo.
  */
-function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd }: MealCardProps) {
+function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd, onSaveCombo }: MealCardProps) {
   const headingId = useId()
+  const nameId = useId()
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [savedName, setSavedName] = useState<string | null>(null)
   const share = dayKcal > 0 ? Math.round((group.totals.kcal / dayKcal) * 100) : 0
+
+  async function handleSaveCombo() {
+    if (saving || !onSaveCombo) return
+    const trimmed = name.trim().replace(/\s+/g, ' ')
+    if (!trimmed) {
+      setError('Give the combo a name of up to 40 characters.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const saved = await onSaveCombo(name, group.foods)
+      setName('')
+      setNaming(false)
+      setSavedName(saved.name)
+    } catch (failure) {
+      setError(
+        failure instanceof LogError
+          ? failure.message
+          : "We couldn't save this combo. Check your connection and try again.",
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <article
       aria-labelledby={headingId}
@@ -120,16 +156,88 @@ function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd }: MealCa
           <EntryItem key={entry.logs[0].id} entry={entry} editable={editable} />
         ))}
       </ul>
-      {onAdd && (
-        <button
-          type="button"
-          onClick={() => onAdd(group.meal)}
-          className={`inline-flex min-h-11 items-center gap-2 self-start rounded-xl text-body-sm font-semibold text-deficit-ring transition-opacity hover:opacity-80 ${FOCUS_RING}`}
-        >
-          <Plus aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
-          Add to {mealPhrase(group.meal)}
-        </button>
-      )}
+      <div className="flex flex-col gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {onAdd && (
+            <button
+              type="button"
+              onClick={() => onAdd(group.meal)}
+              className={`inline-flex min-h-11 items-center gap-2 self-start rounded-xl text-body-sm font-semibold text-deficit-ring transition-opacity hover:opacity-80 ${FOCUS_RING}`}
+            >
+              <Plus aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
+              Add to {mealPhrase(group.meal)}
+            </button>
+          )}
+          {editable && group.foods.length > 0 && onSaveCombo && !naming && (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null)
+                setSavedName(null)
+                setNaming(true)
+              }}
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-koshur-silk ${FOCUS_RING}`}
+            >
+              <Bookmark aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+              Save as combo
+            </button>
+          )}
+        </div>
+
+        {naming && (
+          <div className="flex flex-col gap-2 rounded-xl border border-koshur-border p-3">
+            <label htmlFor={nameId} className="text-body-sm font-semibold text-koshur-silk">
+              Name this combo
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id={nameId}
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setError(null)
+                  setName(e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void handleSaveCombo()
+                  } else if (e.key === 'Escape') {
+                    setNaming(false)
+                    setError(null)
+                  }
+                }}
+                placeholder="For example Daily breakfast"
+                maxLength={MAX_SAVED_MEAL_NAME}
+                autoComplete="off"
+                className="min-h-11 min-w-0 flex-1 basis-48 rounded-lg border border-koshur-border bg-transparent px-3 text-body-sm text-koshur-silk placeholder:text-koshur-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring"
+              />
+              <Button size="small" disabled={saving} onClick={() => void handleSaveCombo()}>
+                {saving ? 'Saving' : 'Save combo'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => {
+                  setNaming(false)
+                  setError(null)
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+            {error && (
+              <p role="alert" className="m-0 text-body-sm text-alert-surplus">
+                {error}
+              </p>
+            )}
+          </div>
+        )}
+
+        {savedName && !naming && (
+          <p className="m-0 text-caption text-koshur-muted">Saved {savedName} to your saved meals.</p>
+        )}
+      </div>
     </article>
   )
 }
@@ -144,6 +252,7 @@ interface MealCardsProps {
   editable?: boolean
   /** Opens the Add food popup on that meal. Without it, as on a past day, cards have no add line. */
   onAdd?: (meal: Meal) => void
+  onSaveCombo?: (name: string, foods: readonly FoodAmount[]) => Promise<SavedMeal>
   headingRef?: Ref<HTMLHeadingElement>
 }
 
@@ -154,6 +263,7 @@ export function MealCards({
   showTimes = false,
   editable = false,
   onAdd,
+  onSaveCombo,
   headingRef,
 }: MealCardsProps) {
   const headingId = useId()
@@ -178,6 +288,7 @@ export function MealCards({
             showTime={showTimes}
             editable={editable}
             onAdd={onAdd}
+            onSaveCombo={onSaveCombo}
           />
         ))}
       </div>

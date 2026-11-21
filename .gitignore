@@ -8,11 +8,14 @@
 
 # Internal planning (never public)
 
-# Claude and chat files
-.claude/
-CLAUDE.md
-CLAUDE.local.md
-.claude.json
+# Internal planning and agent configs (never public)
+.agent
+.agent/
+.agents
+.agents/
+GEMINI.md
+GEMINI.local.md
+AGENTS.md
 *.jsonl
 
 # Dependencies and builds

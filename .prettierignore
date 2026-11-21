@@ -4,5 +4,7 @@ playwright-report
 test-results
 node_modules
 package-lock.json
-.claude
+.agent
+.agents
+GEMINI.md
 blueprint
