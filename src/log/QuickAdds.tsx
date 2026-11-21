@@ -107,71 +107,72 @@ export function QuickAdds({
             </span>
           </h3>
           <div className={`flex flex-col rounded-xl border border-koshur-border ${fill} p-3.5 gap-3`}>
-            <div className="flex items-start justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => setShowYesterdayFoods((open) => !open)}
-                aria-expanded={showYesterdayFoods}
-                aria-controls={yesterdayListId}
-                className={`flex items-center gap-2 rounded-lg text-left transition-colors ${FOCUS_RING}`}
-              >
-                <ChevronRight
-                  aria-hidden="true"
-                  size={18}
-                  strokeWidth={2}
-                  className={`size-4 text-koshur-muted transition-transform duration-200 shrink-0 ${
-                    showYesterdayFoods ? 'rotate-90 text-deficit-ring' : ''
-                  }`}
-                />
-                <div className="flex flex-col">
-                  <span className="text-body-sm font-semibold text-koshur-silk">
-                    {showYesterdayFoods ? `Hide yesterday's ${phrase}` : `Check yesterday's ${phrase}`}
-                  </span>
-                  <span className="text-caption text-koshur-muted">
-                    {repeat.length} {repeat.length === 1 ? 'food' : 'foods'}
-                  </span>
+            <button
+              type="button"
+              onClick={() => setShowYesterdayFoods((open) => !open)}
+              aria-expanded={showYesterdayFoods}
+              aria-controls={yesterdayListId}
+              className={`group flex w-full flex-col gap-0.5 rounded-lg text-left transition-colors ${FOCUS_RING}`}
+            >
+              <div className="flex w-full items-center justify-between gap-3">
+                <span className="text-body-sm font-semibold text-koshur-silk">
+                  Check yesterday's {phrase}
+                </span>
+                <div className="flex shrink-0 items-center gap-1.5 text-caption font-medium text-koshur-muted transition-colors group-hover:text-koshur-silk">
+                  <span>{showYesterdayFoods ? 'Show less' : 'Show more'}</span>
+                  <ChevronRight
+                    aria-hidden="true"
+                    size={16}
+                    strokeWidth={2}
+                    className={`size-3.5 transition-transform duration-200 ${
+                      showYesterdayFoods ? 'rotate-90 text-deficit-ring' : ''
+                    }`}
+                  />
                 </div>
-              </button>
-              <Button
-                variant="secondary"
-                size="small"
-                disabled={busy}
-                onClick={() => onAddYesterday(repeat)}
-                aria-label={`Add all of yesterday's ${phrase}`}
-                className="shrink-0"
-              >
-                Add all
-              </Button>
-            </div>
+              </div>
+              <span className="text-caption text-koshur-muted">
+                {repeat.length} {repeat.length === 1 ? 'food' : 'foods'}
+              </span>
+            </button>
             {showYesterdayFoods && (
-              <ul
-                id={yesterdayListId}
-                className="m-0 flex list-none flex-col border-t border-koshur-border pt-2.5 p-0"
-              >
-                {groupMealFoods(repeat).map((entry) => {
-                  const log = entry.logs[entry.logs.length - 1]
-                  const amount = amountLabel(log.quantity, {
-                    name: log.unitName,
-                    grams: log.grams / log.quantity,
-                  })
-                  return (
-                    <li
-                      key={entry.logs[0].id}
-                      className="flex items-center justify-between gap-3 py-1.5 first:pt-1 last:pb-0"
-                    >
-                      <span className="min-w-0 truncate text-body-sm text-koshur-silk">
-                        {log.foodName}
-                        {entry.logs.length > 1 && (
-                          <span className="text-koshur-muted"> ×{entry.logs.length}</span>
-                        )}
-                      </span>{' '}
-                      <span className="shrink-0 text-caption text-koshur-muted">
-                        {amount} · {formatNumber(entry.totals.kcal)} kcal
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+              <div className="flex flex-col gap-3.5 border-t border-koshur-border pt-3">
+                <ul id={yesterdayListId} className="m-0 flex list-none flex-col p-0">
+                  {groupMealFoods(repeat).map((entry) => {
+                    const log = entry.logs[entry.logs.length - 1]
+                    const amount = amountLabel(log.quantity, {
+                      name: log.unitName,
+                      grams: log.grams / log.quantity,
+                    })
+                    return (
+                      <li
+                        key={entry.logs[0].id}
+                        className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0"
+                      >
+                        <span className="min-w-0 truncate text-body-sm text-koshur-silk">
+                          {log.foodName}
+                          {entry.logs.length > 1 && (
+                            <span className="text-koshur-muted"> ×{entry.logs.length}</span>
+                          )}
+                        </span>{' '}
+                        <span className="shrink-0 text-caption text-koshur-muted">
+                          {amount} · {formatNumber(entry.totals.kcal)} kcal
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+                <div className="flex items-center justify-start pt-1.5">
+                  <Button
+                    variant="primary"
+                    size="small"
+                    disabled={busy}
+                    onClick={() => onAddYesterday(repeat)}
+                    aria-label={`Add all of yesterday's ${phrase}`}
+                  >
+                    Add all
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </section>

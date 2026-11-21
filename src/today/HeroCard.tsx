@@ -138,13 +138,16 @@ export function HeroCard({
         <div className="grid w-full grid-cols-3 gap-3 border-t border-koshur-border pt-5 sm:gap-4 lg:border-t-0 lg:pt-0">
           {MACROS.map(({ key, label, bar }) => {
             const goal = macroTargets?.[key]
+            const isOver = Boolean(goal && shown[key] > goal)
             return (
               <p key={key} className="m-0 flex min-w-0 flex-col gap-1.5">
                 <span className="text-caption text-koshur-muted">{label}</span>
                 <span className="flex flex-col text-body font-semibold text-koshur-silk sm:flex-row sm:items-baseline sm:gap-1">
                   {goal ? (
                     <>
-                      <span>{formatNumber(shown[key])}</span>
+                      <span className={isOver ? 'text-alert-surplus' : undefined}>
+                        {formatNumber(shown[key])}
+                      </span>
                       {/* Reads "of 128 g" under the number on phones and "/ 128 g" beside it from tablets up (index.css). */}
                       <span className="macro-target text-caption font-normal text-koshur-muted sm:text-body">
                         {formatNumber(goal)} g
@@ -157,7 +160,7 @@ export function HeroCard({
                 {goal ? (
                   <span aria-hidden="true" className="block h-1.5 rounded-full bg-koshur-border">
                     <span
-                      className={`block h-1.5 rounded-full ${bar}`}
+                      className={`block h-1.5 rounded-full ${isOver ? 'bg-alert-surplus' : bar}`}
                       style={{ width: `${Math.min(100, (totals[key] / goal) * 100)}%` }}
                     />
                   </span>
