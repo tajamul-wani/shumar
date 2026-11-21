@@ -189,7 +189,7 @@ describe('reading the form', () => {
   it('needs the grams in a serving when the values are per serving', () => {
     for (const servingGrams of ['', '0', '5001', 'some']) {
       expect(readDraft({ ...filled, basis: 'serving', servingGrams }).problems).toEqual({
-        servingGrams: 'Enter the grams in one serving, as the label gives them.',
+        servingGrams: 'Enter the grams or ml in one serving, as the label gives them.',
       })
     }
   })

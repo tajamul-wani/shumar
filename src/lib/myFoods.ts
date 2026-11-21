@@ -185,7 +185,7 @@ export function readDraft(draft: MyFoodDraft): DraftCheck {
   if (draft.basis === 'serving') {
     servingGrams = parseDecimal(draft.servingGrams)
     if (servingGrams === null || servingGrams <= 0 || servingGrams > MAX_SERVING_GRAMS) {
-      problems.servingGrams = 'Enter the grams in one serving, as the label gives them.'
+      problems.servingGrams = 'Enter the grams or ml in one serving, as the label gives them.'
       servingGrams = null
     }
   }
