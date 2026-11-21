@@ -72,4 +72,13 @@ After you remove a food, Shumār shows "Removed" with an **Undo** button for a f
 
 If the same food in the same amount appears more than once, Today shows it once with a count such as "x2". **Remove** takes away one.
 
+## Delete an entire meal
+
+To remove all foods in a meal at once:
+
+1. On **Today**, go to the meal card you want to delete.
+2. Tap **Delete meal**.
+3. A warning dialog confirms that the entire meal and all its foods will be deleted, not just a single food item.
+4. Tap **Delete entire meal** to confirm.
+
 > **Tip:** Days you open from Trends are for reading only. To change a food, do it on Today.

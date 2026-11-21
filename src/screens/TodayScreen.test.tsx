@@ -88,6 +88,10 @@ function fakeClient(options: FakeOptions = {}) {
       if (kind === 'remove') removed(value)
       return query
     }
+    query.in = (_column: string, values: unknown[]) => {
+      if (kind === 'remove') for (const v of values) removed(v)
+      return query
+    }
     query.delete = () => {
       kind = 'remove'
       return query
@@ -238,6 +242,19 @@ describe('with a daily target', () => {
     expect(review).toHaveTextContent('You went 324 kcal over today. One day does not undo a good week.')
     expect(within(ring()).getByText('kcal over')).toBeInTheDocument()
     expect(ring().querySelector('circle.stroke-alert-surplus')).not.toBeNull()
+  })
+
+  it('turns the macro number and bar red when it exceeds its target', async () => {
+    const heavyCarbLog = {
+      ...log('1', 'lunch', 'Rice feast', '13:00', 1500),
+      carbs: 350,
+    }
+    renderToday(fakeClient({ logs: [heavyCarbLog] }), { answers })
+    await screen.findByRole('region', { name: 'Calories and macros' })
+    const carbsAmount = screen.getByText('350')
+    expect(carbsAmount).toHaveClass('text-alert-surplus')
+    const carbsBlock = carbsAmount.closest('p')
+    expect(carbsBlock?.querySelector('.bg-alert-surplus')).not.toBeNull()
   })
 
   it('shows the sodium line too when the day is high in sodium', async () => {
@@ -418,6 +435,34 @@ describe('changing and removing foods', () => {
     await openBreakfast()
     expect(screen.queryByText('Removed')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+  })
+
+  it('opens a warning popup before deleting an entire meal, and cancels on request', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    const dinner = within(meals).getByRole('article', { name: 'Dinner' })
+    await userEvent.click(within(dinner).getByRole('button', { name: 'Delete meal' }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete Dinner?' })
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveTextContent(
+      'This will delete the entire Dinner meal and all 1 food in it, not just a single food item. This cannot be undone.',
+    )
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Delete Dinner?' })).not.toBeInTheDocument()
+    expect(within(meals).getByRole('article', { name: 'Dinner' })).toBeInTheDocument()
+  })
+
+  it('deletes an entire meal when confirmed in the warning popup', async () => {
+    const fake = renderToday()
+    const meals = await openBreakfast()
+    const dinner = within(meals).getByRole('article', { name: 'Dinner' })
+    await userEvent.click(within(dinner).getByRole('button', { name: 'Delete meal' }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete Dinner?' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete entire meal' }))
+    await waitFor(() => {
+      expect(within(meals).queryByRole('article', { name: 'Dinner' })).not.toBeInTheDocument()
+    })
+    expect(fake.removed).toHaveBeenCalledWith('3')
   })
 })
 

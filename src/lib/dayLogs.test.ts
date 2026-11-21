@@ -7,6 +7,7 @@ import {
   foodFromLog,
   parseLoggedFood,
   removeLog,
+  removeMealLogs,
   restoreLog,
   type LoggedFood,
 } from './dayLogs.ts'
@@ -45,7 +46,7 @@ function fakeClient(result: Result) {
     then: (resolve: (value: Result) => unknown, reject: (reason: unknown) => unknown) =>
       Promise.resolve(result).then(resolve, reject),
   }
-  for (const name of ['select', 'eq', 'order', 'maybeSingle', 'single', 'delete', 'insert', 'update']) {
+  for (const name of ['select', 'eq', 'in', 'order', 'maybeSingle', 'single', 'delete', 'insert', 'update']) {
     query[name] = (...args: unknown[]) => {
       calls.push([name, args])
       return query
@@ -142,6 +143,19 @@ describe('removing and restoring', () => {
     await removeLog(client, 'log-1')
     expect(call(calls, 'delete')).toEqual([])
     expect(call(calls, 'eq')).toEqual(['id', 'log-1'])
+  })
+
+  it('removes meal logs by their ids', async () => {
+    const { client, calls } = fakeClient({ data: [{ id: 'log-1' }, { id: 'log-2' }], error: null })
+    await removeMealLogs(client, ['log-1', 'log-2'])
+    expect(call(calls, 'delete')).toEqual([])
+    expect(call(calls, 'in')).toEqual(['id', ['log-1', 'log-2']])
+  })
+
+  it('does nothing when given no meal log ids', async () => {
+    const { client, calls } = fakeClient({ data: [], error: null })
+    await removeMealLogs(client, [])
+    expect(calls).toEqual([])
   })
 
   it('explains when nothing was removed', async () => {

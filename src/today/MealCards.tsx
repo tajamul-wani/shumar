@@ -1,5 +1,5 @@
-import { Bookmark, ChevronRight, Plus } from 'lucide-react'
-import { useId, useState, type Ref } from 'react'
+import { Bookmark, ChevronRight, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { Link } from 'wouter'
 import { Button } from '../components/Button.tsx'
 import { formatMealTime } from '../lib/dates.ts'
@@ -26,7 +26,7 @@ function EntryItem({ entry, editable }: { entry: FoodEntry; editable: boolean })
   const food = entry.logs[count - 1]
   const amount = amountWithGrams(food.quantity, { name: food.unitName, grams: food.grams / food.quantity })
   const content = (
-    <span className="flex min-w-0 flex-1 flex-col gap-1">
+    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body-sm text-koshur-silk">
         <span>{food.foodName}</span>
         {count > 1 && (
@@ -52,7 +52,7 @@ function EntryItem({ entry, editable }: { entry: FoodEntry; editable: boolean })
       {editable ? (
         <Link
           href={editLogPath(food.id)}
-          className={`flex min-h-11 items-center gap-3 rounded-xl py-3 ${FOCUS_RING}`}
+          className={`flex min-h-11 items-start gap-3 rounded-xl py-3.5 ${FOCUS_RING}`}
         >
           {content}
           <span className="sr-only">, change or remove{count > 1 ? ' one' : ''}</span>
@@ -60,11 +60,11 @@ function EntryItem({ entry, editable }: { entry: FoodEntry; editable: boolean })
             aria-hidden="true"
             size={20}
             strokeWidth={2}
-            className="size-4 shrink-0 text-koshur-muted"
+            className="mt-0.5 size-4 shrink-0 text-koshur-muted"
           />
         </Link>
       ) : (
-        <div className="flex py-3">{content}</div>
+        <div className="flex py-3.5">{content}</div>
       )}
     </li>
   )
@@ -79,21 +79,136 @@ interface MealCardProps {
   editable: boolean
   onAdd?: (meal: Meal) => void
   onSaveCombo?: (name: string, foods: readonly FoodAmount[]) => Promise<SavedMeal>
+  onDeleteMeal?: (group: MealGroup) => Promise<void>
+}
+
+/** Warning popup when deleting an entire meal card. */
+function DeleteMealDialog({
+  meal,
+  count,
+  deleting,
+  onConfirm,
+  onClose,
+}: {
+  meal: Meal
+  count: number
+  deleting: boolean
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const closingOurselves = useRef(false)
+  const titleId = useId()
+  const descId = useId()
+  const name = mealLabel(meal)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (typeof dialog.showModal === 'function') dialog.showModal()
+    else dialog.setAttribute('open', '')
+    return () => {
+      if (dialog.open && typeof dialog.close === 'function') {
+        closingOurselves.current = true
+        dialog.close()
+      }
+    }
+  }, [])
+
+  function onDialogClose() {
+    if (closingOurselves.current) {
+      closingOurselves.current = false
+      return
+    }
+    onClose()
+  }
+
+  function onDialogCancel(e: React.SyntheticEvent<HTMLDialogElement, Event>) {
+    if (deleting) {
+      e.preventDefault()
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={onDialogClose}
+      onCancel={onDialogCancel}
+      aria-labelledby={titleId}
+      aria-describedby={descId}
+      className="fixed inset-0 m-auto flex h-fit max-h-none w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-koshur-border bg-koshur-surface p-5 text-koshur-silk shadow-2xl backdrop:bg-koshur-base/80 open:flex"
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2.5 text-alert-surplus">
+          <TriangleAlert aria-hidden="true" size={20} strokeWidth={2} className="size-5 shrink-0" />
+          <h4 id={titleId} className="m-0 text-title font-semibold text-koshur-silk">
+            Delete {name}?
+          </h4>
+        </div>
+        <p id={descId} className="m-0 text-body-sm text-koshur-muted">
+          This will delete the entire {name} meal and all {count} {count === 1 ? 'food' : 'foods'} in it, not
+          just a single food item. This cannot be undone.
+        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-end gap-2.5">
+          <Button variant="secondary" size="small" disabled={deleting} onClick={onClose}>
+            Cancel
+          </Button>
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onConfirm}
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl bg-alert-surplus px-3.5 text-body-sm font-semibold text-koshur-surface dark:text-koshur-base hover:brightness-110 disabled:opacity-60 transition ${FOCUS_RING}`}
+          >
+            {deleting ? 'Deleting' : 'Delete entire meal'}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
 }
 
 /**
  * A meal as a card: its name as a bordered tag, the time of its first food, its calories and share
- * of the day, a bar of its macros, every food listed, a way to add to it, and a way to save it as a combo.
+ * of the day, a bar of its macros, every food listed, a way to add to it, a way to save it as a combo,
+ * and a way to delete the entire meal.
  */
-function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd, onSaveCombo }: MealCardProps) {
+function MealCard({
+  group,
+  dayKcal,
+  biggest,
+  showTime,
+  editable,
+  onAdd,
+  onSaveCombo,
+  onDeleteMeal,
+}: MealCardProps) {
   const headingId = useId()
   const nameId = useId()
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedName, setSavedName] = useState<string | null>(null)
   const share = dayKcal > 0 ? Math.round((group.totals.kcal / dayKcal) * 100) : 0
+
+  async function handleDeleteMeal() {
+    if (deleting || !onDeleteMeal) return
+    setDeleting(true)
+    try {
+      await onDeleteMeal(group)
+    } catch (failure) {
+      setError(
+        failure instanceof LogError
+          ? failure.message
+          : "We couldn't remove this meal. Check your connection and try again.",
+      )
+    } finally {
+      setDeleting(false)
+      setConfirmingDelete(false)
+    }
+  }
 
   async function handleSaveCombo() {
     if (saving || !onSaveCombo) return
@@ -151,13 +266,13 @@ function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd, onSaveCo
       </div>
       <MacroBar nutrients={group.totals} />
       <Amounts nutrients={group.totals} />
-      <ul className="m-0 flex list-none flex-col p-0">
+      <ul className="m-0 flex list-none flex-col pt-1 p-0">
         {groupMealFoods(group.foods).map((entry) => (
           <EntryItem key={entry.logs[0].id} entry={entry} editable={editable} />
         ))}
       </ul>
       <div className="flex flex-col gap-2 pt-1">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           {onAdd && (
             <button
               type="button"
@@ -168,21 +283,46 @@ function MealCard({ group, dayKcal, biggest, showTime, editable, onAdd, onSaveCo
               Add to {mealPhrase(group.meal)}
             </button>
           )}
-          {editable && group.foods.length > 0 && onSaveCombo && !naming && (
-            <button
-              type="button"
-              onClick={() => {
-                setError(null)
-                setSavedName(null)
-                setNaming(true)
-              }}
-              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-koshur-silk ${FOCUS_RING}`}
-            >
-              <Bookmark aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
-              Save as combo
-            </button>
-          )}
+          <div className="flex w-full items-center justify-between sm:w-auto sm:justify-end sm:gap-6">
+            {editable && group.foods.length > 0 && onSaveCombo && !naming && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setSavedName(null)
+                  setNaming(true)
+                }}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-koshur-silk ${FOCUS_RING}`}
+              >
+                <Bookmark aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+                Save as combo
+              </button>
+            )}
+            {editable && group.foods.length > 0 && onDeleteMeal && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null)
+                  setConfirmingDelete(true)
+                }}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-alert-surplus/80 transition-colors hover:text-alert-surplus ${FOCUS_RING} ml-auto sm:ml-0`}
+              >
+                <Trash2 aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+                Delete meal
+              </button>
+            )}
+          </div>
         </div>
+
+        {confirmingDelete && (
+          <DeleteMealDialog
+            meal={group.meal}
+            count={group.foods.length}
+            deleting={deleting}
+            onConfirm={() => void handleDeleteMeal()}
+            onClose={() => setConfirmingDelete(false)}
+          />
+        )}
 
         {naming && (
           <div className="flex flex-col gap-2 rounded-xl border border-koshur-border p-3">
@@ -253,6 +393,7 @@ interface MealCardsProps {
   /** Opens the Add food popup on that meal. Without it, as on a past day, cards have no add line. */
   onAdd?: (meal: Meal) => void
   onSaveCombo?: (name: string, foods: readonly FoodAmount[]) => Promise<SavedMeal>
+  onDeleteMeal?: (group: MealGroup) => Promise<void>
   headingRef?: Ref<HTMLHeadingElement>
 }
 
@@ -264,6 +405,7 @@ export function MealCards({
   editable = false,
   onAdd,
   onSaveCombo,
+  onDeleteMeal,
   headingRef,
 }: MealCardsProps) {
   const headingId = useId()
@@ -289,6 +431,7 @@ export function MealCards({
             editable={editable}
             onAdd={onAdd}
             onSaveCombo={onSaveCombo}
+            onDeleteMeal={onDeleteMeal}
           />
         ))}
       </div>

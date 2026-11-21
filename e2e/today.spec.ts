@@ -366,8 +366,11 @@ for (const theme of ['dark', 'light'] as const) {
 
       // Yesterday's breakfast, all of it, in one tap.
       const block = popup.getByRole('region', { name: /^Yesterday's breakfast/ })
-      await expect(block).toContainText('Test tea 1 g, Test bread 1 g')
+      await expect(block).toContainText("Check yesterday's breakfast")
       await expect(block).toContainText('300 kcal')
+      await block.getByRole('button', { name: /Check yesterday's breakfast/ }).click()
+      await expect(block).toContainText('Test tea')
+      await expect(block).toContainText('Test bread')
       await block.getByRole('button', { name: "Add all of yesterday's breakfast" }).click()
       await popup.getByRole('button', { name: 'Close' }).click()
       const breakfast = meals.getByRole('article', { name: 'Breakfast' })

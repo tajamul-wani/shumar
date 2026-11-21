@@ -94,6 +94,15 @@ export async function removeLog(client: LogsClient, id: string): Promise<void> {
   }
 }
 
+/** Removes all foods belonging to a meal. */
+export async function removeMealLogs(client: LogsClient, ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return
+  const { data, error } = await client.from('user_logs').delete().in('id', ids).select('id')
+  if (error || !Array.isArray(data) || data.length === 0) {
+    throw new LogError("We couldn't remove this meal. Check your connection and try again.")
+  }
+}
+
 /** Puts a removed food back exactly as it was logged, and returns it with its new id. */
 export async function restoreLog(client: LogsClient, log: LoggedFood): Promise<LoggedFood> {
   const { data, error } = await client
