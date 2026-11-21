@@ -305,7 +305,7 @@ function MealCard({
                   setError(null)
                   setConfirmingDelete(true)
                 }}
-                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-alert-surplus/80 transition-colors hover:text-alert-surplus ${FOCUS_RING} ml-auto sm:ml-0`}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-alert-surplus ${FOCUS_RING} ml-auto sm:ml-0`}
               >
                 <Trash2 aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
                 Delete meal
