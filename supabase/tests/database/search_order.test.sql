@@ -32,8 +32,8 @@ select is((select source_id from public.search_foods('mustard oil', 1)), '172337
 select is((select source_id from public.search_foods('boiled eggs', 1)), '173424', '"boiled eggs" starts with the hard-boiled egg');
 select is((select source_id from public.search_foods('hard boiled egg', 1)), '173424', '"hard boiled egg" starts with the hard-boiled egg');
 select is((select source_id from public.search_foods('omelette', 1)), '172185', '"omelette" is the omelet');
-select is((select source_id from public.search_foods('banana', 1)), '173944', '"banana" starts with the raw banana');
-select is((select source_id from public.search_foods('bananas', 1)), '173944', '"bananas" starts with the raw banana');
+select is((select source_id from public.search_foods('banana', 1)), '1105314', '"banana" starts with ripe and slightly ripe raw banana');
+select is((select source_id from public.search_foods('bananas', 1)), '1105314', '"bananas" starts with ripe and slightly ripe raw banana');
 select is((select source_id from public.search_foods('milk', 1)), '171265', '"milk" starts with whole milk');
 
 -- Every pick this migration adds names a food that is loaded.
