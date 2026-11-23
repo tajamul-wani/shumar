@@ -272,7 +272,7 @@ function MealCard({
         ))}
       </ul>
       <div className="flex flex-col gap-2 pt-1">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-y-2">
           {onAdd && (
             <button
               type="button"
@@ -283,7 +283,7 @@ function MealCard({
               Add to {mealPhrase(group.meal)}
             </button>
           )}
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end sm:gap-6">
             {editable && group.foods.length > 0 && onSaveCombo && !naming && (
               <button
                 type="button"
@@ -305,9 +305,14 @@ function MealCard({
                   setError(null)
                   setConfirmingDelete(true)
                 }}
-                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-alert-surplus ${FOCUS_RING}`}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-alert-surplus transition-colors hover:brightness-110 ${FOCUS_RING} ml-auto sm:ml-0`}
               >
-                <Trash2 aria-hidden="true" size={16} strokeWidth={2} className="size-3.5 shrink-0" />
+                <Trash2
+                  aria-hidden="true"
+                  size={16}
+                  strokeWidth={2}
+                  className="size-3.5 shrink-0 text-alert-surplus"
+                />
                 Delete meal
               </button>
             )}
