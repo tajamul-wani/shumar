@@ -272,18 +272,18 @@ function MealCard({
         ))}
       </ul>
       <div className="flex flex-col gap-2 pt-1">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           {onAdd && (
             <button
               type="button"
               onClick={() => onAdd(group.meal)}
               className={`inline-flex min-h-11 items-center gap-2 self-start rounded-xl text-body-sm font-semibold text-deficit-ring transition-opacity hover:opacity-80 ${FOCUS_RING}`}
             >
-              <Plus aria-hidden="true" size={20} strokeWidth={2.5} className="size-4" />
+              <Plus aria-hidden="true" size={20} strokeWidth={2.5} className="size-4 shrink-0" />
               Add to {mealPhrase(group.meal)}
             </button>
           )}
-          <div className="flex w-full items-center justify-between sm:w-auto sm:justify-end sm:gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
             {editable && group.foods.length > 0 && onSaveCombo && !naming && (
               <button
                 type="button"
@@ -294,7 +294,7 @@ function MealCard({
                 }}
                 className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-koshur-silk ${FOCUS_RING}`}
               >
-                <Bookmark aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+                <Bookmark aria-hidden="true" size={16} strokeWidth={2} className="size-3.5 shrink-0" />
                 Save as combo
               </button>
             )}
@@ -305,9 +305,9 @@ function MealCard({
                   setError(null)
                   setConfirmingDelete(true)
                 }}
-                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-alert-surplus ${FOCUS_RING} ml-auto sm:ml-0`}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl text-body-sm font-medium text-koshur-muted transition-colors hover:text-alert-surplus ${FOCUS_RING}`}
               >
-                <Trash2 aria-hidden="true" size={16} strokeWidth={2} className="size-3.5" />
+                <Trash2 aria-hidden="true" size={16} strokeWidth={2} className="size-3.5 shrink-0" />
                 Delete meal
               </button>
             )}

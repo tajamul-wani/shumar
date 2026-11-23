@@ -3,15 +3,18 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
+import { amountLabel, formatNumber } from '../lib/foodDisplay.ts'
 import {
   MAX_MEAL_NAME,
   MEALS,
   MEAL_LABELS,
   isFixedMeal,
   mealLabel,
+  mealPhrase,
   normalizeMealName,
   type Meal,
 } from '../lib/meals.ts'
+import { groupMealFoods } from '../lib/today.ts'
 import { LogSheet } from './LogSheet.tsx'
 import { useSavedMeals } from './useSavedMeals.ts'
 
@@ -27,6 +30,48 @@ interface AddFoodDialogProps {
   onChangeMeal: (meal: Meal) => void
   onAdded: () => void
   onClose: () => void
+}
+
+interface InMealProps {
+  meal: Meal
+  foods: readonly LoggedFood[]
+}
+
+/** What has gone into the meal so far, at the foot of the popup: never under the search box. */
+function InMeal({ meal, foods }: InMealProps) {
+  const headingId = useId()
+  if (foods.length === 0) return null
+  const kcal = foods.reduce((sum, log) => sum + log.nutrients.kcal, 0)
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-2 border-t border-koshur-border pt-4">
+      <h3 id={headingId} className={`${STEP} flex justify-between gap-3`}>
+        <span>In {mealPhrase(meal)} now</span>
+        <span className="tracking-normal text-koshur-silk normal-case">
+          {formatNumber(Math.round(kcal))} kcal
+        </span>
+      </h3>
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+        {groupMealFoods(foods).map((entry) => {
+          const food = entry.logs[entry.logs.length - 1]
+          const amount = amountLabel(food.quantity, {
+            name: food.unitName,
+            grams: food.grams / food.quantity,
+          })
+          return (
+            <li key={entry.logs[0].id} className="flex items-center gap-3 text-body-sm">
+              <span className="min-w-0 flex-1 text-koshur-silk">
+                {food.foodName}
+                {entry.logs.length > 1 && <span className="text-koshur-muted"> ×{entry.logs.length}</span>}
+              </span>{' '}
+              <span className="whitespace-nowrap text-koshur-muted">
+                {amount} · {formatNumber(Math.round(entry.totals.kcal))} kcal
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
 }
 
 /**
@@ -218,6 +263,8 @@ function OpenDialog({ meal, logs = [], onChangeMeal, onAdded, onClose }: OpenDia
                 savedMeals={savedMeals}
               />
             </div>
+
+            <InMeal meal={meal} foods={logs.filter((log) => log.meal === meal)} />
           </div>
         </>
       }
