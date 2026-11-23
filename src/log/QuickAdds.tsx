@@ -1,11 +1,20 @@
+import { ChevronRight } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Button } from '../components/Button.tsx'
 import type { LoggedFood } from '../lib/dayLogs.ts'
-import { defaultQuantity, defaultUnit, foodsLine, formatNumber, totalKcal } from '../lib/foodDisplay.ts'
+import {
+  amountLabel,
+  defaultQuantity,
+  defaultUnit,
+  foodsLine,
+  formatNumber,
+  totalKcal,
+} from '../lib/foodDisplay.ts'
 import type { FoodResult, FoodUnit } from '../lib/foodSearch.ts'
 import { mealPhrase, type Meal } from '../lib/meals.ts'
 import { toFoodResult, type MyFood } from '../lib/myFoods.ts'
 import type { SavedMeal } from '../lib/savedMeals.ts'
+import { groupMealFoods } from '../lib/today.ts'
 import { FoodRow } from './FoodRow.tsx'
 import { FromPackLink } from './FromPack.tsx'
 import { useSheetFill } from './fill.ts'
@@ -53,12 +62,14 @@ export function QuickAdds({
   onAddFromPack,
 }: QuickAddsProps) {
   const yesterdayId = useId()
+  const yesterdayListId = useId()
   const mineId = useId()
   const savedId = useId()
   const fill = useSheetFill()
   const phrase = mealPhrase(meal)
   const repeat = yesterday.filter((log) => log.meal === meal)
   const [chosen, setChosen] = useState<Tab | null>(null)
+  const [showYesterdayFoods, setShowYesterdayFoods] = useState(false)
   const available: Tab[] = []
   if (repeat.length > 0) available.push('yesterday')
   if (saved && saved.length > 0) available.push('saved')
@@ -95,20 +106,74 @@ export function QuickAdds({
               {formatNumber(totalKcal(repeat))} kcal
             </span>
           </h3>
-          <div
-            className={`flex items-center gap-3 rounded-xl border border-koshur-border ${fill} py-3 pr-3 pl-3.5`}
-          >
-            <p className="m-0 min-w-0 flex-1 text-body-sm text-koshur-silk">{foodsLine(repeat)}</p>
-            <Button
-              variant="secondary"
-              size="small"
-              disabled={busy}
-              onClick={() => onAddYesterday(repeat)}
-              aria-label={`Add all of yesterday's ${phrase}`}
-              className="shrink-0"
+          <div className={`flex flex-col rounded-xl border border-koshur-border ${fill} p-3.5 gap-3`}>
+            <button
+              type="button"
+              onClick={() => setShowYesterdayFoods((open) => !open)}
+              aria-expanded={showYesterdayFoods}
+              aria-controls={yesterdayListId}
+              className={`group flex w-full flex-col gap-0.5 rounded-lg text-left transition-colors ${FOCUS_RING}`}
             >
-              Add all
-            </Button>
+              <div className="flex w-full items-center justify-between gap-3">
+                <span className="text-body-sm font-semibold text-koshur-silk">
+                  Check yesterday's {phrase}
+                </span>
+                <div className="flex shrink-0 items-center gap-1.5 text-caption font-medium text-koshur-muted transition-colors group-hover:text-koshur-silk">
+                  <span>{showYesterdayFoods ? 'Show less' : 'Show more'}</span>
+                  <ChevronRight
+                    aria-hidden="true"
+                    size={16}
+                    strokeWidth={2}
+                    className={`size-3.5 transition-transform duration-200 ${
+                      showYesterdayFoods ? 'rotate-90 text-deficit-ring' : ''
+                    }`}
+                  />
+                </div>
+              </div>
+              <span className="text-caption text-koshur-muted">
+                {repeat.length} {repeat.length === 1 ? 'food' : 'foods'}
+              </span>
+            </button>
+            {showYesterdayFoods && (
+              <div className="flex flex-col gap-3.5 border-t border-koshur-border pt-3">
+                <ul id={yesterdayListId} className="m-0 flex list-none flex-col p-0">
+                  {groupMealFoods(repeat).map((entry) => {
+                    const log = entry.logs[entry.logs.length - 1]
+                    const amount = amountLabel(log.quantity, {
+                      name: log.unitName,
+                      grams: log.grams / log.quantity,
+                    })
+                    return (
+                      <li
+                        key={entry.logs[0].id}
+                        className="flex items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0"
+                      >
+                        <span className="min-w-0 truncate text-body-sm text-koshur-silk">
+                          {log.foodName}
+                          {entry.logs.length > 1 && (
+                            <span className="text-koshur-muted"> ×{entry.logs.length}</span>
+                          )}
+                        </span>{' '}
+                        <span className="shrink-0 text-caption text-koshur-muted">
+                          {amount} · {formatNumber(entry.totals.kcal)} kcal
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+                <div className="flex items-center justify-start pt-1.5">
+                  <Button
+                    variant="primary"
+                    size="small"
+                    disabled={busy}
+                    onClick={() => onAddYesterday(repeat)}
+                    aria-label={`Add all of yesterday's ${phrase}`}
+                  >
+                    Add all
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

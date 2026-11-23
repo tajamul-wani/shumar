@@ -6,6 +6,7 @@ import { Button } from '../components/Button.tsx'
 import { Chip } from '../components/Chip.tsx'
 import {
   amountLabel,
+  availableUnits,
   defaultQuantity,
   formatNumber,
   isEstimate,
@@ -23,7 +24,12 @@ const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visibl
 /** Up to this many units show as chips; more (USDA portions can run to ten) fit better in a list. */
 const MAX_UNIT_CHIPS = 4
 
-const unitLabel = (unit: FoodUnit) => (unit.name === 'g' ? 'Grams' : unit.name)
+const unitLabel = (unit: FoodUnit) => {
+  if (unit.name === 'g') return 'Grams'
+  if (unit.name === 'ml') return 'Millilitres'
+  if (unit.name === 'l') return 'Litres'
+  return unit.name
+}
 
 const STEP_BUTTON = `flex size-13 shrink-0 items-center justify-center rounded-xl border border-koshur-border text-koshur-silk disabled:opacity-60 ${FOCUS_RING}`
 
@@ -132,8 +138,7 @@ export function FoodDetail({
   const minerals = quantity === null ? null : mineralRows(food, quantity, unit)
   const estimate = isEstimate(food)
   const hint = unitHint(unit)
-  // Household units first (katori, cup, piece), then grams, as the design orders them.
-  const units = [...food.units.filter((u) => u.name !== 'g'), ...food.units.filter((u) => u.name === 'g')]
+  const units = availableUnits(food)
   const [allUnits, setAllUnits] = useState(false)
   // The first few units and grams, plus whichever is chosen; the rest after "more units".
   const shownUnits =

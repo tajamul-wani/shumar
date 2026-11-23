@@ -82,7 +82,7 @@ describe('changing a logged food', () => {
       within(units)
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['cup', 'Grams'])
+    ).toEqual(['cup', 'Grams', 'Millilitres', 'Litres'])
     const meals = screen.getByRole('group', { name: 'Meal' })
     expect(within(meals).getByRole('button', { name: 'Breakfast' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('45')).toBeInTheDocument()

@@ -121,7 +121,7 @@ for (const theme of THEMES) {
       await popup.getByRole('button', { name: 'Remove' }).click()
       await expect(popup.getByText('Removed from your foods')).toBeVisible()
       await expect(lunch).toContainText('Kxtest paneer (Kxbrand)')
-      await popup.getByRole('button', { name: 'Done' }).click()
+      await popup.getByRole('button', { name: 'Close' }).click()
 
       expect(await cspViolations(page)).toEqual([])
       const left = await api.from('my_foods').select('id')

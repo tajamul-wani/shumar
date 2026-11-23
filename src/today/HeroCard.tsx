@@ -76,15 +76,18 @@ export function HeroCard({
   return (
     <section
       aria-label="Calories and macros"
-      className="flex flex-col items-center gap-6 rounded-2xl border border-koshur-border bg-koshur-surface px-5 pt-6 pb-5 lg:flex-row lg:items-center lg:gap-10 lg:px-8 lg:py-7"
+      className="flex flex-col items-center gap-6 rounded-2xl border border-koshur-border bg-koshur-surface p-6 sm:p-7 sm:gap-8 lg:flex-row lg:items-center lg:gap-10 lg:p-8"
     >
       <Ring state={state} size="large" animate={!reduceMotion} detail />
-      <div className="flex w-full min-w-0 flex-col gap-5 lg:flex-1 lg:gap-6">
+      <div className="flex w-full min-w-0 flex-col gap-5 sm:gap-6 lg:flex-1">
         {reviewing || alert ? (
-          <section aria-labelledby={reviewId} className="flex flex-col gap-2">
+          <section
+            aria-labelledby={reviewId}
+            className="flex flex-col items-center text-center gap-2 lg:items-start lg:text-left"
+          >
             <h2
               id={reviewId}
-              className="m-0 flex items-center gap-2 text-caption font-semibold tracking-wide text-koshur-muted uppercase"
+              className="m-0 flex items-center justify-center gap-2 text-caption font-semibold tracking-wide text-koshur-muted uppercase lg:justify-start"
             >
               <Icon
                 aria-hidden="true"
@@ -94,7 +97,11 @@ export function HeroCard({
               />
               {title}
             </h2>
-            {line && <p className="m-0 text-title font-semibold text-koshur-silk lg:text-heading">{line}</p>}
+            {line && (
+              <p className="m-0 text-heading font-semibold text-koshur-silk text-balance! lg:text-heading">
+                {line}
+              </p>
+            )}
             {behind && (
               <p className="m-0 text-body-sm text-koshur-muted">
                 {BEHIND[behind.key]},{' '}
@@ -105,7 +112,7 @@ export function HeroCard({
               </p>
             )}
             {alert && (
-              <p className="m-0 flex items-start gap-2 text-body-sm text-koshur-muted">
+              <p className="m-0 flex items-start gap-2 text-body-sm text-koshur-muted text-left">
                 <TriangleAlert
                   aria-hidden="true"
                   size={20}
@@ -122,18 +129,25 @@ export function HeroCard({
             )}
           </section>
         ) : (
-          children && <div className="flex flex-col items-start gap-3">{children}</div>
+          children && (
+            <div className="flex flex-col items-center text-center gap-3 lg:items-start lg:text-left">
+              {children}
+            </div>
+          )
         )}
-        <div className="grid w-full grid-cols-3 gap-3 border-t border-koshur-border pt-4.5 lg:gap-4 lg:border-t-0 lg:pt-0">
+        <div className="grid w-full grid-cols-3 gap-3 border-t border-koshur-border pt-5 sm:gap-4 lg:border-t-0 lg:pt-0">
           {MACROS.map(({ key, label, bar }) => {
             const goal = macroTargets?.[key]
+            const isOver = Boolean(goal && shown[key] > goal)
             return (
               <p key={key} className="m-0 flex min-w-0 flex-col gap-1.5">
                 <span className="text-caption text-koshur-muted">{label}</span>
                 <span className="flex flex-col text-body font-semibold text-koshur-silk sm:flex-row sm:items-baseline sm:gap-1">
                   {goal ? (
                     <>
-                      <span>{formatNumber(shown[key])}</span>
+                      <span className={isOver ? 'text-alert-surplus' : undefined}>
+                        {formatNumber(shown[key])}
+                      </span>
                       {/* Reads "of 128 g" under the number on phones and "/ 128 g" beside it from tablets up (index.css). */}
                       <span className="macro-target text-caption font-normal text-koshur-muted sm:text-body">
                         {formatNumber(goal)} g
@@ -146,7 +160,7 @@ export function HeroCard({
                 {goal ? (
                   <span aria-hidden="true" className="block h-1.5 rounded-full bg-koshur-border">
                     <span
-                      className={`block h-1.5 rounded-full ${bar}`}
+                      className={`block h-1.5 rounded-full ${isOver ? 'bg-alert-surplus' : bar}`}
                       style={{ width: `${Math.min(100, (totals[key] / goal) * 100)}%` }}
                     />
                   </span>
@@ -159,7 +173,7 @@ export function HeroCard({
           })}
         </div>
         {!alert && (
-          <p className="m-0 text-body-sm text-koshur-muted">
+          <p className="m-0 text-body-sm text-koshur-muted text-center lg:text-left">
             Sodium so far <span className="font-semibold text-koshur-silk">{formatNumber(sodium)} mg</span> of{' '}
             {formatNumber(SODIUM_LIMIT_MG)}
           </p>

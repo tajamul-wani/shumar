@@ -7,17 +7,18 @@ import { Button } from '../components/Button.tsx'
 import { InstallCard } from '../components/InstallCard.tsx'
 import { Logo } from '../components/Logo.tsx'
 import { Toast, type ToastMessage } from '../components/Toast.tsx'
-import { parseLoggedFood, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
+import { parseLoggedFood, removeMealLogs, restoreLog, type LoggedFood } from '../lib/dayLogs.ts'
 import { formatDayHeading, localDateKey } from '../lib/dates.ts'
 import { formatNumber } from '../lib/foodDisplay.ts'
 import { LogError } from '../lib/logs.ts'
-import { defaultMeal, mealPhrase, type Meal } from '../lib/meals.ts'
+import { defaultMeal, mealLabel, mealPhrase, type Meal } from '../lib/meals.ts'
 import { toProfile } from '../lib/firstRun.ts'
 import { dailyTargets } from '../lib/targets.ts'
-import { furthestBehind, sodiumAlert, summarizeDay } from '../lib/today.ts'
+import { furthestBehind, sodiumAlert, summarizeDay, type MealGroup } from '../lib/today.ts'
 import { useProfile } from '../profile/context.ts'
 import { SetTargetPrompt } from '../firstRun/SetTargetCard.tsx'
 import { AddFoodDialog } from '../log/AddFoodDialog.tsx'
+import { useSavedMeals } from '../log/useSavedMeals.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { HeroCard } from '../today/HeroCard.tsx'
 import { MealCards } from '../today/MealCards.tsx'
@@ -85,6 +86,7 @@ export function TodayScreen() {
   const [today] = useState(() => new Date())
   const { client } = useAuth()
   const { logs, error, daysLogged, reload, update, refreshDays } = useDayLogs(localDateKey(today))
+  const savedMeals = useSavedMeals()
   // The meal the Add food popup is open on, or null while it is closed.
   const [adding, setAdding] = useState<Meal | null>(null)
   const openAddFood = (meal?: Meal) => setAdding(meal ?? defaultMeal(new Date()))
@@ -146,6 +148,26 @@ export function TodayScreen() {
     }
   }
 
+  async function handleDeleteMeal(group: MealGroup) {
+    const ids = group.foods.map((food) => food.id)
+    if (ids.length === 0) return
+    setActionError(null)
+    try {
+      await removeMealLogs(client, ids)
+      update((prev) => prev.filter((log) => !ids.includes(log.id)))
+      refreshDays()
+      showToast(
+        'Removed',
+        'removed',
+        `${mealLabel(group.meal)} (${group.foods.length} ${group.foods.length === 1 ? 'food' : 'foods'})`,
+      )
+    } catch (failure) {
+      setActionError(
+        messageFrom(failure, "We couldn't remove this meal. Check your connection and try again."),
+      )
+    }
+  }
+
   // Two slots: the day at a glance (or its loading or error state), and the meals.
   let day: ReactNode
   let mealList: ReactNode = null
@@ -199,6 +221,8 @@ export function TodayScreen() {
             showTimes
             editable
             onAdd={openAddFood}
+            onSaveCombo={savedMeals.save}
+            onDeleteMeal={handleDeleteMeal}
             headingRef={mealsHeadingRef}
           />
         ) : (
@@ -226,9 +250,7 @@ export function TodayScreen() {
           <div className="mb-4 lg:hidden">
             <Logo decorative className="h-8 w-auto" />
           </div>
-          <p className="m-0 text-body text-balance! text-koshur-muted lg:text-body-sm">
-            {formatDayHeading(today)}
-          </p>
+          <p className="m-0 text-body text-koshur-muted lg:text-body-sm">{formatDayHeading(today)}</p>
           <h1
             tabIndex={-1}
             className="sr-only m-0 text-heading font-semibold focus:outline-none lg:not-sr-only"

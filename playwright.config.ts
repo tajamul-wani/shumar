@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
+import { totalmem } from 'node:os'
 
 const PORT = 4173
 // An address, not "localhost": the runners map that name to both IPv4 and IPv6, so each page
@@ -32,14 +33,16 @@ if (!process.env.E2E_SUPABASE_URL || !process.env.E2E_SUPABASE_KEY) {
 // files are the same in every browser, so these only need one browser.
 const browserTests = { testIgnore: /(api|head|layout|orphans)\.spec\.ts/ }
 
+// Memory-aware worker allocation: 4 workers in CI or on machines with >= 6 GB RAM;
+// 2 workers in WSL2 or low-memory environments (< 6 GB) to prevent swap thrashing and CPU starvation.
+const defaultWorkers = process.env.CI ? 4 : totalmem() < 6 * 1024 * 1024 * 1024 ? 2 : 4
+const workers = process.env.E2E_WORKERS ? parseInt(process.env.E2E_WORKERS, 10) : defaultWorkers
+
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
-  // GitHub's runners have 4 cores, and Playwright would use only 2 by default.
-  // Four everywhere: more Chromium and WebKit pages at once than this starves an 8 GB machine, and
-  // tests then time out for lack of memory, not for a fault of their own.
-  workers: 4,
+  workers,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : 'list',

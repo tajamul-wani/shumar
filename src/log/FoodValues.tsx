@@ -18,9 +18,9 @@ export function FoodValues({
   const shown = roundForDisplay(nutrients)
   return (
     <span>
-      <span className="text-body-sm font-semibold text-koshur-silk">{formatNumber(shown.protein)} g</span>{' '}
+      <span className="text-caption font-semibold text-macro-protein">{formatNumber(shown.protein)} g</span>{' '}
       protein · {about ? 'about ' : ''}
-      <span className="text-body-sm font-semibold text-koshur-silk">{formatNumber(shown.kcal)}</span> kcal ·{' '}
+      <span className="text-caption font-semibold text-deficit-ring">{formatNumber(shown.kcal)}</span> kcal ·{' '}
       <span className="whitespace-nowrap">{amount}</span>
     </span>
   )

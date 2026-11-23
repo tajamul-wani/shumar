@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   amountLabel,
   amountWithGrams,
+  availableUnits,
   defaultQuantity,
   defaultUnit,
   formatNumber,
   isEstimate,
+  isLiquid,
   nutrientsFor,
   parseDecimal,
   parseQuantity,
@@ -126,11 +128,20 @@ describe('units and amounts', () => {
 
   it('starts on 100 g or 1 unit, and steps by 10 g or half a unit', () => {
     expect([defaultQuantity(g), defaultQuantity(katori)]).toEqual([100, 1])
+    expect([defaultQuantity({ name: 'ml', grams: 1 }), defaultQuantity({ name: 'l', grams: 1000 })]).toEqual([
+      100, 1,
+    ])
     expect([quantityStep(g), quantityStep(katori)]).toEqual([10, 0.5])
+    expect([quantityStep({ name: 'ml', grams: 1 }), quantityStep({ name: 'l', grams: 1000 })]).toEqual([
+      10, 0.25,
+    ])
   })
 
   it.each([
     [150, g, '150 g'],
+    [250, { name: 'ml', grams: 1 }, '250 ml'],
+    [1, { name: 'l', grams: 1000 }, '1 l'],
+    [0.5, { name: 'l', grams: 1000 }, '0.5 l'],
     [1, katori, '1 katori'],
     [2.5, katori, '2.5 katori'],
     [1, cup, '1 cup, chopped'],
@@ -147,6 +158,7 @@ describe('units and amounts', () => {
   it('gives the weight with the amount, and drops the description in brackets', () => {
     expect(amountWithGrams(2, { name: '1 large', grams: 50 })).toBe('2 large (100 g)')
     expect(amountWithGrams(150, g)).toBe('150 g')
+    expect(amountWithGrams(250, { name: 'ml', grams: 1 })).toBe('250 ml')
     expect(amountWithGrams(1.5, katori)).toBe('1.5 katori (180 g)')
     expect(shortUnitName('1 medium (3" dia)')).toBe('1 medium')
   })
@@ -156,6 +168,24 @@ describe('units and amounts', () => {
     expect(unitHint(cup)).toBe('1 cup, chopped is 160 g')
     expect(unitHint({ name: '1 slice', grams: 28.35 })).toBe('1 slice is 28.4 g')
     expect(unitHint(g)).toBeNull()
+    expect(unitHint({ name: 'ml', grams: 1 })).toBeNull()
+    expect(unitHint({ name: 'l', grams: 1000 })).toBe('1 l is 1,000 ml')
+  })
+
+  it('provides ml and l units for liquids and custom foods', () => {
+    expect(isLiquid('Whole milk')).toBe(true)
+    expect(isLiquid('Nun chai')).toBe(true)
+    expect(isLiquid('Steak')).toBe(false)
+    const milkUnits = availableUnits(food({ name: 'Whole milk', units: [g] })).map((u) => u.name)
+    expect(milkUnits).toContain('ml')
+    expect(milkUnits).toContain('l')
+    const myUnits = availableUnits(food({ source: 'mine', name: 'Protein shake', units: [g] })).map(
+      (u) => u.name,
+    )
+    expect(myUnits).toContain('ml')
+    expect(myUnits).toContain('l')
+    const solidUnits = availableUnits(food({ name: 'Raw apple', units: [g] })).map((u) => u.name)
+    expect(solidUnits).not.toContain('ml')
   })
 
   it('formats numbers with Indian grouping and up to two decimals', () => {

@@ -79,12 +79,45 @@ export function defaultUnit(food: FoodResult): FoodUnit {
 }
 
 export function defaultQuantity(unit: FoodUnit): number {
-  return unit.name === 'g' ? 100 : 1
+  if (unit.name === 'g' || unit.name === 'ml') return 100
+  if (unit.name === 'l') return 1
+  return 1
 }
 
-/** The + and - buttons move by 10 g, or by half a unit (half a katori is common). */
+/** The + and - buttons move by 10 g / ml, 0.25 l, or by half a unit (half a katori is common). */
 export function quantityStep(unit: FoodUnit): number {
-  return unit.name === 'g' ? 10 : 0.5
+  if (unit.name === 'g' || unit.name === 'ml') return 10
+  if (unit.name === 'l') return 0.25
+  return 0.5
+}
+
+const LIQUID_PATTERNS =
+  /\b(milk|chai|tea|coffee|juice|water|oil|soup|broth|soda|drink|beverage|lassi|kahwa|syrup|vinegar)\b/i
+
+export function isLiquid(name: string): boolean {
+  return LIQUID_PATTERNS.test(name)
+}
+
+/**
+ * The units available to choose for a food in the log popup: household portions first,
+ * then grams, and millilitres / litres for liquids and custom foods.
+ */
+export function availableUnits(food: FoodResult): FoodUnit[] {
+  const units = [...food.units]
+  const hasGrams = units.some((u) => u.name === 'g')
+  const hasMl = units.some((u) => u.name === 'ml')
+  const hasL = units.some((u) => u.name === 'l')
+  if (!hasGrams) units.push({ name: 'g', grams: 1 })
+  if (!hasMl && (food.source === 'mine' || isLiquid(food.name))) {
+    units.push({ name: 'ml', grams: 1 })
+  }
+  if (!hasL && (food.source === 'mine' || isLiquid(food.name))) {
+    units.push({ name: 'l', grams: 1000 })
+  }
+  return [
+    ...units.filter((u) => u.name !== 'g' && u.name !== 'ml' && u.name !== 'l'),
+    ...units.filter((u) => u.name === 'g' || u.name === 'ml' || u.name === 'l'),
+  ]
 }
 
 const startsWithAmount = (name: string) => /^\d/.test(name)
@@ -107,12 +140,14 @@ const PLURALS: Record<string, string> = {
 }
 
 /**
- * How much, in plain words: "100 g", "1 large", "2 large", "2 cups, chopped", "2 katori". USDA
+ * How much, in plain words: "100 g", "100 ml", "1 large", "2 large", "2 cups, chopped", "2 katori". USDA
  * names a portion with its count ("1 large"), so a count of them reads "2 large", never "2 × 1 large".
  */
 export function amountLabel(quantity: number, unit: FoodUnit): string {
   const amount = formatNumber(quantity)
   if (unit.name === 'g') return `${amount} g`
+  if (unit.name === 'ml') return `${amount} ml`
+  if (unit.name === 'l') return `${amount} l`
   const name = shortUnitName(unit.name)
   const counted = /^1 (.+)$/.exec(name)
   if (!counted) return startsWithAmount(name) ? `${amount} × ${name}` : `${amount} ${name}`
@@ -126,13 +161,14 @@ export function amountLabel(quantity: number, unit: FoodUnit): string {
 
 /** The amount with its weight: "2 large (100 g)", or just "150 g" when it is weighed in grams. */
 export function amountWithGrams(quantity: number, unit: FoodUnit): string {
-  if (unit.name === 'g') return amountLabel(quantity, unit)
+  if (unit.name === 'g' || unit.name === 'ml') return amountLabel(quantity, unit)
   return `${amountLabel(quantity, unit)} (${formatNumber(Math.round(gramsFor(quantity, unit)))} g)`
 }
 
-/** "1 katori is 120 g" or "1 cup, chopped is 160 g". Nothing for grams. */
+/** "1 katori is 120 g" or "1 cup, chopped is 160 g". Nothing for grams or ml. */
 export function unitHint(unit: FoodUnit): string | null {
-  if (unit.name === 'g') return null
+  if (unit.name === 'g' || unit.name === 'ml') return null
+  if (unit.name === 'l') return '1 l is 1,000 ml'
   const grams = formatNumber(Math.round(unit.grams * 10) / 10)
   return startsWithAmount(unit.name) ? `${unit.name} is ${grams} g` : `1 ${unit.name} is ${grams} g`
 }

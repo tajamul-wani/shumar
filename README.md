@@ -104,22 +104,25 @@ npm run dev
 
 ### Scripts
 
-| Command               | What it does                                                           |
-| :-------------------- | :--------------------------------------------------------------------- |
-| `npm run dev`         | Start the development server                                           |
-| `npm run build`       | Type check and build for production, with security headers             |
-| `npm run preview`     | Serve the production build locally                                     |
-| `npm run brand`       | Draw the logo, icons, favicon and share image into `public/` again     |
-| `npm run lint`        | Check design tokens, run oxlint and check formatting                   |
-| `npm run format`      | Format all files with Prettier                                         |
-| `npm run typecheck`   | Run the TypeScript compiler                                            |
-| `npm run test`        | Run the unit tests with coverage, then the importer's tests            |
-| `npm run test:db`     | Run the database security tests                                        |
-| `npm run test:e2e`    | Run the end-to-end tests                                               |
-| `npm run test:backup` | Back up the local database, wipe it and restore it, checking every row |
-| `npm run backup`      | Write an encrypted backup of the hosted database (see Backups)         |
-| `npm run restore`     | Load a backup into the local stack or a fresh project (see Backups)    |
-| `npm run check`       | Lint, type check, unit tests and build                                 |
+| Command                    | What it does                                                           |
+| :------------------------- | :--------------------------------------------------------------------- |
+| `npm run dev`              | Start the development server                                           |
+| `npm run build`            | Type check and build for production, with security headers             |
+| `npm run preview`          | Serve the production build locally                                     |
+| `npm run brand`            | Draw the logo, icons, favicon and share image into `public/` again     |
+| `npm run lint`             | Check design tokens, run oxlint and check formatting                   |
+| `npm run format`           | Format all files with Prettier                                         |
+| `npm run typecheck`        | Run the TypeScript compiler                                            |
+| `npm run test`             | Run the unit tests with coverage, then the importer's tests            |
+| `npm run test:fast`        | Run all unit tests quickly without coverage instrumentation            |
+| `npm run test:db`          | Run the database security tests                                        |
+| `npm run test:e2e`         | Run the end-to-end tests across all browser configurations             |
+| `npm run test:e2e:phone`   | Run the end-to-end tests on mobile (Pixel 7)                           |
+| `npm run test:e2e:desktop` | Run the end-to-end tests on desktop Chrome                             |
+| `npm run test:backup`      | Back up the local database, wipe it and restore it, checking every row |
+| `npm run backup`           | Write an encrypted backup of the hosted database (see Backups)         |
+| `npm run restore`          | Load a backup into the local stack or a fresh project (see Backups)    |
+| `npm run check`            | Lint, type check, unit tests and build                                 |
 
 ### Deploying
 
@@ -136,7 +139,8 @@ To restore, apply the migrations first (`npx supabase db reset` for the local st
 ## Testing
 
 - `npm run check` needs nothing running. `npm run test:db` and `npm run test:e2e` need the local Supabase stack.
-- End-to-end tests run on an Android phone, an iPhone, a tablet and a desktop, in both themes, with accessibility checks. The first time, install the browsers with `npx playwright install --with-deps chromium webkit`.
+- While developing or testing locally, run targeted checks on a single target: `npm run test:fast` for quick unit tests, or `npm run test:e2e:phone` / `npm run test:e2e:desktop` for browser flows. The full multi-device matrix (Android phone, iPhone, tablet, desktop) runs automatically in GitHub Actions CI.
+- The first time running end-to-end tests, install the browsers with `npx playwright install --with-deps chromium webkit`.
 - A pull request into `main` must pass lint and types, unit, database, end-to-end, a security scan and CodeQL.
 
 ## Architecture

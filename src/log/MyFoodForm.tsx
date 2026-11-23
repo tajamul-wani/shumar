@@ -210,7 +210,7 @@ export function MyFoodForm({
         <legend className="p-0 pb-2 text-body-sm text-koshur-muted">The label gives its values</legend>
         <div className="flex flex-wrap gap-2">
           <Chip pressed={draft.basis === '100g'} onClick={() => chooseBasis('100g')}>
-            Per 100 g
+            Per 100 g / ml
           </Chip>
           <Chip pressed={draft.basis === 'serving'} onClick={() => chooseBasis('serving')}>
             Per serving
@@ -226,10 +226,10 @@ export function MyFoodForm({
             value={draft.servingGrams}
             onChange={(value) => change('servingGrams', value)}
             problem={problems.servingGrams}
-            suffix="g"
+            suffix="g or ml"
           />
           <p className="m-0 text-caption text-koshur-muted">
-            Shumār works the values out per 100 g and keeps your serving as a unit.
+            Shumār works the values out per 100 g or 100 ml and keeps your serving as a unit.
           </p>
         </div>
       )}
