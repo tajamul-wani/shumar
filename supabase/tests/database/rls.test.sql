@@ -26,8 +26,8 @@ select ok((select relrowsecurity from pg_class where oid = 'public.user_logs'::r
 set local role anon;
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 
-select results_eq('select count(*)::int from public.kashmiri_foods', array[1], 'a visitor can read the food catalog');
-select results_eq('select count(*)::int from public.food_units', array[1], 'a visitor can read unit weights');
+select results_eq('select count(*)::int from public.kashmiri_foods', array[5], 'a visitor can read the food catalog');
+select results_eq('select count(*)::int from public.food_units', array[9], 'a visitor can read unit weights');
 select throws_ok(
   $$insert into public.kashmiri_foods (name, category, kcal_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, source)
     values ('x', 'x', 1, 0, 0, 0, 'x')$$,

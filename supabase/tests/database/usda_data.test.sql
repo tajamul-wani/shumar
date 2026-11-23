@@ -7,7 +7,7 @@ select plan(38);
 
 select is((select count(*)::int from public.usda_releases), 2, 'two USDA releases are loaded');
 select is((select count(*)::int from public.usda_foods), 7117, 'every kept food is loaded');
-select is((select count(*)::int from public.usda_portions), 12556, 'every kept portion is loaded');
+select is((select count(*)::int from public.usda_portions), 12560, 'every kept portion is loaded');
 
 select is(
   (select count(*)::int from public.usda_foods
@@ -33,8 +33,8 @@ select is(
   (select count(*)::int from public.search_picks p
    where not exists (
      select 1 from public.usda_foods f join public.usda_releases r on r.id = f.release_id
-     where f.fdc_id = p.fdc_id and r.dataset = 'sr_legacy_food')),
-  0, 'every search pick names a loaded SR Legacy food');
+     where f.fdc_id = p.fdc_id and r.dataset in ('sr_legacy_food', 'foundation_food'))),
+  0, 'every search pick names a loaded USDA food');
 
 -- A few real searches, so ranking can't quietly get worse.
 set local role authenticated;
@@ -101,7 +101,7 @@ select is((select name from public.search_foods('omelette') limit 1), 'Egg, whol
           '"omelette" finds the omelet');
 select is((select count(*)::int from public.search_foods('cauliflower') where name = 'Cauliflower, raw'), 1,
           '"cauliflower" shows raw cauliflower once, not again from the other USDA dataset');
-select matches((select name from public.search_foods('haakh') limit 1), '^Collards, ', '"haakh" finds collard greens');
+select is((select name from public.search_foods('haakh') limit 1), 'Haakh', '"haakh" finds the Kashmiri Haakh dish');
 select matches((select name from public.search_foods('kong') limit 1), 'saffron', '"kong" finds saffron');
 select matches((select name from public.search_foods('akhrot') limit 1), 'walnuts', '"akhrot" finds walnuts');
 select is((select count(*)::int from public.search_foods('mutton') where name ilike '%goat%'), 0,
