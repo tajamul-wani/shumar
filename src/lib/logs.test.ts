@@ -56,6 +56,14 @@ describe('buildLogRow', () => {
       calcium_mg: null,
       magnesium_mg: null,
       vitamin_d_mcg: null,
+      fiber_g: null,
+      iron_mg: null,
+      potassium_mg: null,
+      zinc_mg: null,
+      vitamin_b12_mcg: null,
+      vitamin_c_mg: null,
+      vitamin_a_mcg: null,
+      folate_mcg: null,
     })
   })
 
@@ -112,7 +120,18 @@ describe('calcium, magnesium and vitamin D in a log', () => {
       ...buildLogRow(withMinerals({ calciumMg: 10, magnesiumMg: 5, vitaminDMcg: 1 })),
       magnesium_mg: -3,
     })
-    expect(amount?.minerals).toEqual({ calciumMg: 32, magnesiumMg: null, vitaminDMcg: 3.2 })
+    expect(amount?.minerals).toEqual({
+      calciumMg: 32,
+      magnesiumMg: null,
+      vitaminDMcg: 3.2,
+      ironMg: null,
+      potassiumMg: null,
+      zincMg: null,
+      vitaminB12Mcg: null,
+      vitaminCMg: null,
+      vitaminAMcg: null,
+      folateMcg: null,
+    })
   })
 })
 
@@ -178,7 +197,18 @@ describe('parseFoodAmount', () => {
       unitName: 'cup',
       grams: 300,
       nutrients: { kcal: 90, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
-      minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
+      minerals: {
+        calciumMg: null,
+        magnesiumMg: null,
+        vitaminDMcg: null,
+        ironMg: null,
+        potassiumMg: null,
+        zincMg: null,
+        vitaminB12Mcg: null,
+        vitaminCMg: null,
+        vitaminAMcg: null,
+        folateMcg: null,
+      },
     })
   })
 

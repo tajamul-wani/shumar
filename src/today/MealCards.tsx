@@ -11,6 +11,7 @@ import { biggestMeal, groupMealFoods, type FoodEntry, type MealGroup } from '../
 import { FoodValues } from '../log/FoodValues.tsx'
 import { editLogPath } from '../shell/nav.ts'
 import { Amounts, Kcal, MacroBar } from './amounts.tsx'
+import { MealMicronutrientsDialog } from './MealMicronutrientsDialog.tsx'
 
 const FOCUS_RING = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deficit-ring'
 
@@ -191,6 +192,7 @@ function MealCard({
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedName, setSavedName] = useState<string | null>(null)
+  const [viewingMicros, setViewingMicros] = useState(false)
   const share = dayKcal > 0 ? Math.round((group.totals.kcal / dayKcal) * 100) : 0
 
   async function handleDeleteMeal() {
@@ -265,7 +267,18 @@ function MealCard({
         </p>
       </div>
       <MacroBar nutrients={group.totals} />
-      <Amounts nutrients={group.totals} />
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <Amounts nutrients={group.totals} />
+        {group.foods.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setViewingMicros(true)}
+            className={`inline-flex min-h-11 items-center rounded-xl text-caption font-semibold text-deficit-ring transition-opacity hover:opacity-80 ${FOCUS_RING}`}
+          >
+            Vitamins & minerals
+          </button>
+        )}
+      </div>
       <ul className="m-0 flex list-none flex-col pt-1 p-0">
         {groupMealFoods(group.foods).map((entry) => (
           <EntryItem key={entry.logs[0].id} entry={entry} editable={editable} />
@@ -381,6 +394,15 @@ function MealCard({
 
         {savedName && !naming && (
           <p className="m-0 text-caption text-koshur-muted">Saved {savedName} to your saved meals.</p>
+        )}
+
+        {viewingMicros && group.foods.length > 0 && (
+          <MealMicronutrientsDialog
+            meal={group.meal}
+            minerals={group.minerals}
+            count={group.foods.length}
+            onClose={() => setViewingMicros(false)}
+          />
         )}
       </div>
     </article>

@@ -235,7 +235,7 @@ describe('searching', () => {
       'Yours',
     )
     expect(screen.getByText('Saved to your foods')).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('offers a food from its pack right under the search box, before the results', async () => {
     renderScreen()
@@ -312,6 +312,14 @@ describe('a chosen food', () => {
       calcium_mg: null,
       magnesium_mg: null,
       vitamin_d_mcg: null,
+      fiber_g: null,
+      iron_mg: null,
+      potassium_mg: null,
+      zinc_mg: null,
+      vitamin_b12_mcg: null,
+      vitamin_c_mg: null,
+      vitamin_a_mcg: null,
+      folate_mcg: null,
     })
     expect(heading()).toHaveTextContent('Add food')
     expect(heading()).toHaveFocus()

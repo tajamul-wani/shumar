@@ -31,7 +31,7 @@ type LogsClient = Pick<SupabaseClient, 'from'>
 
 /** Only the columns the app shows, so each read stays small. */
 const LOG_COLUMNS =
-  'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg, calcium_mg, magnesium_mg, vitamin_d_mcg'
+  'id, log_date, logged_at, meal, food_name, food_source, food_source_id, quantity, unit_name, grams, kcal, protein, carbs, fat, sodium_mg, calcium_mg, magnesium_mg, vitamin_d_mcg, fiber_g, iron_mg, potassium_mg, zinc_mg, vitamin_b12_mcg, vitamin_c_mg, vitamin_a_mcg, folate_mcg'
 
 /** Checks one user_logs row against the table's own limits. Returns null if anything is off. */
 export function parseLoggedFood(value: unknown): LoggedFood | null {
@@ -138,11 +138,19 @@ export function foodFromLog(log: LoggedFood): { food: FoodResult; unit: FoodUnit
       carbs: per100(log.nutrients.carbs),
       fat: per100(log.nutrients.fat),
       sodiumMg: per100(log.nutrients.sodiumMg),
+      ...(log.nutrients.fiberG !== undefined ? { fiberG: per100(log.nutrients.fiberG) } : {}),
     },
     minerals: {
       calciumMg: per100OrNull(log.minerals?.calciumMg),
       magnesiumMg: per100OrNull(log.minerals?.magnesiumMg),
       vitaminDMcg: per100OrNull(log.minerals?.vitaminDMcg),
+      ironMg: per100OrNull(log.minerals?.ironMg),
+      potassiumMg: per100OrNull(log.minerals?.potassiumMg),
+      zincMg: per100OrNull(log.minerals?.zincMg),
+      vitaminB12Mcg: per100OrNull(log.minerals?.vitaminB12Mcg),
+      vitaminCMg: per100OrNull(log.minerals?.vitaminCMg),
+      vitaminAMcg: per100OrNull(log.minerals?.vitaminAMcg),
+      folateMcg: per100OrNull(log.minerals?.folateMcg),
     },
     units: unit === GRAM ? [GRAM] : [GRAM, unit],
     flagged: false,
@@ -177,6 +185,14 @@ export async function changeLog(client: LogsClient, log: LoggedFood, change: Log
       calcium_mg: row.calcium_mg,
       magnesium_mg: row.magnesium_mg,
       vitamin_d_mcg: row.vitamin_d_mcg,
+      fiber_g: row.fiber_g,
+      iron_mg: row.iron_mg,
+      potassium_mg: row.potassium_mg,
+      zinc_mg: row.zinc_mg,
+      vitamin_b12_mcg: row.vitamin_b12_mcg,
+      vitamin_c_mg: row.vitamin_c_mg,
+      vitamin_a_mcg: row.vitamin_a_mcg,
+      folate_mcg: row.folate_mcg,
     })
     .eq('id', log.id)
     .select(LOG_COLUMNS)

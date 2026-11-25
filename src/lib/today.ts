@@ -1,6 +1,6 @@
 import type { LoggedFood } from './dayLogs.ts'
 import { FIXED_MEALS, isFixedMeal, type Meal } from './meals.ts'
-import { sumNutrients, type Nutrients } from './nutrition.ts'
+import { sumMinerals, sumNutrients, type Minerals, type Nutrients } from './nutrition.ts'
 
 /** What the Today screen shows, worked out from the day's logs. Kept apart from the screen so it can be tested. */
 
@@ -8,12 +8,14 @@ export interface MealGroup {
   meal: Meal
   foods: LoggedFood[]
   totals: Nutrients
+  minerals: Minerals
   /** When the first food of this meal was logged, as an ISO timestamp. */
   firstLoggedAt: string
 }
 
 interface DaySummary {
   totals: Nutrients
+  minerals: Minerals
   /** Only meals with food in them: the fixed meals in the order of the day, then the person's own meals in the order they were first logged. */
   meals: MealGroup[]
 }
@@ -34,10 +36,15 @@ export function summarizeDay(logs: readonly LoggedFood[]): DaySummary {
       meal,
       foods,
       totals: sumNutrients(foods.map((food) => food.nutrients)),
+      minerals: sumMinerals(foods.map((food) => food.minerals)),
       firstLoggedAt: foods[0].loggedAt,
     })
   }
-  return { totals: sumNutrients(logs.map((log) => log.nutrients)), meals }
+  return {
+    totals: sumNutrients(logs.map((log) => log.nutrients)),
+    minerals: sumMinerals(logs.map((log) => log.minerals)),
+    meals,
+  }
 }
 
 /** The meal with the most calories, when the day has more than one meal with something in it. */

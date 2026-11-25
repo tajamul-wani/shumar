@@ -25,6 +25,14 @@ function row(overrides: Record<string, unknown> = {}) {
     calcium_mg: null,
     magnesium_mg: null,
     vitamin_d_mcg: null,
+    fiber_g: null,
+    iron_mg: null,
+    potassium_mg: null,
+    zinc_mg: null,
+    vitamin_b12_mcg: null,
+    vitamin_c_mg: null,
+    vitamin_a_mcg: null,
+    folate_mcg: null,
     ...overrides,
   }
 }
@@ -114,6 +122,14 @@ describe('changing a logged food', () => {
       calcium_mg: null,
       magnesium_mg: null,
       vitamin_d_mcg: null,
+      fiber_g: null,
+      iron_mg: null,
+      potassium_mg: null,
+      zinc_mg: null,
+      vitamin_b12_mcg: null,
+      vitamin_c_mg: null,
+      vitamin_a_mcg: null,
+      folate_mcg: null,
     })
     expect(window.location.pathname).toBe('/')
   })

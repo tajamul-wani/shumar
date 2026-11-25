@@ -51,7 +51,14 @@ describe('summarizeDay', () => {
   })
 
   it('adds up the whole day', () => {
-    expect(summarizeDay(day).totals).toEqual({ kcal: 530, protein: 4, carbs: 8, fat: 12, sodiumMg: 1500 })
+    expect(summarizeDay(day).totals).toEqual({
+      kcal: 530,
+      protein: 4,
+      carbs: 8,
+      fat: 12,
+      sodiumMg: 1500,
+      fiberG: 0,
+    })
   })
 
   it("lists the person's own meals after the fixed ones, in the order they were first logged", () => {
@@ -68,7 +75,19 @@ describe('summarizeDay', () => {
 
   it('gives zeros and no meals for an empty day', () => {
     expect(summarizeDay([])).toEqual({
-      totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 },
+      totals: { kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0, fiberG: 0 },
+      minerals: {
+        calciumMg: null,
+        ironMg: null,
+        potassiumMg: null,
+        magnesiumMg: null,
+        zincMg: null,
+        vitaminAMcg: null,
+        vitaminB12Mcg: null,
+        vitaminCMg: null,
+        vitaminDMcg: null,
+        folateMcg: null,
+      },
       meals: [],
     })
   })

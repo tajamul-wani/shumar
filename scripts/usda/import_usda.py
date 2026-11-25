@@ -86,6 +86,15 @@ NUTRIENTS = {
     "1087": "calcium_mg",
     "1090": "magnesium_mg",
     "1114": "vitamin_d_mcg",
+    # Additional essential fiber, vitamins and minerals (SHU-41).
+    "1079": "fiber_g",
+    "1089": "iron_mg",
+    "1092": "potassium_mg",
+    "1095": "zinc_mg",
+    "1178": "vitamin_b12_mcg",
+    "1162": "vitamin_c_mg",
+    "1106": "vitamin_a_mcg",
+    "1177": "folate_mcg",
 }
 
 MAX_KCAL = 1000
@@ -97,6 +106,14 @@ MAX_SODIUM_MG = 40000
 MAX_CALCIUM_MG = 10000
 MAX_MAGNESIUM_MG = 5000
 MAX_VITAMIN_D_MCG = 5000
+MAX_FIBER_G = 100
+MAX_IRON_MG = 1000
+MAX_POTASSIUM_MG = 50000
+MAX_ZINC_MG = 1000
+MAX_VITAMIN_B12_MCG = 5000
+MAX_VITAMIN_C_MG = 5000
+MAX_VITAMIN_A_MCG = 30000
+MAX_FOLATE_MCG = 10000
 MAX_PORTION_GRAMS = 5000
 MAX_NAME = 200
 MAX_UNIT = 60
@@ -119,6 +136,14 @@ class Food:
     calcium_mg: Decimal | None = None
     magnesium_mg: Decimal | None = None
     vitamin_d_mcg: Decimal | None = None
+    fiber_g: Decimal | None = None
+    iron_mg: Decimal | None = None
+    potassium_mg: Decimal | None = None
+    zinc_mg: Decimal | None = None
+    vitamin_b12_mcg: Decimal | None = None
+    vitamin_c_mg: Decimal | None = None
+    vitamin_a_mcg: Decimal | None = None
+    folate_mcg: Decimal | None = None
 
 
 @dataclass
@@ -132,6 +157,14 @@ class Summary:
     with_calcium: int = 0
     with_magnesium: int = 0
     with_vitamin_d: int = 0
+    with_fiber: int = 0
+    with_iron: int = 0
+    with_potassium: int = 0
+    with_zinc: int = 0
+    with_vitamin_b12: int = 0
+    with_vitamin_c: int = 0
+    with_vitamin_a: int = 0
+    with_folate: int = 0
 
 
 def two_places(value: float | str) -> Decimal:
@@ -222,13 +255,32 @@ def load_dataset(path: Path, dataset: Dataset, summary: Summary) -> list[Food]:
             calcium = optional_amount(v.get("calcium_mg"), MAX_CALCIUM_MG)
             magnesium = optional_amount(v.get("magnesium_mg"), MAX_MAGNESIUM_MG)
             vitamin_d = optional_amount(v.get("vitamin_d_mcg"), MAX_VITAMIN_D_MCG)
+            fiber = optional_amount(v.get("fiber_g"), MAX_FIBER_G)
+            iron = optional_amount(v.get("iron_mg"), MAX_IRON_MG)
+            potassium = optional_amount(v.get("potassium_mg"), MAX_POTASSIUM_MG)
+            zinc = optional_amount(v.get("zinc_mg"), MAX_ZINC_MG)
+            vitamin_b12 = optional_amount(v.get("vitamin_b12_mcg"), MAX_VITAMIN_B12_MCG)
+            vitamin_c = optional_amount(v.get("vitamin_c_mg"), MAX_VITAMIN_C_MG)
+            vitamin_a = optional_amount(v.get("vitamin_a_mcg"), MAX_VITAMIN_A_MCG)
+            folate = optional_amount(v.get("folate_mcg"), MAX_FOLATE_MCG)
             summary.with_calcium += calcium is not None
             summary.with_magnesium += magnesium is not None
             summary.with_vitamin_d += vitamin_d is not None
+            summary.with_fiber += fiber is not None
+            summary.with_iron += iron is not None
+            summary.with_potassium += potassium is not None
+            summary.with_zinc += zinc is not None
+            summary.with_vitamin_b12 += vitamin_b12 is not None
+            summary.with_vitamin_c += vitamin_c is not None
+            summary.with_vitamin_a += vitamin_a is not None
+            summary.with_folate += folate is not None
             foods[fdc_id] = Food(
                 int(fdc_id), dataset.release_id, name, category,
                 kcal_d, protein_d, carbs_d, fat_d, sodium_d, flag,
                 calcium_mg=calcium, magnesium_mg=magnesium, vitamin_d_mcg=vitamin_d,
+                fiber_g=fiber, iron_mg=iron, potassium_mg=potassium, zinc_mg=zinc,
+                vitamin_b12_mcg=vitamin_b12, vitamin_c_mg=vitamin_c, vitamin_a_mcg=vitamin_a,
+                folate_mcg=folate,
             )
 
         seen: set[tuple[str, str]] = set()
@@ -276,7 +328,10 @@ def render_migration(foods: list[Food], files: list[tuple[Dataset, str]], import
         f"-- Kept {summary.kept} foods with {len(portions)} portions. Left out: {summary.excluded_category} in US-only",
         f"-- categories, {summary.missing_value} with a missing value, {summary.out_of_range} out of range.",
         f"-- Flagged by the Atwater check: {summary.flagged}. Carbs slightly below zero stored as 0: {summary.carbs_clamped}.",
-        f"-- With a calcium value: {summary.with_calcium}. With magnesium: {summary.with_magnesium}. With vitamin D: {summary.with_vitamin_d}. The rest are stored as null (not listed).",
+        f"-- With calcium: {summary.with_calcium}, magnesium: {summary.with_magnesium}, vitamin D: {summary.with_vitamin_d},",
+        f"-- fiber: {summary.with_fiber}, iron: {summary.with_iron}, potassium: {summary.with_potassium}, zinc: {summary.with_zinc},",
+        f"-- vitamin B12: {summary.with_vitamin_b12}, vitamin C: {summary.with_vitamin_c}, vitamin A: {summary.with_vitamin_a}, folate: {summary.with_folate}.",
+        f"-- The rest are stored as null (not listed).",
         "",
         "delete from public.usda_portions;",
         "delete from public.usda_foods;",
@@ -294,11 +349,16 @@ def render_migration(foods: list[Food], files: list[tuple[Dataset, str]], import
             "",
             "insert into public.usda_foods (fdc_id, release_id, name, category, kcal_per_100g, protein_per_100g,"
             " carbs_per_100g, fat_per_100g, sodium_mg_per_100g, atwater_flag, calcium_mg_per_100g,"
-            " magnesium_mg_per_100g, vitamin_d_mcg_per_100g) values",
+            " magnesium_mg_per_100g, vitamin_d_mcg_per_100g, fiber_g_per_100g, iron_mg_per_100g,"
+            " potassium_mg_per_100g, zinc_mg_per_100g, vitamin_b12_mcg_per_100g, vitamin_c_mg_per_100g,"
+            " vitamin_a_mcg_per_100g, folate_mcg_per_100g) values",
             ",\n".join(
                 f"  ({f.fdc_id}, {sql_text(f.release_id)}, {sql_text(f.name)}, {sql_text(f.category)}, {f.kcal}, "
                 f"{f.protein}, {f.carbs}, {f.fat}, {f.sodium_mg}, {'true' if f.atwater_flag else 'false'}, "
-                f"{sql_number(f.calcium_mg)}, {sql_number(f.magnesium_mg)}, {sql_number(f.vitamin_d_mcg)})"
+                f"{sql_number(f.calcium_mg)}, {sql_number(f.magnesium_mg)}, {sql_number(f.vitamin_d_mcg)}, "
+                f"{sql_number(f.fiber_g)}, {sql_number(f.iron_mg)}, {sql_number(f.potassium_mg)}, "
+                f"{sql_number(f.zinc_mg)}, {sql_number(f.vitamin_b12_mcg)}, {sql_number(f.vitamin_c_mg)}, "
+                f"{sql_number(f.vitamin_a_mcg)}, {sql_number(f.folate_mcg)})"
                 for f in foods[start : start + BATCH]
             )
             + ";",
@@ -310,6 +370,16 @@ def render_migration(foods: list[Food], files: list[tuple[Dataset, str]], import
             ",\n".join(f"  ({fdc_id}, {sql_text(label)}, {grams})" for fdc_id, label, grams in portions[start : start + BATCH])
             + ";",
         ]
+    lines += [
+        "",
+        "-- Standard portion sizes for Foundation Food banana (1105314), added for everyday ease.",
+        "insert into public.usda_portions (fdc_id, unit_name, grams) values",
+        "  (1105314, '1 small', 101.00),",
+        "  (1105314, '1 medium', 118.00),",
+        "  (1105314, '1 large', 136.00),",
+        "  (1105314, '1 extra large', 152.00)",
+        "on conflict do nothing;",
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -360,7 +430,9 @@ def main(argv: list[str] | None = None) -> int:
         f"Wrote {args.output}: {summary.kept} foods kept, {summary.excluded_category} in US-only categories, "
         f"{summary.missing_value} with a missing value, {summary.out_of_range} out of range, "
         f"{summary.flagged} flagged by the Atwater check, {summary.carbs_clamped} with carbs slightly below zero stored as 0. "
-        f"With calcium: {summary.with_calcium}, magnesium: {summary.with_magnesium}, vitamin D: {summary.with_vitamin_d}."
+        f"With calcium: {summary.with_calcium}, magnesium: {summary.with_magnesium}, vitamin D: {summary.with_vitamin_d}, "
+        f"fiber: {summary.with_fiber}, iron: {summary.with_iron}, potassium: {summary.with_potassium}, zinc: {summary.with_zinc}, "
+        f"vitamin B12: {summary.with_vitamin_b12}, vitamin C: {summary.with_vitamin_c}, vitamin A: {summary.with_vitamin_a}, folate: {summary.with_folate}."
     )
     return 0
 

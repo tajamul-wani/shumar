@@ -39,10 +39,18 @@ export function Kcal({ value, size = 'small' }: { value: number; size?: keyof ty
 }
 
 /**
- * Protein, carbs and fat (and sodium for a single food), always with their names, so color is
+ * Protein, carbs and fat (and fiber and sodium), always with their names, so color is
  * never the only clue: colored numbers in dark mode, colored dots in light mode.
  */
-export function Amounts({ nutrients, withSodium = false }: { nutrients: Nutrients; withSodium?: boolean }) {
+export function Amounts({
+  nutrients,
+  withSodium = false,
+  withFiber = true,
+}: {
+  nutrients: Nutrients
+  withSodium?: boolean
+  withFiber?: boolean
+}) {
   const shown = roundForDisplay(nutrients)
   const items = [
     {
@@ -58,6 +66,9 @@ export function Amounts({ nutrients, withSodium = false }: { nutrients: Nutrient
       dark: 'dark:text-macro-carb',
     },
     { label: 'Fat', value: `${formatNumber(shown.fat)} g`, dot: 'bg-macro-fat', dark: 'dark:text-macro-fat' },
+    ...(withFiber && shown.fiberG !== undefined
+      ? [{ label: 'Fiber', value: `${formatNumber(shown.fiberG)} g`, dot: null, dark: '' }]
+      : []),
     ...(withSodium
       ? [{ label: 'Sodium', value: `${formatNumber(shown.sodiumMg)} mg`, dot: null, dark: '' }]
       : []),

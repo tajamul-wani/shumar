@@ -79,7 +79,18 @@ describe('parseLoggedFood', () => {
       unitName: 'cup',
       grams: 300,
       nutrients: { kcal: 90, protein: 3, carbs: 9, fat: 4.5, sodiumMg: 600 },
-      minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
+      minerals: {
+        calciumMg: null,
+        magnesiumMg: null,
+        vitaminDMcg: null,
+        ironMg: null,
+        potassiumMg: null,
+        zincMg: null,
+        vitaminB12Mcg: null,
+        vitaminCMg: null,
+        vitaminAMcg: null,
+        folateMcg: null,
+      },
     })
   })
 
@@ -188,6 +199,14 @@ describe('removing and restoring', () => {
       calcium_mg: null,
       magnesium_mg: null,
       vitamin_d_mcg: null,
+      fiber_g: null,
+      iron_mg: null,
+      potassium_mg: null,
+      zinc_mg: null,
+      vitamin_b12_mcg: null,
+      vitamin_c_mg: null,
+      vitamin_a_mcg: null,
+      folate_mcg: null,
     })
   })
 
@@ -233,6 +252,14 @@ describe('changing a log', () => {
       calcium_mg: null,
       magnesium_mg: null,
       vitamin_d_mcg: null,
+      fiber_g: null,
+      iron_mg: null,
+      potassium_mg: null,
+      zinc_mg: null,
+      vitamin_b12_mcg: null,
+      vitamin_c_mg: null,
+      vitamin_a_mcg: null,
+      folate_mcg: null,
     })
     expect(call(calls, 'eq')).toEqual(['id', 'log-1'])
   })

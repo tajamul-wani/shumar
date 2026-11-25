@@ -36,7 +36,9 @@ With a target and something logged, you see a short review. Its title changes wi
 
 ## See your meals
 
-Under **Meals**, each meal has a card. It shows the meal name, the time of the first food, the calories, how much of the day it is, and its protein, carbs and fat. The biggest meal of the day has a **Biggest meal** tag.
+Under **Meals**, each meal has a card. It shows the meal name, the time of the first food, the calories, how much of the day it is, and its protein, carbs, fat and fiber. The biggest meal of the day has a **Biggest meal** tag.
+
+Tap **Vitamins & minerals** on a meal card to see the meal's total micronutrients: calcium, iron, potassium, magnesium, zinc, vitamin A, vitamin B12, vitamin C, vitamin D and folate.
 
 Tap **Add to breakfast** (or the meal's name) on a card to add a food straight to that meal.
 
