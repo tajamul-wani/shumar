@@ -77,6 +77,16 @@ for (const theme of ['dark', 'light'] as const) {
       )
       await expect(page.getByText('1 day logged')).toBeVisible()
 
+      // Open and verify vitamins and minerals dialog
+      await breakfast.getByRole('button', { name: 'Vitamins & minerals' }).click()
+      const dialog = page.getByRole('dialog', { name: 'Breakfast vitamins & minerals' })
+      await expect(dialog).toBeVisible()
+      await expect(dialog.getByText('Total micronutrients consumed from 2 foods in this meal.')).toBeVisible()
+      const dialogBlocking = await accessibilityViolations(page)
+      expect(dialogBlocking, JSON.stringify(dialogBlocking, null, 2)).toEqual([])
+      await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect(dialog).not.toBeVisible()
+
       const blocking = await accessibilityViolations(page)
       expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
       await page.setViewportSize({ width: 320, height: 640 })
