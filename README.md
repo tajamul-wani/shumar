@@ -199,8 +199,8 @@ nutrient = value per 100 g × grams ÷ 100
 </details>
 
 - A log keeps the values worked out when it was saved, so a later change to a food never rewrites anyone's history.
-- Values keep full precision and are rounded only for display: whole kcal and mg, macros to one decimal place.
-- The day's totals add up its logs. The sodium alert shows past 2,000 mg a day, the World Health Organization's limit for adults.
+- Values keep full precision and are rounded only for display: whole kcal and mg, macros and fiber to one decimal place, and vitamins in mcg or mg.
+- The day's totals add up its logs. The sodium alert shows past 2,000 mg a day, the World Health Organization's limit for adults. Meal cards show calories, macros and fiber, and open total vitamins and minerals for each meal.
 - Values come only from named sources: USDA FoodData Central, and measured recipes for the Kashmiri catalog. A person's own foods come from their pack's label, are kept as the label prints them and are worked out per 100 g from there. The importer leaves out foods with a missing value and flags foods whose calories are more than 20% off their protein, carbs and fat at 4, 4 and 9 kcal per gram.
 
 ### Daily targets

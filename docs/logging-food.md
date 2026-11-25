@@ -7,12 +7,12 @@
 3. Type a food in **Search foods**, for example Girda, Haakh or eggs.
 4. Tap the food you want. You see all its values.
 5. Choose a unit. **Grams** is always there. Other units depend on the food, such as katori, piece or cup.
-6. Set the **Quantity** with the **+** and **-** buttons, or type it. You see the calories, protein, carbs and fat change as you go.
+6. Set the **Quantity** with the **+** and **-** buttons, or type it. You see the calories, protein, carbs, fat and fiber change as you go.
 7. Tap **Add to lunch** (the button names your meal).
 
 Shumār shows "Added to lunch" and returns you to the search box, so you can add the next food. Tap **Done** when you finish.
 
-Under the calories and the protein, carbs and fat, you also see calcium, magnesium and vitamin D, and sodium, for the amount you chose. Where we have no value for a food, it says **Not listed**. That is not zero.
+Under the calories and macros, you also see essential vitamins and minerals (such as calcium, iron, potassium, magnesium, zinc, vitamins and folate) and sodium for the amount you chose. Where we have no value for a food, it says **Not listed**. That is not zero.
 
 Under **In lunch now** you see everything already in that meal and its calories.
 
