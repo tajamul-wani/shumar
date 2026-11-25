@@ -437,6 +437,17 @@ describe('changing and removing foods', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
   })
 
+  it('opens the vitamins & minerals dialog for a meal', async () => {
+    renderToday()
+    const meals = await openBreakfast()
+    const breakfast = within(meals).getByRole('article', { name: 'Breakfast' })
+    await userEvent.click(within(breakfast).getByRole('button', { name: 'Vitamins & minerals' }))
+    const dialog = screen.getByRole('dialog', { name: 'Breakfast vitamins & minerals' })
+    expect(dialog).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Breakfast vitamins & minerals' })).not.toBeInTheDocument()
+  })
+
   it('opens a warning popup before deleting an entire meal, and cancels on request', async () => {
     renderToday()
     const meals = await openBreakfast()

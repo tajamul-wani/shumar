@@ -102,24 +102,94 @@ class LoadDatasetTest(unittest.TestCase):
         self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (Decimal("50.00"), Decimal("12.35"), Decimal("2.50")))
         self.assertEqual((summary.with_calcium, summary.with_magnesium, summary.with_vitamin_d), (1, 1, 1))
 
+    def test_reads_fiber_and_all_micronutrients_when_listed(self):
+        nutrients = full("1") + [
+            nutrient("1", "1079", "4.5"),
+            nutrient("1", "1089", "2.1"),
+            nutrient("1", "1092", "350"),
+            nutrient("1", "1095", "1.8"),
+            nutrient("1", "1178", "0.45"),
+            nutrient("1", "1162", "12.0"),
+            nutrient("1", "1106", "50"),
+            nutrient("1", "1177", "85"),
+        ]
+        foods, summary = self.load([food("1", "A")], nutrients)
+        self.assertEqual(
+            (
+                foods[1].fiber_g,
+                foods[1].iron_mg,
+                foods[1].potassium_mg,
+                foods[1].zinc_mg,
+                foods[1].vitamin_b12_mcg,
+                foods[1].vitamin_c_mg,
+                foods[1].vitamin_a_mcg,
+                foods[1].folate_mcg,
+            ),
+            (
+                Decimal("4.50"),
+                Decimal("2.10"),
+                Decimal("350.00"),
+                Decimal("1.80"),
+                Decimal("0.45"),
+                Decimal("12.00"),
+                Decimal("50.00"),
+                Decimal("85.00"),
+            ),
+        )
+        self.assertEqual(
+            (
+                summary.with_fiber,
+                summary.with_iron,
+                summary.with_potassium,
+                summary.with_zinc,
+                summary.with_vitamin_b12,
+                summary.with_vitamin_c,
+                summary.with_vitamin_a,
+                summary.with_folate,
+            ),
+            (1, 1, 1, 1, 1, 1, 1, 1),
+        )
+
     def test_keeps_a_food_with_no_minerals_and_stores_them_as_not_listed(self):
         foods, summary = self.load([food("1", "A")], full("1"))
         self.assertEqual(len(foods), 1)
         self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (None, None, None))
-        self.assertEqual((summary.with_calcium, summary.with_magnesium, summary.with_vitamin_d), (0, 0, 0))
+        self.assertEqual(foods[1].fiber_g, None)
+        self.assertEqual((summary.with_calcium, summary.with_magnesium, summary.with_vitamin_d, summary.with_fiber), (0, 0, 0, 0))
 
     def test_stores_an_unbelievable_mineral_value_as_not_listed_and_keeps_the_food(self):
-        nutrients = full("1") + [nutrient("1", "1087", "20000"), nutrient("1", "1090", "-1"), nutrient("1", "1114", "9999")]
+        nutrients = full("1") + [
+            nutrient("1", "1087", "20000"),
+            nutrient("1", "1090", "-1"),
+            nutrient("1", "1114", "9999"),
+            nutrient("1", "1079", "150"),
+            nutrient("1", "1089", "-2"),
+            nutrient("1", "1092", "60000"),
+            nutrient("1", "1095", "2000"),
+            nutrient("1", "1178", "10000"),
+            nutrient("1", "1162", "-5"),
+            nutrient("1", "1106", "50000"),
+            nutrient("1", "1177", "20000"),
+        ]
         foods, _ = self.load([food("1", "A")], nutrients)
         self.assertEqual(len(foods), 1)
         self.assertEqual((foods[1].calcium_mg, foods[1].magnesium_mg, foods[1].vitamin_d_mcg), (None, None, None))
+        self.assertEqual(foods[1].fiber_g, None)
+        self.assertEqual(foods[1].iron_mg, None)
+        self.assertEqual(foods[1].potassium_mg, None)
+        self.assertEqual(foods[1].zinc_mg, None)
+        self.assertEqual(foods[1].vitamin_b12_mcg, None)
+        self.assertEqual(foods[1].vitamin_c_mg, None)
+        self.assertEqual(foods[1].vitamin_a_mcg, None)
+        self.assertEqual(foods[1].folate_mcg, None)
 
     def test_writes_not_listed_as_null_in_the_migration(self):
         nutrients = full("1") + [nutrient("1", "1087", "50")]
         foods, summary = self.load([food("1", "A")], nutrients)
         sql = imp.render_migration(list(foods.values()), [(DATASET, "a" * 64)], date(2026, 11, 20), summary)
         self.assertIn("calcium_mg_per_100g, magnesium_mg_per_100g, vitamin_d_mcg_per_100g", sql)
-        self.assertIn(", 50.00, null, null)", sql)
+        self.assertIn("fiber_g_per_100g, iron_mg_per_100g", sql)
+        self.assertIn(", 50.00, null, null, null, null, null, null, null, null, null, null)", sql)
 
     def test_leaves_out_us_only_categories_and_other_data_types(self):
         nutrients = full("1") + full("2")

@@ -49,7 +49,7 @@ export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
  * (as the egg picks and dried forms after fresh ones did, 29 October 2026), so copies kept before
  * are ignored.
  */
-const SEARCH_CACHE_VERSION = 4
+const SEARCH_CACHE_VERSION = 5
 const GRAMS: FoodUnit = { name: 'g', grams: 1 }
 
 export class FoodSearchError extends Error {}
@@ -70,6 +70,13 @@ function parseMinerals(value: unknown): Minerals {
     calciumMg: number(minerals.calciumMg, 0, 10000),
     magnesiumMg: number(minerals.magnesiumMg, 0, 5000),
     vitaminDMcg: number(minerals.vitaminDMcg, 0, 5000),
+    ironMg: number(minerals.ironMg, 0, 1000),
+    potassiumMg: number(minerals.potassiumMg, 0, 50000),
+    zincMg: number(minerals.zincMg, 0, 1000),
+    vitaminB12Mcg: number(minerals.vitaminB12Mcg, 0, 5000),
+    vitaminCMg: number(minerals.vitaminCMg, 0, 5000),
+    vitaminAMcg: number(minerals.vitaminAMcg, 0, 30000),
+    folateMcg: number(minerals.folateMcg, 0, 10000),
   }
 }
 
@@ -115,6 +122,7 @@ export function parseFood(value: unknown): FoodResult | null {
   const carbs = number(per100g.carbs, 0, 100)
   const fat = number(per100g.fat, 0, 100)
   const sodiumMg = number(per100g.sodiumMg, 0, 40000)
+  const fiberG = number(per100g.fiberG, 0, 100)
   if (
     !source ||
     !sourceId ||
@@ -131,7 +139,14 @@ export function parseFood(value: unknown): FoodResult | null {
     source,
     sourceId,
     name,
-    per100g: { kcal, protein, carbs, fat, sodiumMg },
+    per100g: {
+      kcal,
+      protein,
+      carbs,
+      fat,
+      sodiumMg,
+      ...(fiberG !== null ? { fiberG } : {}),
+    },
     minerals: food?.minerals === undefined ? NO_MINERALS : parseMinerals(food.minerals),
     ...(food?.sodiumListed === false ? { sodiumListed: false } : {}),
     units: parseUnits(food?.units),
@@ -157,11 +172,19 @@ export function parseResults(rows: unknown): FoodResult[] {
         fat: row.fat_per_100g,
         // A food of the person's own may have no sodium: it counts as 0 and says it is not listed.
         sodiumMg: row.sodium_mg_per_100g ?? 0,
+        fiberG: row.fiber_g_per_100g ?? undefined,
       },
       minerals: {
         calciumMg: row.calcium_mg_per_100g,
         magnesiumMg: row.magnesium_mg_per_100g,
         vitaminDMcg: row.vitamin_d_mcg_per_100g,
+        ironMg: row.iron_mg_per_100g,
+        potassiumMg: row.potassium_mg_per_100g,
+        zincMg: row.zinc_mg_per_100g,
+        vitaminB12Mcg: row.vitamin_b12_mcg_per_100g,
+        vitaminCMg: row.vitamin_c_mg_per_100g,
+        vitaminAMcg: row.vitamin_a_mcg_per_100g,
+        folateMcg: row.folate_mcg_per_100g,
       },
       sodiumListed: row.sodium_mg_per_100g != null,
       units: row.units,

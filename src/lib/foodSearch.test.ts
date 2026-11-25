@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { clearUserData } from './auth.ts'
+import { NO_MINERALS } from './nutrition.ts'
 import {
   FoodSearchError,
   SEARCH_CACHE_KEY,
@@ -79,12 +80,12 @@ describe('parseResults, calcium, magnesium and vitamin D', () => {
     const [food] = parseResults([
       row({ calcium_mg_per_100g: '50.00', magnesium_mg_per_100g: 10, vitamin_d_mcg_per_100g: null }),
     ])
-    expect(food.minerals).toEqual({ calciumMg: 50, magnesiumMg: 10, vitaminDMcg: null })
+    expect(food.minerals).toEqual({ ...NO_MINERALS, calciumMg: 50, magnesiumMg: 10 })
   })
 
   it('reads a value beyond what a food can hold as not listed, and keeps the food', () => {
     const [food] = parseResults([row({ calcium_mg_per_100g: 99999, magnesium_mg_per_100g: -1 })])
-    expect(food.minerals).toEqual({ calciumMg: null, magnesiumMg: null, vitaminDMcg: null })
+    expect(food.minerals).toEqual(NO_MINERALS)
   })
 
   it('keeps a food saved with no sodium: it counts as 0 and says it is not listed', () => {
@@ -106,7 +107,7 @@ describe('parseResults', () => {
         sourceId: '1001',
         name: 'Test food, cooked',
         per100g: { kcal: 120, protein: 3, carbs: 25, fat: 1, sodiumMg: 5 },
-        minerals: { calciumMg: null, magnesiumMg: null, vitaminDMcg: null },
+        minerals: NO_MINERALS,
         units: [
           { name: 'g', grams: 1 },
           { name: '1 cup', grams: 158 },

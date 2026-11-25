@@ -6,34 +6,75 @@ import {
   roundForDisplay,
   scaleMinerals,
   scaleNutrients,
+  sumMinerals,
   sumNutrients,
+  type Minerals,
   type Nutrients,
 } from './nutrition.ts'
 
 // Test fixture only, not real food data.
-const per100g: Nutrients = { kcal: 300, protein: 10, carbs: 50, fat: 6, sodiumMg: 400 }
+const per100g: Nutrients = { kcal: 300, protein: 10, carbs: 50, fat: 6, sodiumMg: 400, fiberG: 4 }
 
 describe('scaleMinerals', () => {
   // Test fixture only, not real food data.
-  it('scales calcium, magnesium and vitamin D to the grams eaten', () => {
-    expect(scaleMinerals({ calciumMg: 50, magnesiumMg: 10, vitaminDMcg: 2.2 }, 200)).toEqual({
+  it('scales calcium, magnesium, vitamin D and extended micronutrients to the grams eaten', () => {
+    expect(
+      scaleMinerals(
+        {
+          calciumMg: 50,
+          magnesiumMg: 10,
+          vitaminDMcg: 2.2,
+          ironMg: 1.5,
+          potassiumMg: 200,
+          zincMg: 0.8,
+          vitaminB12Mcg: 0.5,
+          vitaminCMg: 15,
+          vitaminAMcg: 30,
+          folateMcg: 40,
+        },
+        200,
+      ),
+    ).toEqual({
       calciumMg: 100,
       magnesiumMg: 20,
       vitaminDMcg: 4.4,
+      ironMg: 3,
+      potassiumMg: 400,
+      zincMg: 1.6,
+      vitaminB12Mcg: 1,
+      vitaminCMg: 30,
+      vitaminAMcg: 60,
+      folateMcg: 80,
     })
   })
 
   it('keeps not listed as not listed, never a zero', () => {
-    expect(scaleMinerals({ calciumMg: 50, magnesiumMg: null, vitaminDMcg: null }, 200)).toEqual({
+    expect(scaleMinerals({ ...NO_MINERALS, calciumMg: 50 }, 200)).toEqual({
+      ...NO_MINERALS,
       calciumMg: 100,
-      magnesiumMg: null,
-      vitaminDMcg: null,
     })
     expect(scaleMinerals(NO_MINERALS, 100)).toEqual(NO_MINERALS)
   })
 
   it('refuses a weight of 0 or less, like the other nutrients do', () => {
     expect(() => scaleMinerals(NO_MINERALS, 0)).toThrow(RangeError)
+  })
+})
+
+describe('sumMinerals', () => {
+  it('sums non-null mineral amounts across foods in a meal', () => {
+    const a: Minerals = { ...NO_MINERALS, calciumMg: 50, ironMg: 1.2 }
+    const b: Minerals = { ...NO_MINERALS, calciumMg: 25, ironMg: null, vitaminB12Mcg: 0.4 }
+    expect(sumMinerals([a, b])).toEqual({
+      ...NO_MINERALS,
+      calciumMg: 75,
+      ironMg: 1.2,
+      vitaminB12Mcg: 0.4,
+    })
+  })
+
+  it('returns null for nutrients not listed in any food', () => {
+    expect(sumMinerals([NO_MINERALS, null])).toEqual(NO_MINERALS)
   })
 })
 
@@ -82,13 +123,20 @@ describe('scaleNutrients', () => {
 
 describe('sumNutrients', () => {
   it('adds up several items', () => {
-    const a: Nutrients = { kcal: 90, protein: 2, carbs: 6, fat: 6, sodiumMg: 500 }
-    const b: Nutrients = { kcal: 240, protein: 7, carbs: 43, fat: 4, sodiumMg: 300 }
-    expect(sumNutrients([a, b])).toEqual({ kcal: 330, protein: 9, carbs: 49, fat: 10, sodiumMg: 800 })
+    const a: Nutrients = { kcal: 90, protein: 2, carbs: 6, fat: 6, sodiumMg: 500, fiberG: 1.5 }
+    const b: Nutrients = { kcal: 240, protein: 7, carbs: 43, fat: 4, sodiumMg: 300, fiberG: 3.5 }
+    expect(sumNutrients([a, b])).toEqual({
+      kcal: 330,
+      protein: 9,
+      carbs: 49,
+      fat: 10,
+      sodiumMg: 800,
+      fiberG: 5,
+    })
   })
 
   it('returns zeros for an empty day', () => {
-    expect(sumNutrients([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0 })
+    expect(sumNutrients([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, sodiumMg: 0, fiberG: 0 })
   })
 })
 

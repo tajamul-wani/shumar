@@ -42,6 +42,14 @@ interface LogRow {
   calcium_mg: number | null
   magnesium_mg: number | null
   vitamin_d_mcg: number | null
+  fiber_g: number | null
+  iron_mg: number | null
+  potassium_mg: number | null
+  zinc_mg: number | null
+  vitamin_b12_mcg: number | null
+  vitamin_c_mg: number | null
+  vitamin_a_mcg: number | null
+  folate_mcg: number | null
 }
 
 export class LogError extends Error {}
@@ -105,11 +113,19 @@ export function parseFoodAmount(value: unknown): FoodAmount | null {
   const carbs = numberIn(row.carbs, 0, 1e5)
   const fat = numberIn(row.fat, 0, 1e5)
   const sodiumMg = numberIn(row.sodium_mg, 0, 1e7)
+  const fiberG = numberIn(row.fiber_g, 0, 1e5)
   // Optional: a bad or missing value is "not listed", and the food is kept.
   const minerals: Minerals = {
     calciumMg: numberIn(row.calcium_mg, 0, 1e7),
     magnesiumMg: numberIn(row.magnesium_mg, 0, 1e7),
     vitaminDMcg: numberIn(row.vitamin_d_mcg, 0, 1e7),
+    ironMg: numberIn(row.iron_mg, 0, 1e7),
+    potassiumMg: numberIn(row.potassium_mg, 0, 1e7),
+    zincMg: numberIn(row.zinc_mg, 0, 1e7),
+    vitaminB12Mcg: numberIn(row.vitamin_b12_mcg, 0, 1e7),
+    vitaminCMg: numberIn(row.vitamin_c_mg, 0, 1e7),
+    vitaminAMcg: numberIn(row.vitamin_a_mcg, 0, 1e7),
+    folateMcg: numberIn(row.folate_mcg, 0, 1e7),
   }
   if (
     !foodName ||
@@ -133,7 +149,14 @@ export function parseFoodAmount(value: unknown): FoodAmount | null {
     quantity,
     unitName,
     grams,
-    nutrients: { kcal, protein, carbs, fat, sodiumMg },
+    nutrients: {
+      kcal,
+      protein,
+      carbs,
+      fat,
+      sodiumMg,
+      ...(fiberG !== null ? { fiberG } : {}),
+    },
     minerals,
   }
 }
@@ -155,6 +178,14 @@ export function foodAmountColumns(food: FoodAmount) {
     calcium_mg: food.minerals?.calciumMg ?? null,
     magnesium_mg: food.minerals?.magnesiumMg ?? null,
     vitamin_d_mcg: food.minerals?.vitaminDMcg ?? null,
+    fiber_g: food.nutrients.fiberG !== undefined ? twoPlaces(food.nutrients.fiberG) : null,
+    iron_mg: food.minerals?.ironMg ?? null,
+    potassium_mg: food.minerals?.potassiumMg ?? null,
+    zinc_mg: food.minerals?.zincMg ?? null,
+    vitamin_b12_mcg: food.minerals?.vitaminB12Mcg ?? null,
+    vitamin_c_mg: food.minerals?.vitaminCMg ?? null,
+    vitamin_a_mcg: food.minerals?.vitaminAMcg ?? null,
+    folate_mcg: food.minerals?.folateMcg ?? null,
   }
 }
 
@@ -172,7 +203,8 @@ export function amountFor({ food, quantity, unit }: Pick<NewLog, 'food' | 'quant
   if (grams > MAX_LOG_GRAMS) throw new LogError('That is more than 20 kg. Check the amount and unit.')
   const values = scaleNutrients(food.per100g, grams)
   const minerals = scaleMinerals(food.minerals ?? NO_MINERALS, grams)
-  const keep = (value: number | null) => (value === null ? null : twoPlaces(value))
+  const keep = (value: number | null | undefined) =>
+    value === null || value === undefined ? null : twoPlaces(value)
   return {
     foodName: food.name,
     foodSource: food.source,
@@ -186,11 +218,19 @@ export function amountFor({ food, quantity, unit }: Pick<NewLog, 'food' | 'quant
       carbs: twoPlaces(values.carbs),
       fat: twoPlaces(values.fat),
       sodiumMg: twoPlaces(values.sodiumMg),
+      fiberG: values.fiberG !== undefined ? twoPlaces(values.fiberG) : undefined,
     },
     minerals: {
       calciumMg: keep(minerals.calciumMg),
       magnesiumMg: keep(minerals.magnesiumMg),
       vitaminDMcg: keep(minerals.vitaminDMcg),
+      ironMg: keep(minerals.ironMg),
+      potassiumMg: keep(minerals.potassiumMg),
+      zincMg: keep(minerals.zincMg),
+      vitaminB12Mcg: keep(minerals.vitaminB12Mcg),
+      vitaminCMg: keep(minerals.vitaminCMg),
+      vitaminAMcg: keep(minerals.vitaminAMcg),
+      folateMcg: keep(minerals.folateMcg),
     },
   }
 }
