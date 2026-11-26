@@ -282,7 +282,7 @@ export function FoodDetail({
                 <span
                   className={`text-body ${values.fiberG !== undefined ? 'font-semibold text-koshur-silk' : 'text-koshur-muted'}`}
                 >
-                  {values.fiberG !== undefined ? `${formatNumber(values.fiberG)} g` : 'Not listed'}
+                  {values.fiberG !== undefined ? `${formatNumber(values.fiberG)} g` : 'Not\u00A0listed'}
                 </span>
               </p>
             </div>
