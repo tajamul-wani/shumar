@@ -266,7 +266,7 @@ export function FoodDetail({
                 <span className="text-body font-medium text-koshur-muted">kcal</span>
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {MACROS.map((macro) => (
                 <p key={macro.key} className="m-0 flex flex-col gap-1.5">
                   <span aria-hidden="true" className={`h-1 rounded-full ${macro.bar}`} />
@@ -276,6 +276,15 @@ export function FoodDetail({
                   </span>
                 </p>
               ))}
+              <p className="m-0 flex flex-col gap-1.5">
+                <span aria-hidden="true" className="h-1 rounded-full bg-koshur-border" />
+                <span className="text-caption text-koshur-muted">Fiber</span>
+                <span
+                  className={`text-body ${values.fiberG !== undefined ? 'font-semibold text-koshur-silk' : 'text-koshur-muted'}`}
+                >
+                  {values.fiberG !== undefined ? `${formatNumber(values.fiberG)} g` : 'Not listed'}
+                </span>
+              </p>
             </div>
             {minerals && (
               <dl className="m-0 flex flex-col gap-2.5 border-t border-koshur-border pt-4 text-body-sm">
