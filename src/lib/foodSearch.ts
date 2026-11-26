@@ -49,7 +49,7 @@ export const SEARCH_CACHE_KEY = `${USER_CACHE_PREFIX}food-searches`
  * (as the egg picks and dried forms after fresh ones did, 29 October 2026), so copies kept before
  * are ignored.
  */
-const SEARCH_CACHE_VERSION = 5
+const SEARCH_CACHE_VERSION = 6
 const GRAMS: FoodUnit = { name: 'g', grams: 1 }
 
 export class FoodSearchError extends Error {}

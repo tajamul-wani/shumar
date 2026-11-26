@@ -12,11 +12,11 @@
 
 Shumār shows "Added to lunch" and returns you to the search box, so you can add the next food. Tap **Done** when you finish.
 
-Under the calories and macros, you also see essential vitamins and minerals (such as calcium, iron, potassium, magnesium, zinc, vitamins and folate) and sodium for the amount you chose. Where we have no value for a food, it says **Not listed**. That is not zero.
+The nutrition table shows calories, protein, carbs, fat and dietary fiber for the amount you chose. Under the macros, you also see essential vitamins and minerals (such as calcium, iron, potassium, magnesium, zinc, vitamins and folate) and sodium. Where we have no value for a food, it says **Not listed**. That is not zero.
 
 Under **In lunch now** you see everything already in that meal and its calories.
 
-> **Tip:** Kashmiri foods come first in the results. Tags on each result tell you more: **Kashmiri**, **Verified**, **Estimate** (a typical value, since home recipes vary) and **Yours** (a food you added).
+> **Tip:** Kashmiri foods come first in the results. Everyday staples are ordered the way people eat them: cooked medium-grain white rice before raw, standard raw bananas, whole eggs (boiled, scrambled, egg white, egg yolk), and cooked or boiled potatoes. Tags on each result tell you more: **Kashmiri**, **Verified**, **Estimate** (a typical value, since home recipes vary) and **Yours** (a food you added).
 
 ## Log a meal of your own
 

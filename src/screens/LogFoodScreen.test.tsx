@@ -289,6 +289,7 @@ describe('a chosen food', () => {
     expect(screen.getByText('Protein').nextSibling).toHaveTextContent('4 g')
     expect(screen.getByText('Carbs').nextSibling).toHaveTextContent('44.8 g')
     expect(screen.getByText('Fat').nextSibling).toHaveTextContent('0.5 g')
+    expect(screen.getByText('Fiber').nextSibling).toHaveTextContent('Not listed')
 
     await userEvent.click(screen.getByRole('button', { name: 'Increase quantity' }))
     expect(quantity).toHaveValue('1.5')
