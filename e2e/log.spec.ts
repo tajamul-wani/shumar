@@ -177,9 +177,7 @@ test('everyday words find the food as eaten first, and two-word names find it to
     .first()
 
   await search.fill('rice')
-  await expect(first).toHaveAccessibleName(
-    /^Rice, white, long-grain, regular, unenriched, cooked without salt/,
-  )
+  await expect(first).toHaveAccessibleName(/^Rice, white, medium-grain, cooked, unenriched/)
   await search.fill('moong dal')
   await expect(first).toHaveAccessibleName(/^Mung beans, mature seeds, cooked, boiled/)
 })

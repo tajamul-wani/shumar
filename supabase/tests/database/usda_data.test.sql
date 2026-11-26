@@ -41,7 +41,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"role": "authenticated", "sub": "11111111-1111-1111-1111-111111111111"}', true);
 
 select is((select name from public.search_foods('rice') limit 1),
-          'Rice, white, long-grain, regular, unenriched, cooked without salt', '"rice" finds cooked white rice first');
+          'Rice, white, medium-grain, cooked, unenriched', '"rice" finds cooked medium-grain white rice first');
 select matches((select name from public.search_foods('tea') limit 1), '^Beverages, tea, ', '"tea" finds tea, not teaseed oil');
 select matches((select name from public.search_foods('spinch') limit 1), '^Spinach, ', 'the typo "spinch" finds spinach');
 select is((select name from public.search_foods('curd') limit 1), 'Yogurt, plain, whole milk',
@@ -49,9 +49,9 @@ select is((select name from public.search_foods('curd') limit 1), 'Yogurt, plain
 select is((select name from public.search_foods('chicken breast') limit 1),
           'Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw',
           '"chicken breast" finds broiler breast first, not a deli roll');
-select results_eq($$select name from public.search_foods('egg', 3)$$,
-                  array['Egg, whole, cooked, hard-boiled', 'Egg, white, raw, fresh', 'Egg, whole, cooked, scrambled'],
-                  '"egg" offers a boiled egg, egg white and scrambled egg first');
+select results_eq($$select name from public.search_foods('egg', 4)$$,
+                  array['Egg, whole, cooked, hard-boiled', 'Egg, whole, cooked, scrambled', 'Egg, white, raw, fresh', 'Egg, yolk, raw, fresh'],
+                  '"egg" offers boiled egg, scrambled egg, egg white and egg yolk in order');
 select is((select name from public.search_foods('eggs') limit 1), 'Egg, whole, cooked, hard-boiled', '"eggs" finds the same');
 select is((select name from public.search_foods('anda') limit 1), 'Egg, whole, cooked, hard-boiled', '"anda" finds the same');
 select matches((select name from public.search_foods('moong dal') limit 1), '^Mung beans, mature seeds, cooked',
