@@ -26,6 +26,7 @@ import {
 import { dailyTargets } from '../lib/targets.ts'
 import { useProfile } from '../profile/context.ts'
 import { PREFERENCES, PREFERENCE_LABELS, type ThemePreference } from '../lib/theme.ts'
+import { APP_VERSION } from '../shell/site.ts'
 import { useDocumentTitle } from '../shell/useDocumentTitle.ts'
 import { DESKTOP_QUERY, useMediaQuery } from '../shell/useMediaQuery.ts'
 import { useTheme } from '../theme/context.ts'
@@ -117,7 +118,7 @@ function About() {
         {chevron}
       </Link>
       <p className="m-0 border-t border-koshur-border px-5 pt-3 pb-4 text-caption text-koshur-muted">
-        Ingredient values from USDA FoodData Central, in the public domain. Shumār 0.1
+        Ingredient values from USDA FoodData Central, in the public domain. Shumār {APP_VERSION}
       </p>
     </section>
   )
