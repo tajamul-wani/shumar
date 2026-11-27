@@ -2,6 +2,7 @@
 // The build fills these into index.html, so the page and the app always say the same.
 
 export const SITE_NAME = 'Shumār'
+export const APP_VERSION = '1.0'
 export const SITE_TITLE = 'Shumār: calorie counter for Kashmiri food'
 export const SITE_DESCRIPTION =
   'Count calories, protein, carbs and fat in Kashmiri meals and everyday food. Answer six questions for a daily target, then log food in grams, cups or katoris.'
